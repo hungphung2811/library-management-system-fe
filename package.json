@@ -1,0 +1,23 @@
+{
+  "name": "library-management-system-fe",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:shell": "npm run dev -w @mfe/shell",
+    "dev:catalog": "npm run dev -w @mfe/catalog",
+    "dev:circulation": "npm run dev -w @mfe/circulation",
+    "dev:admin": "npm run dev -w @mfe/admin",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "tailwindcss": "^4.3.5",
+    "@tailwindcss/postcss": "^4.3.5",
+    "postcss": "^8.5.0"
+  }
+}
