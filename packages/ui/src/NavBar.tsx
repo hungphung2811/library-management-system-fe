@@ -5,13 +5,13 @@ import { LogoutOutlined, ReadOutlined, UserOutlined } from "@ant-design/icons";
 export type NavBarProps = {
   items: { href: string; label: string }[];
   current: string;
-  user?: { id: string; role?: string };
+  user?: { id: string; name: string; role?: string };
 };
 
 /** Layout/spacing bằng Tailwind, control (Menu, Button, Avatar, Tag) bằng antd. */
 export function NavBar({ items, current, user }: NavBarProps) {
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-6 border-b border-slate-200/70 bg-white px-6 shadow-sm">
+    <nav aria-label="Điều hướng chính" className="sticky top-0 z-10 flex h-16 items-center gap-6 border-b border-slate-200/70 bg-white px-6 shadow-sm">
       <a href="/" className="flex items-center gap-2.5 no-underline">
         <span className="grid size-9 place-items-center rounded-[10px] bg-linear-to-br from-brand-500 to-accent text-lg text-white">
           <ReadOutlined />
@@ -33,7 +33,7 @@ export function NavBar({ items, current, user }: NavBarProps) {
         <form method="post" action="/api/session/logout" className="m-0 flex items-center gap-3">
           <Avatar size={32} icon={<UserOutlined />} className="bg-brand-600" />
           <span className="flex items-center gap-1.5">
-            <Typography.Text title={user.id}>{user.id.slice(0, 8)}</Typography.Text>
+            <Typography.Text title={user.id}>{user.name}</Typography.Text>
             {user.role && <Tag color="geekblue" className="me-0">{user.role}</Tag>}
           </span>
           <Button htmlType="submit" icon={<LogoutOutlined />}>
@@ -45,6 +45,6 @@ export function NavBar({ items, current, user }: NavBarProps) {
           Đăng nhập
         </Button>
       )}
-    </header>
+    </nav>
   );
 }

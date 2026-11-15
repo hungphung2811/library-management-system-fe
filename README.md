@@ -53,7 +53,7 @@ BE: `docker compose --profile apps up -d --build` ở repo `library-management-s
 ## Test E2E (Playwright)
 
 ```bash
-npm run test:e2e          # build rồi chạy 13 test
+npm run test:e2e          # build rồi chạy 22 test
 npm run test:e2e:only     # dùng bản build sẵn
 ```
 

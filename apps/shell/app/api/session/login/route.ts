@@ -21,7 +21,9 @@ export async function POST(req: Request) {
     const err = await upstream.json().catch(() => ({ message: "Đăng nhập thất bại" }));
     return NextResponse.json(err, { status: upstream.status });
   }
-  const res = NextResponse.json({ ok: true });
-  setSessionCookies(res, (await upstream.json()) as TokenResponse);
+  const tokens = (await upstream.json()) as TokenResponse;
+  // mustChangePassword: client chuyển sang /change-password thay vì vào trang đang định tới.
+  const res = NextResponse.json({ ok: true, mustChangePassword: tokens.mustChangePassword === true });
+  setSessionCookies(res, tokens);
   return res;
 }

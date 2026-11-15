@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Card, Form, Input, LockOutlined, ReadOutlined, Text, Title, UserOutlined } from "@mfe/ui";
 
 type Values = { username: string; password: string };
@@ -7,6 +7,12 @@ type Values = { username: string; password: string };
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [changed, setChanged] = useState(false);
+
+  // Sau khi đổi mật khẩu, change-password chuyển về đây kèm ?changed=1
+  useEffect(() => {
+    setChanged(new URLSearchParams(location.search).get("changed") === "1");
+  }, []);
 
   async function onFinish(values: Values) {
     setLoading(true);
@@ -17,6 +23,11 @@ export default function LoginPage() {
       body: JSON.stringify(values),
     });
     if (res.ok) {
+      const result = await res.json().catch(() => ({}));
+      if (result.mustChangePassword) {
+        location.href = "/change-password";
+        return;
+      }
       const raw = new URLSearchParams(location.search).get("next") ?? "/";
       // Full reload để cookie có hiệu lực với mọi zone
       location.href = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
@@ -45,6 +56,9 @@ export default function LoginPage() {
           <Form.Item name="password" rules={[{ required: true, message: "Nhập mật khẩu" }]}>
             <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" autoComplete="current-password" />
           </Form.Item>
+          {changed && !error && (
+            <Alert type="success" showIcon title="Đổi mật khẩu thành công, vui lòng đăng nhập lại." className="mb-4" />
+          )}
           {error && <Alert type="error" showIcon title={error} className="mb-4" />}
           <Button type="primary" htmlType="submit" block loading={loading}>
             Đăng nhập

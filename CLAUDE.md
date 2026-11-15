@@ -13,13 +13,13 @@ npm run dev -w @mfe/admin            # một app
 npm run build                        # build tất cả workspace
 npm run typecheck                    # tsc --noEmit mọi workspace
 npm run typecheck:e2e                # typecheck thư mục e2e/
-npm run test:e2e                     # build tất cả rồi chạy Playwright (13 test)
+npm run test:e2e                     # build tất cả rồi chạy Playwright (22 test)
 npm run test:e2e:only                # chỉ chạy test, dùng bản build sẵn
 npx playwright test -g "tên test"    # một test (vẫn dựng đủ 6 server nên mất ~20s khởi động)
 ```
 
 - Không có lint. Kiểm tra gồm `typecheck` và E2E Playwright.
-- E2E chạy trên bản **build** (`next start`), BE được thay bằng `e2e/mock-gateway.mjs` (cổng 8090, hai user `admin` và `member`), không cần docker. Cổng 3000-3003, 3100, 8090 phải trống (cấu hình không tái sử dụng server đang chạy). Sửa code app thì phải build lại, `test:e2e` đã tự build. Shell thứ hai ở cổng 3100 có zone catalog trỏ vào cổng chết để test zone chết.
+- E2E chạy trên bản **build** (`next start`), BE được thay bằng `e2e/mock-gateway.mjs` (cổng 8090; user `admin` (admin=true), `staff` (có khóa), `member`, `newbie`/`newbie2` (phải đổi mật khẩu)), không cần docker. Cổng 3000-3003, 3100, 8090 phải trống (cấu hình không tái sử dụng server đang chạy). Sửa code app thì phải build lại, `test:e2e` đã tự build. Shell thứ hai ở cổng 3100 có zone catalog trỏ vào cổng chết để test zone chết.
 - `workers: 2` và `ZONE_TIMEOUT_MS=30000` là chủ ý: 6 server Node + Chromium làm SSR chậm, 4 worker làm test flaky. Test form login phải mở trang bằng `openLogin` (đợi hydrate).
 - Cần BE thật chạy ở `GATEWAY_URL` (mặc định `http://localhost:8080` = nginx của BE: `docker compose --profile apps up -d --build` trong repo BE) khi dùng `npm run dev`. Dev account: `admin` / `Admin@12345`.
 
@@ -53,6 +53,10 @@ Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/a
 - Tailwind không tự quét package workspace: mỗi app cần `app/globals.css` có `@source "../../../packages/ui/src"` và `postcss.config.mjs`. Thiếu hai file này ở zone mới thì class của `@mfe/ui` không được sinh ra.
 - Màu thương hiệu nằm ở hai nơi phải sửa cùng lúc: `@theme` trong `tailwind.css` và `brand`/`theme` trong `theme.ts`.
 
-## Lệch với BE hiện tại (chưa xử lý)
+## Phân quyền theo BE động (ADR-0003)
 
-BE đã đổi sang phân quyền động theo endpoint (ADR-0003): khóa quyền là `Controller/method`, quản trị viên là claim JWT `admin=true` (bỏ qua kiểm khóa), `TokenResponse` có thêm `mustChangePassword` (token của tài khoản đó không mang `admin`/`permissions`). FE vẫn dùng mã quyền cũ (`ROLE_VIEW`, `BORROW_BOOK`, `RETURN_BOOK` trong `can()` và `nav-links.ts`) và `Session` chưa có cờ `admin`, nên với BE mới trang admin/circulation có thể ẩn nội dung sai. API sách đã có thật (`/api/books`, `/api/book-copies` qua `lms-api`) nhưng zone `catalog` vẫn là trang chờ. Nginx của BE chỉ cho CORS origin `localhost:3000/5173`, không ảnh hưởng gọi server-side của FE.
+- Khóa quyền là `TênController/tênMethod` của controller **nội bộ** xử lý endpoint (ví dụ `AccessControlController/listRoles`, `BorrowingController/borrow`), không phải mã cố định. Danh sách FE dùng nằm ở `packages/api/src/permissions.ts`; BE đổi tên controller/method thì phải sửa ở đó (và literal trong `nav-links.ts`). Quyền mới của role chỉ có hiệu lực ở lần đăng nhập/refresh kế tiếp.
+- `can(session, key)` đúng khi claim `admin=true` (quản trị viên, bỏ qua kiểm khóa, thường không có permission nào) hoặc `permissions` chứa khóa. Chỉ để ẩn/hiện UI; BE trả 403 mới là quyết định cuối.
+- `mustChangePassword`: token của tài khoản này không mang `admin`/`permissions`. `requireSession` chuyển sang `/change-password` (trang ở shell, gọi `POST /api/auth/password` qua BFF), đổi xong thì xoá phiên và bắt đăng nhập lại để lấy token đầy đủ.
+- Hiển thị tên bằng claim `username`, không dùng `sub` (UUID).
+- API cho FE đi qua `lms-api`/nginx; nhiều API nghiệp vụ trong BE đã chuyển sang `/internal/**` (nginx trả 404), FE chỉ dùng `/api/**`. Zone `catalog` vẫn là trang chờ dù BE đã có `/api/books`, `/api/book-copies`.

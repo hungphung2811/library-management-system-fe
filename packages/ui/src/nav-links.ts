@@ -9,7 +9,8 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
   { href: "/", label: "Trang chủ" },
   { href: "/catalog", label: "Sách" },
   { href: "/circulation", label: "Mượn trả" },
-  { href: "/admin", label: "Quản trị", permission: "ROLE_VIEW" },
+  // Khóa quyền của BE (ADR-0003) = PERMISSIONS.LIST_ROLES trong @mfe/api; admin=true thì luôn thấy.
+  { href: "/admin", label: "Quản trị", permission: "AccessControlController/listRoles" },
 ];
 
 /**

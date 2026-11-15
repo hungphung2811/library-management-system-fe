@@ -3,10 +3,17 @@ import { redirect } from "next/navigation";
 import { ACCESS_COOKIE, SHELL_URL } from "./config";
 
 export type Session = {
+  /** `sub` của JWT: id người dùng. */
   userId: string;
+  /** Tên đăng nhập (claim `username`), dùng để hiển thị. */
+  username: string;
   roles: string[];
   permissions: string[];
   departmentId?: string;
+  /** Claim `admin=true`: có role quản trị, BE bỏ qua kiểm khóa quyền. */
+  admin: boolean;
+  /** Tài khoản phải đổi mật khẩu: token không mang admin/permissions cho tới khi đổi. */
+  mustChangePassword: boolean;
   accessToken: string;
 };
 
@@ -24,25 +31,32 @@ export async function getSession(): Promise<Session | null> {
   if (!token) return null;
   const p = decodePayload(token);
   if (!p) return null;
+  const userId = String(p.sub ?? "");
   return {
-    userId: String(p.sub ?? ""),
+    userId,
+    username: typeof p.username === "string" ? p.username : userId,
     roles: (p.roles as string[]) ?? [],
     permissions: (p.permissions as string[]) ?? [],
     departmentId: p.departmentId as string | undefined,
+    admin: p.admin === true,
+    mustChangePassword: p.mustChangePassword === true,
     accessToken: token,
   };
 }
 
 /**
  * Mỗi zone tự bảo vệ trang của mình (không chỉ dựa vào proxy của shell):
- * chưa đăng nhập thì chuyển về trang login của shell, kèm đường dẫn để quay lại.
+ * chưa đăng nhập thì chuyển về trang login của shell, kèm đường dẫn để quay lại;
+ * tài khoản phải đổi mật khẩu thì chuyển sang trang đổi mật khẩu.
  */
 export async function requireSession(nextPath: string): Promise<Session> {
   const s = await getSession();
   if (!s) redirect(`${SHELL_URL}/login?next=${encodeURIComponent(nextPath)}`);
+  if (s.mustChangePassword) redirect(`${SHELL_URL}/change-password`);
   return s;
 }
 
+/** Quản trị viên luôn đúng; người khác cần khóa quyền trong claim `permissions`. Chỉ để ẩn/hiện UI, BE mới là nơi quyết định. */
 export function can(session: Session | null, permission: string) {
-  return !!session?.permissions.includes(permission);
+  return !!session && (session.admin || session.permissions.includes(permission));
 }

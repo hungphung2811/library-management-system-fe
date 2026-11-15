@@ -5,8 +5,15 @@ export const SHELL = "http://localhost:3000";
 export const SHELL_CATALOG_DOWN = "http://localhost:3100";
 
 export const USERS = {
+  /** Quản trị viên: claim admin=true, không có permission nào. */
   admin: { username: "admin", password: "Admin@12345" },
+  /** Thủ thư: có khóa AccessControlController/listRoles và BorrowingController/borrow, không phải admin. */
+  staff: { username: "staff", password: "Staff@12345" },
   member: { username: "member", password: "Member@12345" },
+  /** Phải đổi mật khẩu (mật khẩu tạm). Không bao giờ đổi mật khẩu trong test. */
+  newbie: { username: "newbie", password: "Temp@12345" },
+  /** Phải đổi mật khẩu; dành riêng cho test đổi mật khẩu thật. */
+  newbie2: { username: "newbie2", password: "Temp@12345" },
 } as const;
 
 /**

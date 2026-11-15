@@ -1,10 +1,10 @@
 import { Card, Descriptions, Nav, Page, PageHeader, Tag, Text } from "@mfe/ui";
-import { can, requireSession } from "@mfe/api";
+import { PERMISSIONS, can, requireSession } from "@mfe/api";
 
 export default async function CirculationPage() {
   const s = await requireSession("/circulation");
-  const perm = (code: string) =>
-    can(s, code) ? <Tag color="success">Được phép</Tag> : <Tag>Không có quyền</Tag>;
+  const perm = (key: string) =>
+    can(s, key) ? <Tag color="success">Được phép</Tag> : <Tag>Không có quyền</Tag>;
 
   return (
     <>
@@ -15,8 +15,8 @@ export default async function CirculationPage() {
           <Descriptions
             column={1}
             items={[
-              { key: "borrow", label: "Mượn sách (BORROW_BOOK)", children: perm("BORROW_BOOK") },
-              { key: "return", label: "Trả sách (RETURN_BOOK)", children: perm("RETURN_BOOK") },
+              { key: "borrow", label: "Mượn sách", children: perm(PERMISSIONS.BORROW_BOOK) },
+              { key: "return", label: "Trả sách", children: perm(PERMISSIONS.RETURN_BOOK) },
             ]}
           />
         </Card>

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Button, Card, Descriptions, Nav, Page, PageHeader, ReadOutlined, SettingOutlined, SwapOutlined, Tag, Text } from "@mfe/ui";
 import { getSession } from "@mfe/api";
 
@@ -9,6 +10,7 @@ const modules = [
 
 export default async function Home() {
   const s = await getSession();
+  if (s?.mustChangePassword) redirect("/change-password");
   return (
     <>
       <Nav current="/" session={s} />
@@ -21,7 +23,7 @@ export default async function Home() {
               column={1}
               items={[
                 { key: "roles", label: "Vai trò", children: s.roles.map((r) => <Tag key={r} color="geekblue">{r}</Tag>) },
-                { key: "perm", label: "Số quyền", children: s.permissions.length },
+                { key: "perm", label: "Quyền", children: s.admin ? "Quản trị viên (toàn quyền)" : `${s.permissions.length} khóa quyền` },
               ]}
             />
           ) : (
