@@ -1,5 +1,5 @@
 import { gatewayFetch, requireSession, toErrorInfo, type ErrorInfo } from "@mfe/api";
-import { AppShell, Button, Card, ErrorPanel, KeyValueList, PageHeader, StatusTag, Tag, formatDate } from "@mfe/ui";
+import { Button, Card, ErrorPanel, KeyValueList, PageHeader, StatusTag, Tag, formatDate } from "@mfe/ui";
 import { ExternalLinks, type ExternalLogin, type ExternalProvider } from "./ExternalLinks";
 
 type UserView = { id: string; username: string; fullName?: string; email?: string; departmentId?: string; status?: string };
@@ -55,7 +55,7 @@ export default async function ProfilePage() {
   const showExternal = providerList.length > 0 || linkList.length > 0;
 
   return (
-    <AppShell current="/profile" crumb="Hồ sơ" session={s}>
+    <>
       <PageHeader title="Hồ sơ của tôi" description="Thông tin tài khoản và thẻ thư viện của bạn." />
 
       <div className="flex max-w-[960px] flex-col gap-5">
@@ -146,6 +146,6 @@ export default async function ProfilePage() {
           </Card>
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

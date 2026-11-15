@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import {
-  AppShell, ArrowLeftRight, BookOpen, Button, KeyRound, PageHeader, ShieldCheck, Tag, User,
+  ArrowLeftRight, BookOpen, Button, KeyRound, PageHeader, ShieldCheck, Tag, User,
   canSeeLink, formatDateTime, getNavLinks,
 } from "@mfe/ui";
 import { getSession, gatewayFetch } from "@mfe/api";
@@ -48,7 +48,7 @@ export default async function Home() {
   const recent = s ? await recentNotifications() : [];
 
   return (
-    <AppShell current="/" session={s}>
+    <>
       <PageHeader title="Tổng quan" description="Chọn một phân hệ để bắt đầu làm việc" />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -131,6 +131,6 @@ export default async function Home() {
           )}
         </section>
       </div>
-    </AppShell>
+    </>
   );
 }
