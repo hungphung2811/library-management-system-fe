@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { SHELL_CATALOG_DOWN, loginAs } from "./helpers";
+import { ADMIN_DIRECT, SHELL, SHELL_CATALOG_DOWN, loginAs } from "./helpers";
 
 test.describe("độc lập giữa các zone", () => {
   test("zone gọi thẳng cổng của nó mà chưa đăng nhập thì chuyển về login của shell", async ({ page }) => {
-    await page.goto("http://localhost:3003/admin");
-    await expect(page).toHaveURL("http://localhost:3000/login?next=%2Fadmin");
+    await page.goto(`${ADMIN_DIRECT}/admin`);
+    await expect(page).toHaveURL(`${SHELL}/login?next=%2Fadmin`);
   });
 
   test("mỗi zone phục vụ được qua shell với asset tải thành công", async ({ page }) => {

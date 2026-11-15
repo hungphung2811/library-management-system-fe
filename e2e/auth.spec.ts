@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { USERS, loginAs, openLogin } from "./helpers";
+import { SHELL, USERS, loginAs, openLogin } from "./helpers";
 
 test.describe("đăng nhập và đăng xuất", () => {
   test("chưa đăng nhập vào zone thì bị chuyển về /login kèm đường dẫn quay lại", async ({ page }) => {
@@ -34,7 +34,7 @@ test.describe("đăng nhập và đăng xuất", () => {
     await page.getByPlaceholder("Mật khẩu").fill(USERS.admin.password);
     await page.getByRole("button", { name: "Đăng nhập" }).click();
 
-    await expect(page).toHaveURL("http://localhost:3000/");
+    await expect(page).toHaveURL(`${SHELL}/`);
   });
 
   test("đăng xuất xoá phiên: vào lại zone phải đăng nhập", async ({ page }) => {

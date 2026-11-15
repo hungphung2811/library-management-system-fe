@@ -1,8 +1,11 @@
 import { expect, type Page } from "@playwright/test";
+import { PORTS, url } from "./ports";
 
-export const SHELL = "http://localhost:3000";
+export const SHELL = url(PORTS.shell);
 /** Shell thứ hai có zone catalog trỏ vào cổng chết. */
-export const SHELL_CATALOG_DOWN = "http://localhost:3100";
+export const SHELL_CATALOG_DOWN = url(PORTS.shellDown);
+/** Zone admin gọi thẳng cổng của nó (không qua shell). */
+export const ADMIN_DIRECT = url(PORTS.admin);
 
 export const USERS = {
   /** Quản trị viên: claim admin=true, không có permission nào. */

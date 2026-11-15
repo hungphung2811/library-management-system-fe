@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { USERS, loginAs, openLogin } from "./helpers";
+import { ADMIN_DIRECT, SHELL, USERS, loginAs, openLogin } from "./helpers";
 
 // Tài khoản mustChangePassword: token không mang admin/permissions, FE phải buộc đổi mật khẩu trước.
 test.describe("buộc đổi mật khẩu", () => {
@@ -21,9 +21,9 @@ test.describe("buộc đổi mật khẩu", () => {
 
   test("zone gọi thẳng cổng của nó cũng chuyển sang trang đổi mật khẩu của shell", async ({ page }) => {
     await loginAs(page, "newbie");
-    await page.goto("http://localhost:3003/admin");
+    await page.goto(`${ADMIN_DIRECT}/admin`);
 
-    await expect(page).toHaveURL("http://localhost:3000/change-password");
+    await expect(page).toHaveURL(`${SHELL}/change-password`);
   });
 
   test("sai mật khẩu hiện tại thì hiện lỗi từ BE và vẫn ở trang đổi mật khẩu", async ({ page }) => {
@@ -66,7 +66,7 @@ test.describe("buộc đổi mật khẩu", () => {
     await page.getByPlaceholder("Mật khẩu").fill("NewPass@12345");
     await page.getByRole("button", { name: "Đăng nhập" }).click();
 
-    await expect(page).toHaveURL("http://localhost:3000/");
+    await expect(page).toHaveURL(`${SHELL}/`);
     await page.goto("/circulation");
     await expect(page).toHaveURL(/\/circulation$/); // đã có phiên đầy đủ nên vào được zone
   });
