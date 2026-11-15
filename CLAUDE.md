@@ -60,3 +60,7 @@ Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/a
 - `mustChangePassword`: token của tài khoản này không mang `admin`/`permissions`. `requireSession` chuyển sang `/change-password` (trang ở shell, gọi `POST /api/auth/password` qua BFF), đổi xong thì xoá phiên và bắt đăng nhập lại để lấy token đầy đủ.
 - Hiển thị tên bằng claim `username`, không dùng `sub` (UUID).
 - API cho FE đi qua `lms-api`/nginx; nhiều API nghiệp vụ trong BE đã chuyển sang `/internal/**` (nginx trả 404), FE chỉ dùng `/api/**`. Zone `catalog` vẫn là trang chờ dù BE đã có `/api/books`, `/api/book-copies`.
+
+## Quy ước commit
+
+Message tiếng Việt có dấu, dòng đầu có prefix kiểu Conventional Commits: `feat:` (tính năng, thêm mới), `fix:` (sửa lỗi), `docs:` (tài liệu). Không thêm dòng `Co-Authored-By` hay attribution nào.
