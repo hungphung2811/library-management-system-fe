@@ -15,7 +15,7 @@ import {
   Text,
   formatDate,
 } from "@mfe/ui";
-import { UUID_RE, shortId, type ReservationView } from "../lib/circulation";
+import { UUID_RE, shortId, type ReservationView } from "../_lib/circulation";
 import { RemoteSelect, type Opt } from "./RemoteSelect";
 
 export type ReservationRow = {

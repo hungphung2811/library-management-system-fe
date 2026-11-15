@@ -8,7 +8,6 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
     "dev:shell": "npm run dev -w @mfe/shell",
-    "dev:circulation": "npm run dev -w @mfe/circulation",
     "dev:admin": "npm run dev -w @mfe/admin",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

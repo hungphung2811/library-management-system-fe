@@ -11,14 +11,14 @@ export default async function CirculationPage() {
 
   const shortcuts: Shortcut[] = [
     ...(can(s, PERMISSIONS.BORROW_BOOK)
-      ? [{ href: "/borrow", title: "Lập phiếu mượn", hint: "Chọn độc giả, quét sách và lập phiếu." }]
+      ? [{ href: "/circulation/borrow", title: "Lập phiếu mượn", hint: "Chọn độc giả, quét sách và lập phiếu." }]
       : []),
     ...(can(s, PERMISSIONS.RETURN_BOOK)
-      ? [{ href: "/return", title: "Nhận trả sách", hint: "Nhập mã phiếu rồi quét sách để trả." }]
+      ? [{ href: "/circulation/return", title: "Nhận trả sách", hint: "Nhập mã phiếu rồi quét sách để trả." }]
       : []),
-    { href: "/borrowings", title: "Tra phiếu mượn", hint: "Xem phiếu mượn theo mã phiếu, gia hạn." },
+    { href: "/circulation/borrowings", title: "Tra phiếu mượn", hint: "Xem phiếu mượn theo mã phiếu, gia hạn." },
     ...(can(s, PERMISSIONS.RESERVATION_MINE)
-      ? [{ href: "/reservations", title: "Đặt trước của tôi", hint: "Xem hàng đợi, hạn nhận và hủy đặt trước." }]
+      ? [{ href: "/circulation/reservations", title: "Đặt trước của tôi", hint: "Xem hàng đợi, hạn nhận và hủy đặt trước." }]
       : []),
   ];
 

@@ -1,6 +1,6 @@
 import { NoPermission, PageHeader } from "@mfe/ui";
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
-import { ReturnDesk } from "../../components/ReturnDesk";
+import { ReturnDesk } from "../_components/ReturnDesk";
 
 export default async function ReturnPage() {
   const s = await requireSession("/circulation/return");

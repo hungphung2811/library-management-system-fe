@@ -25,7 +25,7 @@ import {
   type BorrowingView,
   type CopyDetails,
   type CopyInfo,
-} from "../lib/circulation";
+} from "../_lib/circulation";
 
 const isBorrowing = (v: unknown): v is BorrowingView =>
   !!v && typeof v === "object" && Array.isArray((v as BorrowingView).items) && typeof (v as BorrowingView).id === "string";

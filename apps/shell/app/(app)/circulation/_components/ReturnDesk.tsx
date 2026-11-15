@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import { bffFetch, toErrorInfo, type ErrorInfo } from "@mfe/api/client";
 import { Alert, Button, Card, Input, describeError } from "@mfe/ui";
-import { CIRC_ERRORS, UUID_RE, type BorrowingView, type CopyDetails, type CopyInfo } from "../lib/circulation";
+import { CIRC_ERRORS, UUID_RE, type BorrowingView, type CopyDetails, type CopyInfo } from "../_lib/circulation";
 import { BorrowingPanel } from "./BorrowingPanel";
 
 /** Nhận trả sách: nhập mã phiếu (dán từ phiếu in), xem phiếu rồi quét mã vạch hoặc bấm "Trả" từng dòng. */

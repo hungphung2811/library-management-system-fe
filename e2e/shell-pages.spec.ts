@@ -140,3 +140,21 @@ test.describe("trang chủ: lối tắt theo quyền", () => {
     }
   });
 });
+
+test.describe("route gộp trong shell: tiêu đề tab và 404 trong khung", () => {
+  test("tiêu đề tab lấy từ metadata của đoạn cộng template ở root layout", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/circulation");
+    await expect(page).toHaveTitle("Mượn trả - Quản lý thư viện");
+    await page.goto("/catalog");
+    await expect(page).toHaveTitle("Sách - Quản lý thư viện");
+  });
+
+  test("URL lạ dưới /circulation trả 404 nhưng vẫn có sidebar", async ({ page }) => {
+    await loginAs(page, "admin");
+    const res = await page.goto("/circulation/xyz-khong-co");
+    expect(res?.status()).toBe(404);
+    await expect(page.getByText("Không tìm thấy trang")).toBeVisible();
+    await expect(page.locator("aside")).toBeVisible();
+  });
+});

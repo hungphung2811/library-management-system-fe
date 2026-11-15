@@ -1,6 +1,6 @@
 import { PageHeader, Text } from "@mfe/ui";
 import { requireSession } from "@mfe/api";
-import { LookupForm } from "../../components/LookupForm";
+import { LookupForm } from "../_components/LookupForm";
 
 export default async function BorrowingsPage() {
   const s = await requireSession("/circulation/borrowings");

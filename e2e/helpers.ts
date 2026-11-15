@@ -2,7 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { PORTS, url } from "./ports";
 
 export const SHELL = url(PORTS.shell);
-/** Shell thứ hai có zone circulation trỏ vào cổng chết. */
+/** Shell thứ hai có zone admin trỏ vào cổng chết. */
 export const SHELL_ZONE_DOWN = url(PORTS.shellDown);
 /** Zone admin gọi thẳng cổng của nó (không qua shell). */
 export const ADMIN_DIRECT = url(PORTS.admin);

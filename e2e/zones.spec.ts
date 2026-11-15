@@ -26,16 +26,16 @@ test.describe("độc lập giữa các zone", () => {
   test("một zone chết chỉ làm trang của nó trả 503, các phần khác vẫn chạy", async ({ page }) => {
     await loginAs(page, "admin", SHELL_ZONE_DOWN);
 
-    const down = await page.goto(`${SHELL_ZONE_DOWN}/circulation`);
+    const down = await page.goto(`${SHELL_ZONE_DOWN}/admin`);
     expect(down?.status()).toBe(503);
-    await expect(page.getByRole("heading", { name: /circulation.*không khả dụng/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /admin.*không khả dụng/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Về trang chủ/ })).toBeVisible();
 
-    const ok = await page.goto(`${SHELL_ZONE_DOWN}/catalog`);
-    expect(ok?.status()).toBe(200);
-    await expect(page.locator("main")).toBeVisible();
-
-    const home = await page.goto(`${SHELL_ZONE_DOWN}/`);
-    expect(home?.status()).toBe(200);
+    // Sách và Mượn trả giờ là trang của chính shell nên vẫn sống khi admin chết.
+    for (const path of ["/catalog", "/circulation", "/"]) {
+      const ok = await page.goto(`${SHELL_ZONE_DOWN}${path}`);
+      expect(ok?.status(), path).toBe(200);
+      await expect(page.locator("main"), path).toBeVisible();
+    }
   });
 });

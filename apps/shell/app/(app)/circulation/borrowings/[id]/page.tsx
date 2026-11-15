@@ -2,8 +2,8 @@ import { Button, NoPermission, PageHeader, Result } from "@mfe/ui";
 import { ErrorPanel } from "@mfe/ui";
 import { GatewayError, PERMISSIONS, can, gatewayFetch, requireSession } from "@mfe/api";
 import { toErrorInfo } from "@mfe/api/client";
-import { BorrowingPanel } from "../../../components/BorrowingPanel";
-import { UUID_RE, shortId, type BorrowingView, type CopyDetails, type CopyInfo } from "../../../lib/circulation";
+import { BorrowingPanel } from "../../_components/BorrowingPanel";
+import { UUID_RE, shortId, type BorrowingView, type CopyDetails, type CopyInfo } from "../../_lib/circulation";
 
 export default async function BorrowingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

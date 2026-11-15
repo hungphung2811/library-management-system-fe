@@ -2,15 +2,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Input } from "@mfe/ui";
-import { UUID_RE } from "../lib/circulation";
+import { UUID_RE } from "../_lib/circulation";
 
-/** Tra phiếu mượn theo mã (UUID) rồi chuyển tới trang chi tiết (trong zone nên dùng router, Next tự thêm basePath). */
+/** Tra phiếu mượn theo mã (UUID) rồi chuyển tới trang chi tiết (cùng app nên dùng router với đường dẫn đầy đủ). */
 export function LookupForm() {
   const router = useRouter();
   const [code, setCode] = useState("");
   const id = code.trim();
   const valid = UUID_RE.test(id);
-  const go = () => valid && router.push(`/borrowings/${encodeURIComponent(id)}`);
+  const go = () => valid && router.push(`/circulation/borrowings/${encodeURIComponent(id)}`);
 
   return (
     <Card title="Tra phiếu mượn theo mã" className="max-w-[720px]">

@@ -1,6 +1,6 @@
 import { NoPermission, PageHeader } from "@mfe/ui";
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
-import { BorrowDesk } from "../../components/BorrowDesk";
+import { BorrowDesk } from "../_components/BorrowDesk";
 
 export default async function BorrowPage() {
   const s = await requireSession("/circulation/borrow");

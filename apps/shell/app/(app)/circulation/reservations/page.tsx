@@ -1,8 +1,8 @@
 import { ErrorPanel, NoPermission, PageHeader } from "@mfe/ui";
 import { PERMISSIONS, can, gatewayFetch, requireSession } from "@mfe/api";
 import { toErrorInfo } from "@mfe/api/client";
-import { ReservationsView, type ReservationRow } from "../../components/ReservationsView";
-import { shortId, type ReservationView } from "../../lib/circulation";
+import { ReservationsView, type ReservationRow } from "../_components/ReservationsView";
+import { shortId, type ReservationView } from "../_lib/circulation";
 
 const ORDER: Record<string, number> = { READY: 0, WAITING: 1 };
 

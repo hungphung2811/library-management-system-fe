@@ -1,3 +1,15 @@
 @import "@mfe/ui/tailwind.css";
 /* Tailwind không tự quét package workspace, nên khai báo để class trong @mfe/ui được sinh ra */
 @source "../../../packages/ui/src";
+
+/* In phiếu mượn: ẩn khung ứng dụng (sidebar, thanh trên), chỉ giữ nội dung trang.
+   Chỉ áp dụng khi trang có data-print-scope (đặt ở (app)/circulation/layout.tsx). */
+@media print {
+  body:has([data-print-scope]) aside,
+  body:has([data-print-scope]) header.sticky {
+    display: none !important;
+  }
+  body:has([data-print-scope]) div.min-h-screen.flex-col {
+    padding-left: 0 !important;
+  }
+}

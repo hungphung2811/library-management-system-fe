@@ -15,7 +15,7 @@ import {
   describeError,
   formatDate,
 } from "@mfe/ui";
-import { CIRC_ERRORS, UUID_RE, type BorrowingView, type CopyDetails } from "../lib/circulation";
+import { CIRC_ERRORS, UUID_RE, type BorrowingView, type CopyDetails } from "../_lib/circulation";
 import { RemoteSelect, type Opt } from "./RemoteSelect";
 
 type UserView = { id: string; username: string; fullName: string; email: string };
