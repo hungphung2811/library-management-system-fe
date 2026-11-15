@@ -40,15 +40,15 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <Title level={2} className="mb-1! font-semibold!">Đăng nhập</Title>
-      <p className="mt-0 mb-8 text-sm text-muted">Nhập tài khoản được cấp để vào hệ thống quản lý thư viện.</p>
+      <Title level={1} className="mb-2! text-center text-2xl! leading-tight! font-semibold!">Đăng nhập vào Thư viện</Title>
+      <p className="mt-0 mb-7 text-center text-sm text-muted">Nhập tài khoản được cấp để vào hệ thống quản lý thư viện.</p>
 
       <Form<Values> layout="vertical" onFinish={onFinish} requiredMark={false} size="large">
-        <Form.Item name="username" rules={[{ required: true, message: "Nhập tên đăng nhập" }]}>
-          <Input prefix={<User size={16} strokeWidth={1.75} className="text-muted" />} placeholder="Tên đăng nhập" autoComplete="username" />
+        <Form.Item label="Tên đăng nhập" name="username" rules={[{ required: true, message: "Nhập tên đăng nhập" }]}>
+          <Input prefix={<User size={16} strokeWidth={1.75} className="text-muted" />} placeholder="Nhập tên đăng nhập" autoComplete="username" />
         </Form.Item>
-        <Form.Item name="password" rules={[{ required: true, message: "Nhập mật khẩu" }]}>
-          <Input.Password prefix={<Lock size={16} strokeWidth={1.75} className="text-muted" />} placeholder="Mật khẩu" autoComplete="current-password" />
+        <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, message: "Nhập mật khẩu" }]}>
+          <Input.Password prefix={<Lock size={16} strokeWidth={1.75} className="text-muted" />} placeholder="Nhập mật khẩu" autoComplete="current-password" />
         </Form.Item>
         {changed && !error && (
           <Alert type="success" showIcon title="Đổi mật khẩu thành công, vui lòng đăng nhập lại." className="mb-4" />

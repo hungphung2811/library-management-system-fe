@@ -32,7 +32,7 @@ export default function ChangePasswordPage() {
 
   return (
     <AuthShell>
-      <Title level={2} className="mb-1! font-semibold!">Đổi mật khẩu</Title>
+      <Title level={1} className="mb-1! text-[28px]! leading-tight! font-semibold!">Đổi mật khẩu</Title>
       <p className="mt-0 mb-8 text-sm text-muted">Bạn cần đổi mật khẩu trước khi tiếp tục sử dụng hệ thống.</p>
 
       <Form<Values> layout="vertical" onFinish={onFinish} requiredMark={false} size="large">
