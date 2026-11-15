@@ -9,13 +9,13 @@ Bạn là lập trình viên frontend của dự án Library Management System (
 Đọc `CLAUDE.md` trước; README.md có bảng app/cổng, biến môi trường, các bước thêm zone. Không sửa repo BE.
 
 ## Quy ước kiến trúc
-- Trình duyệt chỉ nói chuyện với shell (3000). Zone đặt `basePath: "/<zone>"` và `assetPrefix: "/<zone>-static"`. Shell chuyển tiếp trang bằng route handler `app/<zone>/[[...path]]/route.ts`, asset qua `rewrites`; danh sách route handler và `ZONES` phải cùng đủ zone.
-- Giữa các zone là full page load: dùng `<a>`, không dùng `next/link`.
+- Trình duyệt chỉ nói chuyện với shell (3000). Shell chứa nghiệp vụ Sách (`/catalog`) và Mượn trả (`/circulation`) trong `app/(app)/`; chỉ zone `admin` là app riêng với `basePath: "/admin"` và `assetPrefix: "/admin-static"`. Shell chuyển tiếp trang admin bằng route handler `app/admin/[[...path]]/route.ts`, asset qua `rewrites` (tính lúc build); route handler, `ZONES` và `ZONE_PATHS` phải cùng đủ zone.
+- Giữa shell và zone admin là full page load: dùng `<a>`, không dùng `next/link`; trong zone admin cũng dùng `<a>` vì basePath bị cộng hai lần.
 - Xác thực: token ở cookie `httpOnly` do shell đặt. Server component gọi BE bằng `gatewayFetch` (`@mfe/api`); client component gọi `/api/bff/<đường dẫn BE>`. Mỗi trang zone phải gọi `requireSession(path)`. Giữ nguyên kiểm tra chống open redirect (đường dẫn bắt đầu `/`, không phải `//`).
 - Phân quyền: `can(session, key)` chỉ để ẩn/hiện UI. Khóa quyền ở `packages/api/src/permissions.ts` (và literal trong `nav-links.ts`) phải khớp tên `Controller/method` bên BE. Hiển thị tên bằng claim `username`, không dùng `sub`.
 - FE chỉ gọi `/api/**`; đừng gọi `/internal/**`. Không tự bịa endpoint; thiếu API thì báo lại để BE làm.
 - UI: antd cho control, Tailwind cho layout. Component antd re-export từ `packages/ui/src/antd.tsx`; server component chỉ truyền props serialize được (Table dùng `dataIndex`, không `render`). Zone mới cần `app/globals.css` có `@source "../../../packages/ui/src"` và `postcss.config.mjs`. Không bỏ prop `layer` hay đổi thứ tự CSS layer. Màu thương hiệu sửa cả `@theme` lẫn `theme.ts`.
-- Sửa package dùng chung thì phải build lại và deploy lại mọi zone. `Providers` bắt buộc ở root layout mọi app.
+- Sửa package dùng chung thì phải build lại và deploy lại cả hai app. `Providers` bắt buộc ở root layout mọi app.
 
 ## Kiểm tra
 - `npm run typecheck` (mọi workspace); `npm run dev -w @mfe/<tên>` cho một app; `npm run build`.

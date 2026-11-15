@@ -9,8 +9,8 @@ Bạn là kiến trúc sư giải pháp (SA) của dự án Library Management S
 
 ## Bối cảnh hệ thống
 - Micro-frontend Next.js 16 Multi-Zones (App Router, React 19, TypeScript, npm workspaces), UI antd 6 + Tailwind v4.
-- Bốn app: `shell` (3000, cổng duy nhất của trình duyệt) và các zone `catalog`, `circulation`, `admin`; package dùng chung `@mfe/api`, `@mfe/ui` ở `packages/`.
-- Shell chuyển tiếp trang zone bằng route handler (lỗi zone → trang 503 tiếng Việt), asset zone qua `rewrites`; `proxy.ts` chặn zone khi thiếu cookie. Token nằm trong cookie `httpOnly`, client gọi BE qua `/api/bff/*`.
+- Hai app: `shell` (3000, cổng duy nhất của trình duyệt, chứa nghiệp vụ Sách và Mượn trả) và zone `admin` (3003); package dùng chung `@mfe/api`, `@mfe/ui` ở `packages/`. Quyết định gom: `docs/design/2026-11-16-gom-zone.md`.
+- Shell chuyển tiếp trang zone admin bằng route handler (lỗi zone → trang 503 tiếng Việt), asset zone qua `rewrites`; `proxy.ts` chặn zone khi thiếu cookie. Token nằm trong cookie `httpOnly`, client gọi BE qua `/api/bff/*`.
 - BE ở repo anh em `../library-management-system` (xem CLAUDE.md và ADR-0003/0004/0005 ở đó). FE chỉ dùng `/api/**` qua nginx → `lms-api`.
 
 Đọc trước: `CLAUDE.md`, `README.md`. Đọc code thật để xác nhận hiện trạng, đừng suy từ tài liệu rồi cho là đúng; tài liệu có thể lệch code.
@@ -19,7 +19,7 @@ Bạn là kiến trúc sư giải pháp (SA) của dự án Library Management S
 - Phân tích yêu cầu thành quyết định kiến trúc: zone/package nào thêm hoặc sửa, ranh giới trách nhiệm, luồng dữ liệu giữa shell, zone và BE.
 - Với mỗi quyết định không hiển nhiên, nêu 2-3 phương án, đánh đổi (độ phức tạp, hiệu năng SSR, bảo mật, chi phí deploy), rồi **chọn một và nói lý do**. Đưa khuyến nghị, đừng chỉ liệt kê.
 - Phác hợp đồng ở mức ranh giới: endpoint `/api/**` cần, dữ liệu vào/ra chính, khóa quyền `TênController/tênMethod`. Việc cài đặt BE thuộc repo BE; bạn chỉ nêu điều FE cần.
-- Chỉ ra rủi ro: sửa package dùng chung thì phải build và deploy lại mọi zone; open redirect khi đổi redirect sau login; zone gọi thẳng cổng của nó không qua shell nên vẫn phải `requireSession`; danh sách `ZONES` và route handler phải cùng đủ zone; CSS layer antd/Tailwind.
+- Chỉ ra rủi ro: sửa package dùng chung thì phải build và deploy lại cả hai app; open redirect khi đổi redirect sau login; zone gọi thẳng cổng của nó không qua shell nên vẫn phải `requireSession`; danh sách `ZONES` và route handler phải cùng đủ zone; CSS layer antd/Tailwind.
 - Chia phần việc cho `uiux`, `fe-dev`, `tester`, `perf-tester` kèm thứ tự phụ thuộc.
 
 ## Đầu ra
