@@ -2,35 +2,36 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-FE của hệ thống quản lý thư viện: micro-frontend theo Next.js 16 Multi-Zones (App Router, React 19, TypeScript, npm workspaces), UI bằng antd 6 + Tailwind v4. BE ở repo anh em `../library-management-system` (Spring Boot, xem CLAUDE.md và ADR-0003/0004 ở đó). README.md có bảng app/cổng, biến môi trường và các bước thêm zone; không lặp lại ở đây.
+FE của hệ thống quản lý thư viện: hai app Next.js 16 ghép bằng Multi-Zones: app chính `shell` (nghiệp vụ thư viện) và zone `admin` (App Router, React 19, TypeScript, npm workspaces), UI bằng antd 6 + Tailwind v4. BE ở repo anh em `../library-management-system` (Spring Boot, xem CLAUDE.md và ADR-0003/0004 ở đó). README.md có bảng app/cổng, biến môi trường và các bước thêm zone; không lặp lại ở đây.
 
 ## Lệnh thường dùng
 
 ```bash
 npm install
-npm run dev                          # cả 4 app song song (npm-run-all)
+npm run dev                          # cả 2 app song song (npm-run-all)
 npm run dev -w @mfe/admin            # một app
 npm run build                        # build tất cả workspace
 npm run typecheck                    # tsc --noEmit mọi workspace
 npm run typecheck:e2e                # typecheck thư mục e2e/
-npm run test:e2e                     # build tất cả rồi chạy Playwright (22 test)
+npm run test:e2e                     # build tất cả rồi chạy Playwright (93 test)
 npm run test:e2e:only                # chỉ chạy test, dùng bản build sẵn
-npx playwright test -g "tên test"    # một test (vẫn dựng đủ 6 server nên mất ~20s khởi động)
+npx playwright test -g "tên test"    # một test (vẫn dựng đủ 4 server nên mất ~20s khởi động)
 ```
 
 - Không có lint. Kiểm tra gồm `typecheck` và E2E Playwright.
-- E2E chạy trên bản **build** (`next start`), BE được thay bằng `e2e/mock-gateway.mjs` (cổng 8090; user `admin` (admin=true), `staff` (có khóa), `member`, `newbie`/`newbie2` (phải đổi mật khẩu)), không cần docker. Cổng 3000-3003, 3100, 8090 phải trống (cấu hình không tái sử dụng server đang chạy). Sửa code app thì phải build lại, `test:e2e` đã tự build. Shell thứ hai ở cổng 3100 có zone catalog trỏ vào cổng chết để test zone chết.
-- `workers: 2` và `ZONE_TIMEOUT_MS=30000` là chủ ý: 6 server Node + Chromium làm SSR chậm, 4 worker làm test flaky. Test form login phải mở trang bằng `openLogin` (đợi hydrate).
+- E2E chạy trên bản **build** (`next start`), BE được thay bằng `e2e/mock-gateway.mjs` (cổng 8090; user `admin` (admin=true), `staff` (có khóa), `member`, `newbie`/`newbie2` (phải đổi mật khẩu)), không cần docker. Cổng 3000, 3003, 3100, 8090 phải trống (cấu hình không tái sử dụng server đang chạy). Dev server đang chiếm cổng thì đặt `E2E_PORT_BASE=4200` (xem `e2e/ports.ts`) và build shell với `ADMIN_URL=http://localhost:4203`, vì rewrite asset được tính lúc build. Sửa code app thì phải build lại, `test:e2e` đã tự build. Shell thứ hai ở cổng 3100 có zone admin trỏ vào cổng chết để test zone chết.
+- `workers: 2` và `ZONE_TIMEOUT_MS=30000` là chủ ý: 4 server Node + Chromium làm SSR chậm, 4 worker làm test flaky. Test form login phải mở trang bằng `openLogin` (đợi hydrate).
 - Cần BE thật chạy ở `GATEWAY_URL` (mặc định `http://localhost:8080` = nginx của BE: `docker compose --profile apps up -d --build` trong repo BE) khi dùng `npm run dev`. Dev account: `admin` / `Admin@12345`.
 
 ## Kiến trúc
 
-Bốn app độc lập, build và deploy riêng. Trình duyệt chỉ nói chuyện với **shell** (3000); shell chuyển tiếp tới zone:
+Hai app, build riêng (quyết định và lý do: `docs/design/2026-11-16-gom-zone.md`). Trình duyệt chỉ nói chuyện với **shell** (3000). Shell chứa nghiệp vụ thư viện (Sách `/catalog`, Mượn trả `/circulation`), đăng nhập, hồ sơ, thông báo và BFF; `apps/admin` (3003) là zone riêng mà shell chuyển tiếp tới:
 
-- Zone (`catalog`, `circulation`, `admin`) đặt `basePath: "/<zone>"` và `assetPrefix: "/<zone>-static"` (kèm rewrite `/<zone>-static/_next/* → /_next/*` trong chính zone) để asset không đụng `/_next` của shell.
-- Shell chuyển tiếp **trang** bằng route handler `app/<zone>/[[...path]]/route.ts` (logic ở `lib-zone-proxy.ts`), không dùng `rewrites`, vì rewrite không bắt được lỗi: zone chết/timeout 10s/5xx → trả trang 503 tiếng Việt thay vì 500 trần. Chỉ **asset** `/<zone>-static/*` đi qua `rewrites` trong `next.config.ts`. Hai danh sách này (route handler và `ZONES`) phải cùng đủ zone.
-- `proxy.ts` của shell (tên file của Next 16, thay cho `middleware.ts`) chặn zone khi thiếu cookie access token: còn refresh token thì sang `/api/session/refresh`, không thì `/login`. Đây chỉ là lớp ngoài; mỗi trang zone vẫn phải gọi `requireSession(path)` vì zone gọi thẳng cổng của nó sẽ không qua shell.
-- Giữa các zone là full page load: dùng `<a>`, không dùng `next/link`.
+- Khung `AppShell` nằm ở `app/(app)/layout.tsx` của shell (chỉ `getSession()`, không redirect) nên `loading.tsx`/`error.tsx` chỉ thay phần nội dung. `login` và `change-password` ở ngoài group, dùng `AuthShell`. Trang mới của shell đặt trong `app/(app)/`; mọi trang vẫn gọi `requireSession(path)`.
+- Zone `admin` đặt `basePath: "/admin"` và `assetPrefix: "/admin-static"` (kèm rewrite `/admin-static/_next/* → /_next/*` trong chính zone) để asset không đụng `/_next` của shell. Vì có basePath, `next/link` trong package dùng chung sẽ cộng basePath hai lần (ra `/admin/admin/...`): trong zone admin dùng `<a>`.
+- Shell chuyển tiếp **trang** admin bằng route handler `app/admin/[[...path]]/route.ts` (logic ở `lib-zone-proxy.ts`), không dùng `rewrites`, vì rewrite không bắt được lỗi: zone chết/timeout 10s/5xx → trả trang 503 tiếng Việt thay vì 500 trần. Chỉ **asset** `/admin-static/*` đi qua `rewrites` trong `next.config.ts`; rewrite này được tính LÚC BUILD nên `ADMIN_URL` phải đặt cả khi build. Ba chỗ phải cùng đủ zone: route handler, `ZONES` và `ZONE_PATHS` (`zone-unavailable/[zone]/page.tsx`), cùng `matcher` của `proxy.ts`.
+- `proxy.ts` của shell (tên file của Next 16, thay cho `middleware.ts`) chặn các trang cần đăng nhập và zone admin khi thiếu cookie access token: còn refresh token thì sang `/api/session/refresh`, không thì `/login`. Đây chỉ là lớp ngoài; mỗi trang vẫn phải gọi `requireSession(path)` vì zone admin gọi thẳng cổng của nó sẽ không qua shell.
+- Từ shell sang admin (và ngược lại) là full page load: dùng `<a>`, không dùng `next/link`. Trong shell, Sách và Mượn trả là route của chính app.
 
 ### Xác thực
 
@@ -44,7 +45,7 @@ Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/a
 
 - `@mfe/api`: `config` (hằng số, **không** import `next/headers`, nên `proxy.ts` import được qua `@mfe/api/config`), `session`, `gateway`.
 - `@mfe/ui`: `Providers` (bắt buộc ở root layout mọi app), `AppShell` (sidebar + thanh trên, bọc nội dung mọi trang đã đăng nhập; chỉ một `<nav>`), `AuthShell` (khung login/đổi mật khẩu), `PageHeader`, các component antd, `theme.ts`, `tailwind.css`.
-- Sửa package dùng chung thì phải build lại và deploy lại mọi zone. Danh sách link `Nav` đọc lúc chạy từ env `MFE_NAV_LINKS` (JSON, đặt cùng giá trị cho mọi app), không phải sửa code.
+- Sửa package dùng chung thì phải build lại và deploy lại cả hai app. Danh sách link `Nav` đọc lúc chạy từ env `MFE_NAV_LINKS` (JSON, đặt cùng giá trị cho mọi app), không phải sửa code.
 
 ### UI: antd + Tailwind
 
@@ -60,7 +61,7 @@ Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/a
 - `can(session, key)` đúng khi claim `admin=true` (quản trị viên, bỏ qua kiểm khóa, thường không có permission nào) hoặc `permissions` chứa khóa. Chỉ để ẩn/hiện UI; BE trả 403 mới là quyết định cuối.
 - `mustChangePassword`: token của tài khoản này không mang `admin`/`permissions`. `requireSession` chuyển sang `/change-password` (trang ở shell, gọi `POST /api/auth/password` qua BFF), đổi xong thì xoá phiên và bắt đăng nhập lại để lấy token đầy đủ.
 - Hiển thị tên bằng claim `username`, không dùng `sub` (UUID).
-- API cho FE đi qua `lms-api`/nginx; nhiều API nghiệp vụ trong BE đã chuyển sang `/internal/**` (nginx trả 404), FE chỉ dùng `/api/**`. Zone `catalog` vẫn là trang chờ dù BE đã có `/api/books`, `/api/book-copies`.
+- API cho FE đi qua `lms-api`/nginx; nhiều API nghiệp vụ trong BE đã chuyển sang `/internal/**` (nginx trả 404), FE chỉ dùng `/api/**`. Phân hệ Sách (`/catalog`) dùng `/api/books`, `/api/book-copies`.
 
 ## Quy ước commit
 
