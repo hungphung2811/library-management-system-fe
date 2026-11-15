@@ -43,7 +43,7 @@ Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/a
 ### Package dùng chung (nhúng ở mức source, mỗi app có bản riêng lúc build)
 
 - `@mfe/api`: `config` (hằng số, **không** import `next/headers`, nên `proxy.ts` import được qua `@mfe/api/config`), `session`, `gateway`.
-- `@mfe/ui`: `Providers` (bắt buộc ở root layout mọi app), `Nav`, `Page`, `PageHeader`, các component antd, `theme.ts`, `tailwind.css`.
+- `@mfe/ui`: `Providers` (bắt buộc ở root layout mọi app), `AppShell` (sidebar + thanh trên, bọc nội dung mọi trang đã đăng nhập; chỉ một `<nav>`), `AuthShell` (khung login/đổi mật khẩu), `PageHeader`, các component antd, `theme.ts`, `tailwind.css`.
 - Sửa package dùng chung thì phải build lại và deploy lại mọi zone. Danh sách link `Nav` đọc lúc chạy từ env `MFE_NAV_LINKS` (JSON, đặt cùng giá trị cho mọi app), không phải sửa code.
 
 ### UI: antd + Tailwind
@@ -51,6 +51,7 @@ Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/a
 - antd cho control, Tailwind cho layout/khoảng cách. Hai bên cùng sống nhờ CSS layer `theme, base, antd, components, utilities` (khai báo đầu `tailwind.css`, và `<AntdRegistry layer>` trong `Providers`); đừng bỏ prop `layer` hay đổi thứ tự layer, preflight sẽ đè antd.
 - Component antd được re-export từ `packages/ui/src/antd.tsx` (file `"use client"`) để server component dùng được. Server component chỉ truyền props serialize được: `Table` dùng `dataIndex`, không dùng `render`; cần tuỳ biến thì viết client component. Compound component (`Typography.Title`) phải export thành const riêng như `Title`/`Text`.
 - Tailwind không tự quét package workspace: mỗi app cần `app/globals.css` có `@source "../../../packages/ui/src"` và `postcss.config.mjs`. Thiếu hai file này ở zone mới thì class của `@mfe/ui` không được sinh ra.
+- Icon điều hướng/trang dùng `lucide-react` (re-export ở `packages/ui/src/icons.ts`, thêm icon mới vào đó); icon antd chỉ còn trong control của antd. Logo là `Logo`/`LogoMark` (`packages/ui/src/Logo.tsx`); favicon `app/icon.svg` của bốn app vẽ cùng hình, đổi logo thì sửa cả năm chỗ.
 - Màu thương hiệu nằm ở hai nơi phải sửa cùng lúc: `@theme` trong `tailwind.css` và `brand`/`theme` trong `theme.ts`.
 
 ## Phân quyền theo BE động (ADR-0003)

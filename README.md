@@ -8,7 +8,7 @@ Micro-frontend theo Next.js Multi-Zones (npm workspaces). Gọi BE qua API Gatew
 | `apps/catalog` | 3001 | `/catalog` | Sách |
 | `apps/circulation` | 3002 | `/circulation` | Mượn trả |
 | `apps/admin` | 3003 | `/admin` | Quản trị (role, audit) |
-| `packages/ui` | - | - | UI dùng chung: Tailwind v4 (layout, spacing, tokens `@theme`) + antd 6 (control) + `Nav`, `Page`, `Providers` |
+| `packages/ui` | - | - | UI dùng chung: Tailwind v4 (layout, spacing, tokens `@theme`) + antd 6 (control) + `AppShell`, `AuthShell`, `PageHeader`, `Providers` |
 | `packages/api` | - | - | Session từ JWT, `requireSession`, `gatewayFetch` |
 
 ## Chạy
