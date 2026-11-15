@@ -68,7 +68,7 @@ test.describe("buộc đổi mật khẩu", () => {
 
     await expect(page).toHaveURL("http://localhost:3000/");
     await page.goto("/circulation");
-    await expect(page.getByRole("heading", { name: "Mượn trả sách" })).toBeVisible();
+    await expect(page).toHaveURL(/\/circulation$/); // đã có phiên đầy đủ nên vào được zone
   });
 
   test("chưa đăng nhập thì không vào được trang đổi mật khẩu", async ({ page }) => {

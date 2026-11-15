@@ -25,7 +25,7 @@ test.describe("đăng nhập và đăng xuất", () => {
     await page.getByRole("button", { name: "Đăng nhập" }).click();
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole("heading", { name: "Quản trị" })).toBeVisible();
+    await expect(page.locator("main")).toBeVisible(); // vào được zone (không phụ thuộc tiêu đề trang)
   });
 
   test("đường dẫn next ngoài site bị bỏ qua (chống open redirect)", async ({ page }) => {
@@ -53,6 +53,6 @@ test.describe("đăng nhập và đăng xuất", () => {
 
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole("heading", { name: "Quản trị" })).toBeVisible();
+    await expect(page.locator("main")).toBeVisible(); // vào được zone (không phụ thuộc tiêu đề trang)
   });
 });

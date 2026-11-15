@@ -14,6 +14,12 @@ export const USERS = {
   newbie: { username: "newbie", password: "Temp@12345" },
   /** Phải đổi mật khẩu; dành riêng cho test đổi mật khẩu thật. */
   newbie2: { username: "newbie2", password: "Temp@12345" },
+  /** Thủ thư đầy đủ: catalog + circulation + tìm người dùng + xem hồ sơ độc giả, không phải admin. */
+  librarian: { username: "librarian", password: "Librarian@12345" },
+  /** Độc giả: tra sách, xem chi tiết, đặt trước. */
+  reader: { username: "reader", password: "Reader@12345" },
+  /** Thuộc 2 đơn vị (dùng cho test chuyển đơn vị); chuyển đơn vị làm đổi trạng thái mock dùng chung, đừng giả định đơn vị hiện tại. */
+  multi: { username: "multi", password: "Multi@12345" },
 } as const;
 
 /**

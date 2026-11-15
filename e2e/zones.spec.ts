@@ -14,13 +14,11 @@ test.describe("độc lập giữa các zone", () => {
       if (r.url().includes("-static/") && !r.ok()) failed.push(`${r.status()} ${r.url()}`);
     });
 
-    for (const [path, heading] of [
-      ["/catalog", "Danh mục sách"],
-      ["/circulation", "Mượn trả sách"],
-      ["/admin", "Quản trị"],
-    ] as const) {
-      await page.goto(path);
-      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    // Không kiểm tiêu đề cố định: zone đổi giao diện không làm hỏng test hạ tầng. Chỉ kiểm 200, có <main> và asset không lỗi.
+    for (const path of ["/catalog", "/circulation", "/admin"]) {
+      const res = await page.goto(path);
+      expect(res?.status(), path).toBe(200);
+      await expect(page.locator("main"), path).toBeVisible();
     }
     expect(failed).toEqual([]);
   });
@@ -35,7 +33,7 @@ test.describe("độc lập giữa các zone", () => {
 
     const ok = await page.goto(`${SHELL_CATALOG_DOWN}/circulation`);
     expect(ok?.status()).toBe(200);
-    await expect(page.getByRole("heading", { name: "Mượn trả sách" })).toBeVisible();
+    await expect(page.locator("main")).toBeVisible();
 
     const home = await page.goto(`${SHELL_CATALOG_DOWN}/`);
     expect(home?.status()).toBe(200);
