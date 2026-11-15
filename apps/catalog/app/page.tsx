@@ -1,5 +1,5 @@
 import { PERMISSIONS, can, gatewayFetch, requireSession, toErrorInfo } from "@mfe/api";
-import { Button, ErrorPanel, NoPermission, PageHeader, PlusOutlined, ScanOutlined, SearchBar } from "@mfe/ui";
+import { ErrorPanel, NoPermission, PageHeader, SearchBar } from "@mfe/ui";
 import { AvailableToggle } from "./_components/AvailableToggle";
 import { BooksTable } from "./_components/BooksTable";
 import type { TitleView } from "./types";
@@ -23,7 +23,6 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   }
 
   const canCreate = can(s, PERMISSIONS.BOOK_CREATE);
-  const canBarcode = can(s, PERMISSIONS.COPY_BY_BARCODE);
 
   const params = new URLSearchParams();
   if (q) params.set("keyword", q);
@@ -54,20 +53,6 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Sách"
         description="Tìm đầu sách và xem số bản sẵn có."
-        actions={
-          <>
-            {canBarcode && (
-              <Button href="/catalog/barcode" icon={<ScanOutlined />}>
-                Tra theo mã vạch
-              </Button>
-            )}
-            {canCreate && (
-              <Button type="primary" href="/catalog/books/new" icon={<PlusOutlined />}>
-                Thêm sách
-              </Button>
-            )}
-          </>
-        }
       />
       <div className="flex max-w-[1200px] flex-col gap-5">
         <SearchBar
