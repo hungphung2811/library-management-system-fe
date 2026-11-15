@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { canSeeLink, getNavLinks, type NavLink } from "./nav-links";
+import { getNavLinks, visibleNav, type NavLink } from "./nav-links";
 import { ShellFrame } from "./ShellFrame";
 
 type NavSession = {
@@ -20,24 +20,28 @@ type NavSession = {
  */
 export function AppShell({
   current,
+  basePath = "",
   session,
   links = getNavLinks(),
   crumb,
   children,
 }: {
-  /** Đường dẫn của mục đang mở, ví dụ "/catalog". */
+  /** Đường dẫn của trang/zone đang mở ("/catalog", "/"): dự phòng khi không suy ra được từ URL (trang 503, trang ngoài sidebar). */
   current: string;
+  /** basePath của zone ("/admin"); để trống ở shell. `usePathname()` trong zone không gồm basePath nên ShellFrame ghép lại. */
+  basePath?: string;
   session?: NavSession | null;
   links?: NavLink[];
   /** Tên trang trên breadcrumb khi trang không nằm trong sidebar (hồ sơ, thông báo). */
   crumb?: string;
   children: ReactNode;
 }) {
-  const items = links.filter((l) => canSeeLink(l, session)).map(({ href, label, group }) => ({ href, label, group }));
+  const items = visibleNav(links, session);
   return (
     <ShellFrame
       items={items}
       current={current}
+      basePath={basePath}
       crumb={crumb}
       tenantId={session?.tenantId}
       user={

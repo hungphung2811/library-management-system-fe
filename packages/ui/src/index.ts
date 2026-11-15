@@ -5,7 +5,7 @@ export { AuthShell, PageHeader } from "./Layout";
 export * from "./antd";
 export * from "./icons";
 export { theme, brand } from "./theme";
-export { DEFAULT_NAV_LINKS, getNavLinks, canSeeLink, type NavLink } from "./nav-links";
+export { DEFAULT_NAV_LINKS, getNavLinks, canSeeLink, visibleNav, type NavChild, type NavLink, type VisibleNavLink } from "./nav-links";
 
 // Thành phần dùng chung cho các zone (xem docs/design/2026-11-15-shared-design.md)
 export { StatusTag } from "./StatusTag";
