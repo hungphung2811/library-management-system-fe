@@ -10,6 +10,8 @@ export type Session = {
   roles: string[];
   permissions: string[];
   departmentId?: string;
+  /** Claim `tenantId`: đơn vị đang làm việc. */
+  tenantId?: string;
   /** Claim `admin=true`: có role quản trị, BE bỏ qua kiểm khóa quyền. */
   admin: boolean;
   /** Tài khoản phải đổi mật khẩu: token không mang admin/permissions cho tới khi đổi. */
@@ -38,6 +40,7 @@ export async function getSession(): Promise<Session | null> {
     roles: (p.roles as string[]) ?? [],
     permissions: (p.permissions as string[]) ?? [],
     departmentId: p.departmentId as string | undefined,
+    tenantId: typeof p.tenantId === "string" ? p.tenantId : undefined,
     admin: p.admin === true,
     mustChangePassword: p.mustChangePassword === true,
     accessToken: token,
