@@ -59,7 +59,7 @@ const ICONS: Record<string, ReactNode> = {
  * Khung bám Metronic demo1: sidebar sáng 280px (logo ở đầu, nhóm mục có nhãn nhỏ), thanh trên trắng cao 70px
  * có nút thu gọn sidebar, nền trắng, nội dung là các card viền mảnh.
  * Chỉ MỘT phần tử <nav> (chứa cả link và khối người dùng) để landmark không bị trùng.
- * Giữa các zone là full page load nên dùng thẻ <a>, không dùng next/link.
+ * Sang zone admin là full page load nên dùng thẻ <a>, không dùng next/link (sidebar hiện dùng <a> cho mọi link).
  */
 export function ShellFrame({ items, current: currentProp, user, tenantId, crumb, crumbs, children }: ShellFrameProps) {
   const [open, setOpen] = useState(false); // ngăn kéo trên màn hình nhỏ

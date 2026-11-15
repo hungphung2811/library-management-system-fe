@@ -75,7 +75,7 @@ function cell(col: DataColumn, row: Row): ReactNode {
     case "link": {
       if (empty) return DASH;
       const text = String(v);
-      // <a> thường, không next/link: Link trong package sẽ tự cộng basePath của zone (ra /catalog/catalog/...).
+      // <a> thường, không next/link: Link trong package sẽ tự cộng basePath của zone admin (ra /admin/admin/...).
       return col.href ? (
         <a href={fillHref(col.href, row)} className="font-medium text-brand-600 no-underline hover:underline">
           {text}

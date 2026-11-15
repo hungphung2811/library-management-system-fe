@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "@mfe/api/config";
 
-// Lớp chặn đầu tiên: chưa đăng nhập thì không cho vào zone. (Mỗi zone vẫn tự kiểm tra lại bằng requireSession.)
+// Lớp chặn đầu tiên: chưa đăng nhập thì không cho vào các trang cần đăng nhập (Sách, Mượn trả, hồ sơ...) và zone admin.
+// Mỗi trang vẫn tự kiểm tra lại bằng requireSession; riêng admin vì có thể được gọi thẳng cổng của nó, không qua shell.
 export function proxy(req: NextRequest) {
   if (req.cookies.has(ACCESS_COOKIE)) return NextResponse.next();
 
