@@ -15,11 +15,17 @@ import {
   X,
 } from "lucide-react";
 import { Logo } from "./Logo";
+import { NotificationBell } from "./NotificationBell";
+import { UserMenu } from "./UserMenu";
 
 export type ShellFrameProps = {
   items: { href: string; label: string; group?: string }[];
   current: string;
   user?: { id: string; name: string; role?: string };
+  /** Đơn vị hiện tại (claim tenantId), để UserMenu đánh dấu khi chuyển đơn vị. */
+  tenantId?: string;
+  /** Tên trang hiện tại trên breadcrumb, cho trang không nằm trong sidebar (hồ sơ, thông báo). */
+  crumb?: string;
   children: ReactNode;
 };
 
@@ -38,7 +44,7 @@ const ICONS: Record<string, ReactNode> = {
  * Chỉ MỘT phần tử <nav> (chứa cả link và khối người dùng) để landmark không bị trùng.
  * Giữa các zone là full page load nên dùng thẻ <a>, không dùng next/link.
  */
-export function ShellFrame({ items, current, user, children }: ShellFrameProps) {
+export function ShellFrame({ items, current, user, tenantId, crumb, children }: ShellFrameProps) {
   const [open, setOpen] = useState(false); // ngăn kéo trên màn hình nhỏ
   const [collapsed, setCollapsed] = useState(false); // ẩn sidebar trên màn hình lớn
 
@@ -49,7 +55,7 @@ export function ShellFrame({ items, current, user, children }: ShellFrameProps) 
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const currentLabel = items.find((i) => i.href === current)?.label;
+  const currentLabel = crumb ?? items.find((i) => i.href === current)?.label;
 
   return (
     <div className="min-h-screen">
@@ -63,9 +69,10 @@ export function ShellFrame({ items, current, user, children }: ShellFrameProps) 
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col border-r border-line bg-white transition-transform duration-200 motion-reduce:transition-none ${
-          open ? "translate-x-0" : "-translate-x-full"
-        } ${collapsed ? "lg:-translate-x-full" : "lg:translate-x-0"}`}
+        // `invisible` khi đã trượt ra ngoài: gỡ link khỏi thứ tự Tab và cây trợ năng (translate thôi thì phím Tab vẫn vào được).
+        className={`fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col border-r border-line bg-white transition-[transform,visibility] duration-200 motion-reduce:transition-none ${
+          open ? "visible translate-x-0" : "invisible -translate-x-full"
+        } ${collapsed ? "lg:invisible lg:-translate-x-full" : "lg:visible lg:translate-x-0"}`}
       >
         <nav aria-label="Điều hướng chính" className="flex min-h-0 flex-1 flex-col">
           <div className="flex h-[76px] shrink-0 items-center justify-between px-6">
@@ -199,13 +206,10 @@ export function ShellFrame({ items, current, user, children }: ShellFrameProps) 
             )}
           </ol>
           {user && (
-            <span
-              aria-hidden
-              title={user.name}
-              className="ml-auto grid size-9 place-items-center rounded-full bg-brand-50 text-sm font-semibold text-brand-600 ring-2 ring-white"
-            >
-              {user.name.slice(0, 1).toUpperCase()}
-            </span>
+            <div className="ml-auto flex items-center gap-3">
+              <NotificationBell userId={user.id} />
+              <UserMenu user={user} tenantId={tenantId} />
+            </div>
           )}
         </header>
 
