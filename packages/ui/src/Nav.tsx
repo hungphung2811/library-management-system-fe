@@ -23,14 +23,17 @@ export function AppShell({
   session,
   links = getNavLinks(),
   crumb,
+  crumbs,
   children,
 }: {
-  /** Đường dẫn của mục đang mở, ví dụ "/catalog". */
-  current: string;
+  /** Đường dẫn của mục đang mở, ví dụ "/catalog". Bỏ trống thì ShellFrame tự suy ra từ URL. */
+  current?: string;
   session?: NavSession | null;
   links?: NavLink[];
   /** Tên trang trên breadcrumb khi trang không nằm trong sidebar (hồ sơ, thông báo). */
   crumb?: string;
+  /** Tên breadcrumb theo đường dẫn, cho layout chung (ví dụ { "/profile": "Hồ sơ" }). */
+  crumbs?: Record<string, string>;
   children: ReactNode;
 }) {
   const items = links.filter((l) => canSeeLink(l, session)).map(({ href, label, group }) => ({ href, label, group }));
@@ -39,6 +42,7 @@ export function AppShell({
       items={items}
       current={current}
       crumb={crumb}
+      crumbs={crumbs}
       tenantId={session?.tenantId}
       user={
         session

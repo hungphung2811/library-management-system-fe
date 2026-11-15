@@ -1,5 +1,6 @@
 "use client";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
   BookOpen,
@@ -20,14 +21,30 @@ import { UserMenu } from "./UserMenu";
 
 export type ShellFrameProps = {
   items: { href: string; label: string; group?: string }[];
-  current: string;
+  /**
+   * Đường dẫn của mục đang mở. Có thì dùng nguyên (admin truyền "/admin" vì usePathname của zone đã bỏ basePath);
+   * thiếu thì tự suy ra từ usePathname().
+   */
+  current?: string;
   user?: { id: string; name: string; role?: string };
   /** Đơn vị hiện tại (claim tenantId), để UserMenu đánh dấu khi chuyển đơn vị. */
   tenantId?: string;
   /** Tên trang hiện tại trên breadcrumb, cho trang không nằm trong sidebar (hồ sơ, thông báo). */
   crumb?: string;
+  /** Tên breadcrumb theo đường dẫn (serialize được), dùng khi layout chung không biết trang con. Khớp khóa dài nhất. */
+  crumbs?: Record<string, string>;
   children: ReactNode;
 };
+
+const matchesPath = (pathname: string, href: string) =>
+  href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+
+/** Chọn href dài nhất khớp pathname (riêng "/" chỉ khớp đúng "/"). */
+function longestMatch(pathname: string, hrefs: string[]): string | undefined {
+  let best: string | undefined;
+  for (const h of hrefs) if (matchesPath(pathname, h) && (best === undefined || h.length > best.length)) best = h;
+  return best;
+}
 
 const ICON_PROPS = { size: 18, strokeWidth: 1.75, "aria-hidden": true } as const;
 
@@ -44,7 +61,7 @@ const ICONS: Record<string, ReactNode> = {
  * Chỉ MỘT phần tử <nav> (chứa cả link và khối người dùng) để landmark không bị trùng.
  * Giữa các zone là full page load nên dùng thẻ <a>, không dùng next/link.
  */
-export function ShellFrame({ items, current, user, tenantId, crumb, children }: ShellFrameProps) {
+export function ShellFrame({ items, current: currentProp, user, tenantId, crumb, crumbs, children }: ShellFrameProps) {
   const [open, setOpen] = useState(false); // ngăn kéo trên màn hình nhỏ
   const [collapsed, setCollapsed] = useState(false); // ẩn sidebar trên màn hình lớn
 
@@ -55,7 +72,10 @@ export function ShellFrame({ items, current, user, tenantId, crumb, children }: 
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const currentLabel = crumb ?? items.find((i) => i.href === current)?.label;
+  const pathname = usePathname();
+  const current = currentProp ?? longestMatch(pathname, items.map((i) => i.href));
+  const crumbKey = crumbs ? longestMatch(pathname, Object.keys(crumbs)) : undefined;
+  const currentLabel = crumb ?? (crumbKey ? crumbs?.[crumbKey] : undefined) ?? items.find((i) => i.href === current)?.label;
 
   return (
     <div className="min-h-screen">
