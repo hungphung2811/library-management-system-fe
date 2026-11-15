@@ -8,6 +8,9 @@ export const ZONES = {
 
 export type ZoneName = keyof typeof ZONES;
 
+/** Quá ngưỡng này (ms) thì coi zone là không khả dụng. Máy tải nặng (CI, E2E) có thể cần đặt cao hơn. */
+const ZONE_TIMEOUT_MS = Number(process.env.ZONE_TIMEOUT_MS) || 10_000;
+
 const DROP_REQUEST = ["host", "connection", "accept-encoding", "content-length"];
 const DROP_RESPONSE = ["content-encoding", "content-length", "transfer-encoding", "connection"];
 
@@ -46,12 +49,16 @@ export function createZoneHandler(zone: ZoneName) {
         duplex: "half",
         redirect: "manual",
         cache: "no-store",
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(ZONE_TIMEOUT_MS),
       } as RequestInit & { duplex: "half" });
-    } catch {
+    } catch (err) {
+      console.error(`[zone-proxy] ${zone} không kết nối được: ${req.method} ${target}`, err);
       return unavailable(zone);
     }
-    if (upstream.status >= 502 && upstream.status <= 504) return unavailable(zone);
+    if (upstream.status >= 502 && upstream.status <= 504) {
+      console.error(`[zone-proxy] ${zone} trả ${upstream.status}: ${req.method} ${target}`);
+      return unavailable(zone);
+    }
 
     const out = new Headers(upstream.headers);
     DROP_RESPONSE.forEach((h) => out.delete(h));

@@ -27,6 +27,7 @@ BE: `docker compose --profile apps up -d --build` ở repo `library-management-s
 | `GATEWAY_URL` | mọi app | `http://localhost:8080` | API Gateway |
 | `SHELL_URL` | zone | `http://localhost:3000` | URL công khai của shell, nơi zone chuyển người chưa đăng nhập tới |
 | `CATALOG_URL`, `CIRCULATION_URL`, `ADMIN_URL` | shell | `http://localhost:300x` | Địa chỉ từng zone |
+| `ZONE_TIMEOUT_MS` | shell | `10000` | Quá ngưỡng (ms) thì coi zone không khả dụng và trả trang 503 |
 | `MFE_NAV_LINKS` | mọi app | xem `packages/ui/src/nav-links.ts` | JSON `[{href,label,permission?}]`; đặt cùng giá trị cho mọi app |
 
 ## Thêm zone mới
@@ -48,3 +49,12 @@ BE: `docker compose --profile apps up -d --build` ở repo `library-management-s
 - Hai bên sống chung nhờ CSS layer: `theme, base, antd, components, utilities` (`<AntdRegistry layer>` trong `Providers`). Utility của Tailwind luôn thắng antd, preflight không phá antd.
 - Mỗi app có `postcss.config.mjs` và `app/globals.css` (import `@mfe/ui/tailwind.css` + `@source` trỏ vào `packages/ui/src`). Zone mới copy 2 file này.
 - Server component truyền props cho component antd phải serialize được (Table dùng `dataIndex`, không dùng `render`).
+
+## Test E2E (Playwright)
+
+```bash
+npm run test:e2e          # build rồi chạy 13 test
+npm run test:e2e:only     # dùng bản build sẵn
+```
+
+Chạy trên bản build với mock gateway (`e2e/mock-gateway.mjs`), không cần BE hay docker. Cần trống các cổng 3000-3003, 3100 và 8090. Báo cáo HTML ở `playwright-report/`.
