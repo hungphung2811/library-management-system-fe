@@ -1,10 +1,11 @@
 import type { ThemeConfig } from "antd";
 
-/** Giữ đồng bộ với @theme trong tailwind.css (color-brand-600, color-surface, color-ink). */
+/** Giữ đồng bộ với @theme trong tailwind.css (color-brand-500, color-surface, color-ink, color-line). */
 export const brand = {
-  primary: "#4338ca",
-  layoutBg: "#f4f5fb",
-  text: "#1f2437",
+  primary: "#1b84ff",
+  layoutBg: "#ffffff",
+  text: "#071437",
+  line: "#e5e7ee",
 };
 
 export const theme: ThemeConfig = {
@@ -12,29 +13,34 @@ export const theme: ThemeConfig = {
   token: {
     colorPrimary: brand.primary,
     colorInfo: brand.primary,
-    colorSuccess: "#16a34a",
-    colorWarning: "#d97706",
-    colorError: "#dc2626",
+    colorSuccess: "#17b26a",
+    colorWarning: "#f5a524",
+    colorError: "#f04438",
     colorTextBase: brand.text,
+    colorTextSecondary: "#636b84",
     colorBgLayout: brand.layoutBg,
-    colorBorderSecondary: "#e8eaf3",
-    borderRadius: 10,
-    borderRadiusLG: 14,
+    colorBorder: "#dbdfe9",
+    colorBorderSecondary: brand.line,
+    borderRadius: 8,
+    borderRadiusLG: 12,
+    borderRadiusSM: 6,
     controlHeight: 38,
     fontSize: 14,
     fontFamily:
-      'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    boxShadowTertiary: "0 1px 2px rgba(31,36,55,.04), 0 4px 16px rgba(31,36,55,.06)",
+      '"Inter Variable", Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    boxShadowTertiary: "0 1px 2px rgba(0,0,0,.05)",
   },
   components: {
-    Button: { fontWeight: 500, primaryShadow: "0 2px 6px rgba(67,56,202,.28)" },
-    Card: { headerFontSize: 16 },
-    Table: { headerBg: "#f7f8fd", headerColor: "#5b6280", rowHoverBg: "#f7f8fd" },
-    Menu: {
-      horizontalItemSelectedColor: brand.primary,
-      horizontalItemHoverColor: brand.primary,
-      itemBg: "transparent",
+    Button: { fontWeight: 500, primaryShadow: "none", defaultShadow: "none", dangerShadow: "none" },
+    Card: { headerFontSize: 15, headerHeight: 56, bodyPadding: 20 },
+    Table: {
+      headerBg: "#f6f7f9",
+      headerColor: "#636b84",
+      headerSplitColor: "transparent",
+      rowHoverBg: "#fafbfc",
+      cellPaddingBlock: 14,
     },
-    Input: { activeShadow: "0 0 0 3px rgba(67,56,202,.15)" },
+    Input: { activeShadow: "0 0 0 3px rgba(27,132,255,.14)" },
+    Tag: { defaultBg: "#f1f2f6", defaultColor: "#4b5675" },
   },
 };

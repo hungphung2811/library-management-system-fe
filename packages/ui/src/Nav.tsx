@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { getNavLinks, type NavLink } from "./nav-links";
-import { NavBar } from "./NavBar";
+import { ShellFrame } from "./ShellFrame";
 
 type NavSession = {
   userId: string;
@@ -11,23 +12,26 @@ type NavSession = {
 };
 
 /**
- * Server component: lọc link theo permission (đọc cấu hình lúc chạy) rồi giao cho NavBar (client) vẽ.
+ * Khung ứng dụng (sidebar + thanh trên + vùng nội dung). Server component: lọc link theo permission
+ * (đọc cấu hình lúc chạy) rồi giao cho ShellFrame (client) vẽ. Mọi trang có đăng nhập bọc nội dung bằng thành phần này.
  */
-export function Nav({
+export function AppShell({
   current,
   session,
   links = getNavLinks(),
+  children,
 }: {
   /** Đường dẫn của mục đang mở, ví dụ "/catalog". */
   current: string;
   session?: NavSession | null;
   links?: NavLink[];
+  children: ReactNode;
 }) {
   const items = links
     .filter((l) => !l.permission || session?.admin || session?.permissions.includes(l.permission))
-    .map(({ href, label }) => ({ href, label }));
+    .map(({ href, label, group }) => ({ href, label, group }));
   return (
-    <NavBar
+    <ShellFrame
       items={items}
       current={current}
       user={
@@ -35,6 +39,8 @@ export function Nav({
           ? { id: session.userId, name: session.username ?? session.userId.slice(0, 8), role: session.roles?.[0] }
           : undefined
       }
-    />
+    >
+      {children}
+    </ShellFrame>
   );
 }

@@ -3,14 +3,16 @@ export type NavLink = {
   label: string;
   /** Có khai báo thì chỉ hiện link khi người dùng có permission này. */
   permission?: string;
+  /** Tên nhóm hiện làm nhãn nhỏ phía trên các mục liền nhau cùng nhóm trong sidebar. */
+  group?: string;
 };
 
 export const DEFAULT_NAV_LINKS: NavLink[] = [
   { href: "/", label: "Trang chủ" },
-  { href: "/catalog", label: "Sách" },
-  { href: "/circulation", label: "Mượn trả" },
+  { href: "/catalog", label: "Sách", group: "Nghiệp vụ" },
+  { href: "/circulation", label: "Mượn trả", group: "Nghiệp vụ" },
   // Khóa quyền của BE (ADR-0003) = PERMISSIONS.LIST_ROLES trong @mfe/api; admin=true thì luôn thấy.
-  { href: "/admin", label: "Quản trị", permission: "AccessControlController/listRoles" },
+  { href: "/admin", label: "Quản trị", group: "Hệ thống", permission: "AccessControlController/listRoles" },
 ];
 
 /**

@@ -1,4 +1,4 @@
-import { Alert, Card, Nav, Page, PageHeader, Table } from "@mfe/ui";
+import { Alert, AppShell, Card, PageHeader, Table } from "@mfe/ui";
 import { PERMISSIONS, can, gatewayFetch, GatewayError, requireSession } from "@mfe/api";
 
 type Role = { id: string; name: string };
@@ -18,26 +18,23 @@ export default async function AdminPage() {
   }
 
   return (
-    <>
-      <Nav current="/admin" session={s} />
-      <Page>
-        <PageHeader title="Quản trị" description={`Roles của bạn: ${s.roles.join(", ") || "-"}`} />
-        {!canListRoles && (
-          <Alert type="warning" showIcon title={`Cần quyền ${PERMISSIONS.LIST_ROLES} để xem danh sách role.`} />
-        )}
-        {error && <Alert type="error" showIcon title={error} className="mb-4" />}
-        {canListRoles && !error && (
-          <Card title="Danh sách role" styles={{ body: { padding: 0 } }} className="overflow-hidden">
-            <Table
-              rowKey="id"
-              dataSource={roles}
-              pagination={false}
-              columns={[{ title: "Role", dataIndex: "name" }]}
-              locale={{ emptyText: "Chưa có role nào" }}
-            />
-          </Card>
-        )}
-      </Page>
-    </>
+    <AppShell current="/admin" session={s}>
+      <PageHeader title="Quản trị" description={`Roles của bạn: ${s.roles.join(", ") || "-"}`} />
+      {!canListRoles && (
+        <Alert type="warning" showIcon title={`Cần quyền ${PERMISSIONS.LIST_ROLES} để xem danh sách role.`} />
+      )}
+      {error && <Alert type="error" showIcon title={error} className="mb-5" />}
+      {canListRoles && !error && (
+        <Card title="Danh sách role" styles={{ body: { padding: 0 } }} className="overflow-hidden">
+          <Table
+            rowKey="id"
+            dataSource={roles}
+            pagination={false}
+            columns={[{ title: "Role", dataIndex: "name" }]}
+            locale={{ emptyText: "Chưa có role nào" }}
+          />
+        </Card>
+      )}
+    </AppShell>
   );
 }

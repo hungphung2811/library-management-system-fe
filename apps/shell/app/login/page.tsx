@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Form, Input, LockOutlined, ReadOutlined, Text, Title, UserOutlined } from "@mfe/ui";
+import { Alert, AuthShell, Button, Form, Input, Title, Lock, User } from "@mfe/ui";
 
 type Values = { username: string; password: string };
 
@@ -39,32 +39,25 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-linear-to-br from-brand-50 to-violet-50 p-4">
-      <Card className="w-full max-w-sm shadow-xl shadow-brand-600/10">
-        <div className="mb-6 text-center">
-          <span className="inline-grid size-13 place-items-center rounded-2xl bg-linear-to-br from-brand-500 to-accent text-2xl text-white">
-            <ReadOutlined />
-          </span>
-          <Title level={3} className="mt-3 mb-1">Đăng nhập</Title>
-          <Text type="secondary">Hệ thống quản lý thư viện</Text>
-        </div>
+    <AuthShell>
+      <Title level={2} className="mb-1! font-semibold!">Đăng nhập</Title>
+      <p className="mt-0 mb-8 text-sm text-muted">Nhập tài khoản được cấp để vào hệ thống quản lý thư viện.</p>
 
-        <Form<Values> layout="vertical" onFinish={onFinish} requiredMark={false} size="large">
-          <Form.Item name="username" rules={[{ required: true, message: "Nhập tên đăng nhập" }]}>
-            <Input prefix={<UserOutlined />} placeholder="Tên đăng nhập" autoComplete="username" />
-          </Form.Item>
-          <Form.Item name="password" rules={[{ required: true, message: "Nhập mật khẩu" }]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" autoComplete="current-password" />
-          </Form.Item>
-          {changed && !error && (
-            <Alert type="success" showIcon title="Đổi mật khẩu thành công, vui lòng đăng nhập lại." className="mb-4" />
-          )}
-          {error && <Alert type="error" showIcon title={error} className="mb-4" />}
-          <Button type="primary" htmlType="submit" block loading={loading}>
-            Đăng nhập
-          </Button>
-        </Form>
-      </Card>
-    </main>
+      <Form<Values> layout="vertical" onFinish={onFinish} requiredMark={false} size="large">
+        <Form.Item name="username" rules={[{ required: true, message: "Nhập tên đăng nhập" }]}>
+          <Input prefix={<User size={16} strokeWidth={1.75} className="text-muted" />} placeholder="Tên đăng nhập" autoComplete="username" />
+        </Form.Item>
+        <Form.Item name="password" rules={[{ required: true, message: "Nhập mật khẩu" }]}>
+          <Input.Password prefix={<Lock size={16} strokeWidth={1.75} className="text-muted" />} placeholder="Mật khẩu" autoComplete="current-password" />
+        </Form.Item>
+        {changed && !error && (
+          <Alert type="success" showIcon title="Đổi mật khẩu thành công, vui lòng đăng nhập lại." className="mb-4" />
+        )}
+        {error && <Alert type="error" showIcon title={error} className="mb-4" />}
+        <Button type="primary" htmlType="submit" block loading={loading}>
+          Đăng nhập
+        </Button>
+      </Form>
+    </AuthShell>
   );
 }

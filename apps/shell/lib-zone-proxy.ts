@@ -16,7 +16,7 @@ const DROP_RESPONSE = ["content-encoding", "content-length", "transfer-encoding"
 
 function unavailable(zone: string) {
   const html = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Module tạm thời không khả dụng</title>
-<style>body{font-family:system-ui,sans-serif;max-width:480px;margin:96px auto;padding:0 16px;color:#16181d}@media(prefers-color-scheme:dark){body{background:#0f1115;color:#e8eaee}a{color:#60a5fa}}</style></head>
+<style>body{font-family:Inter,system-ui,sans-serif;max-width:440px;margin:96px auto;padding:32px;background:#fff;border:1px solid #e6e8ef;border-radius:12px;color:#1e2230}h1{font-size:20px;margin:0 0 12px}p{color:#6b7083;line-height:1.6}a{color:#056ee9}@media(max-width:520px){body{margin:24px 16px}}</style></head>
 <body><h1>Module "${zone}" tạm thời không khả dụng</h1>
 <p>Các phần khác của hệ thống vẫn hoạt động bình thường. Vui lòng thử lại sau ít phút.</p>
 <p><a href="/">← Về trang chủ</a></p></body></html>`;
