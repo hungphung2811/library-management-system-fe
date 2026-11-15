@@ -15,7 +15,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="vi">
       <body>
         <Providers>
-          <AppShell current="/admin" session={s}>
+          <AppShell current="/admin" basePath="/admin" session={s}>
             {children}
           </AppShell>
         </Providers>

@@ -1,7 +1,6 @@
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
 import type { ErrorInfo } from "@mfe/api/client";
 import { Breadcrumb, Button, ErrorPanel, NoPermission, PageHeader, Result, StatusTag } from "@mfe/ui";
-import { AdminNav } from "../../_components/AdminNav";
 import { load, qp } from "../../data";
 import type { DepartmentView, ReaderProfileView, RoleView, UserAccessView, UserView } from "../../types";
 import { UserDetail } from "./UserDetail";
@@ -73,7 +72,6 @@ export default async function UserDetailPage({
           description={`${u.username} · ${u.email}`}
           actions={<StatusTag domain="user" value={u.status} />}
         />
-        <AdminNav session={s} current="/admin/users" />
         <UserDetail
           user={u}
           initialTab={tab === "roles" || tab === "reader" ? tab : "info"}

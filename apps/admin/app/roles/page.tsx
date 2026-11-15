@@ -1,6 +1,5 @@
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
 import { DataTable, ErrorPanel, NoPermission, PageHeader } from "@mfe/ui";
-import { AdminNav } from "../_components/AdminNav";
 import { load } from "../data";
 import { isAdminRole, type RoleView } from "../types";
 import { CreateRoleButton } from "./_components/CreateRoleButton";
@@ -32,7 +31,6 @@ export default async function RolesPage() {
         actions={can(s, PERMISSIONS.ROLE_CREATE) ? <CreateRoleButton sessionAdmin={s.admin} /> : undefined}
       />
       <div className="flex max-w-[1200px] flex-col gap-4">
-        <AdminNav session={s} current="/admin/roles" />
         {roles.error ? (
           <ErrorPanel error={roles.error} retryHref="/admin/roles" />
         ) : (
