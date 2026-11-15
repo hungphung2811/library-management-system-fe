@@ -33,7 +33,7 @@ export function NewBookForm() {
         json: { name: v.name.trim(), author: v.author.trim(), ...(isbn ? { isbn } : {}), coverPrice: v.coverPrice },
       });
       message.success(`Đã thêm sách «${created.name}».`);
-      router.push(`/books/${encodeURIComponent(created.id)}${then === "copy" ? "?addCopy=1" : ""}`);
+      router.push(`/catalog/books/${encodeURIComponent(created.id)}${then === "copy" ? "?addCopy=1" : ""}`);
     } catch (e) {
       const d = describeError(toErrorInfo(e));
       const fields: { name: string[]; errors: string[] }[] = [];

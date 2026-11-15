@@ -1,3 +1,0 @@
-@import "@mfe/ui/tailwind.css";
-/* Tailwind không tự quét package workspace, nên khai báo để class trong @mfe/ui được sinh ra */
-@source "../../../packages/ui/src";

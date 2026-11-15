@@ -1,4 +1,4 @@
-/** Hình dạng dữ liệu BE (lms-api) mà zone catalog dùng. */
+/** Hình dạng dữ liệu BE (lms-api) mà trang Sách dùng. */
 export type TitleView = {
   id: string;
   name: string;

@@ -1,7 +1,7 @@
 import { getSession } from "@mfe/api";
 import { AppShell, PageHeader, Result } from "@mfe/ui";
 
-const ZONE_PATHS = ["catalog", "circulation", "admin"];
+const ZONE_PATHS = ["circulation", "admin"];
 
 /**
  * Nội dung hiển thị khi một zone chết/chậm. Không ai vào trực tiếp: `lib-zone-proxy.ts` tự lấy HTML của trang này

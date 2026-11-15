@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
 
 export const ZONES = {
-  catalog: process.env.CATALOG_URL ?? "http://localhost:3001",
   circulation: process.env.CIRCULATION_URL ?? "http://localhost:3002",
   admin: process.env.ADMIN_URL ?? "http://localhost:3003",
 } as const;

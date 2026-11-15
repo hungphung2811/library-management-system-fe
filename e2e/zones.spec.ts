@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ADMIN_DIRECT, SHELL, SHELL_CATALOG_DOWN, loginAs } from "./helpers";
+import { ADMIN_DIRECT, SHELL, SHELL_ZONE_DOWN, loginAs } from "./helpers";
 
 test.describe("độc lập giữa các zone", () => {
   test("zone gọi thẳng cổng của nó mà chưa đăng nhập thì chuyển về login của shell", async ({ page }) => {
@@ -24,18 +24,18 @@ test.describe("độc lập giữa các zone", () => {
   });
 
   test("một zone chết chỉ làm trang của nó trả 503, các phần khác vẫn chạy", async ({ page }) => {
-    await loginAs(page, "admin", SHELL_CATALOG_DOWN);
+    await loginAs(page, "admin", SHELL_ZONE_DOWN);
 
-    const down = await page.goto(`${SHELL_CATALOG_DOWN}/catalog`);
+    const down = await page.goto(`${SHELL_ZONE_DOWN}/circulation`);
     expect(down?.status()).toBe(503);
-    await expect(page.getByRole("heading", { name: /catalog.*không khả dụng/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /circulation.*không khả dụng/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Về trang chủ/ })).toBeVisible();
 
-    const ok = await page.goto(`${SHELL_CATALOG_DOWN}/circulation`);
+    const ok = await page.goto(`${SHELL_ZONE_DOWN}/catalog`);
     expect(ok?.status()).toBe(200);
     await expect(page.locator("main")).toBeVisible();
 
-    const home = await page.goto(`${SHELL_CATALOG_DOWN}/`);
+    const home = await page.goto(`${SHELL_ZONE_DOWN}/`);
     expect(home?.status()).toBe(200);
   });
 });
