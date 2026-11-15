@@ -50,24 +50,28 @@ test.describe("zone circulation: phân quyền", () => {
     }
   });
 
-  test("lối tắt trang chủ theo quyền: thủ thư thấy mượn/trả/đặt trước, độc giả chỉ thấy đặt trước và tra phiếu", async ({
+  test("mục Mượn trả ở sidebar theo quyền: thủ thư thấy đủ 4, độc giả chỉ thấy Đặt trước; trang gốc không còn thẻ lối tắt", async ({
     page,
     browser,
   }) => {
     await loginAs(page, "librarian");
     await page.goto("/circulation");
-    for (const name of ["Lập phiếu mượn", "Nhận trả sách", "Tra phiếu mượn", "Đặt trước của tôi"]) {
-      await expect(page.getByRole("link", { name: new RegExp(name) }).first()).toBeVisible();
+    const nav = page.getByRole("navigation");
+    for (const name of ["Lập phiếu mượn", "Nhận trả sách", "Tra phiếu mượn", "Đặt trước"]) {
+      await expect(nav.getByRole("link", { name })).toBeVisible();
     }
+    await expect(page.getByRole("main").getByRole("link")).toHaveCount(0);
+    await expect(page.getByText("Quyền nghiệp vụ của bạn")).toBeVisible();
 
     const ctx = await browser.newContext();
     const p = await ctx.newPage();
     await loginAs(p, "reader");
-    await p.goto("/circulation");
-    await expect(p.getByRole("link", { name: /Đặt trước của tôi/ }).first()).toBeVisible();
-    await expect(p.getByRole("link", { name: /Tra phiếu mượn/ }).first()).toBeVisible();
-    await expect(p.getByRole("link", { name: /Lập phiếu mượn/ })).toHaveCount(0);
-    await expect(p.getByRole("link", { name: /Nhận trả sách/ })).toHaveCount(0);
+    await p.goto("/circulation/reservations");
+    const pn = p.getByRole("navigation");
+    await expect(pn.getByRole("link", { name: "Đặt trước" })).toBeVisible();
+    await expect(pn.getByRole("link", { name: "Lập phiếu mượn" })).toHaveCount(0);
+    await expect(pn.getByRole("link", { name: "Nhận trả sách" })).toHaveCount(0);
+    await expect(pn.getByRole("link", { name: "Tra phiếu mượn" })).toHaveCount(0);
     await ctx.close();
   });
 

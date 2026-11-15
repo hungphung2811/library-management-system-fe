@@ -26,7 +26,7 @@ test.describe("zone admin: phân quyền theo BE động", () => {
 
     await expect(page.getByText("Cần quyền AccessControlController/listRoles")).toBeVisible();
     await expect(page.getByRole("cell", { name: "SUPER_ADMIN" })).toHaveCount(0);
-    await expect(page.getByRole("navigation").getByRole("link", { name: "Quản trị" })).toHaveCount(0);
+    await expect(page.getByRole("navigation").getByRole("button", { name: "Quản trị" })).toHaveCount(0);
   });
 });
 
@@ -53,25 +53,17 @@ async function createUser(page: Page, sfx: string) {
 const popover = (page: Page) => page.locator(".ant-popover");
 
 test.describe("zone admin: lối vào và phân quyền hiển thị", () => {
-  test("link lối tắt và thanh mục quản trị không bị nhân đôi basePath (/admin/admin/...)", async ({ page }) => {
+  test("sidebar có đủ 4 mục quản trị, href không bị nhân đôi basePath (/admin/admin/...)", async ({ page }) => {
     await loginAs(page, "admin");
     await page.goto("/admin");
+    const nav = page.getByRole("navigation");
     for (const [name, href] of [["Người dùng", "/admin/users"], ["Vai trò và quyền", "/admin/roles"], ["Phòng ban", "/admin/departments"], ["Nhật ký hoạt động", "/admin/audit-logs"]]) {
-      await expect(page.getByRole("link", { name: new RegExp(`^${name}`) }).first()).toHaveAttribute("href", href);
+      await expect(nav.getByRole("link", { name })).toHaveAttribute("href", href);
     }
-    // Thanh mục quản trị ở các trang con (div role=group, không phải <nav>)
+    // Không còn thanh mục riêng của zone
     await page.goto("/admin/users");
-    for (const [name, href] of [["Người dùng", "/admin/users"], ["Vai trò và quyền", "/admin/roles"], ["Phòng ban", "/admin/departments"], ["Nhật ký hoạt động", "/admin/audit-logs"]]) {
-      await expect(page.getByRole("group", { name: "Các mục quản trị" }).getByRole("link", { name })).toHaveAttribute("href", href);
-    }
-  });
-
-  test("quản trị viên thấy đủ 4 thẻ lối tắt", async ({ page }) => {
-    await loginAs(page, "admin");
-    await page.goto("/admin");
-    for (const name of [/^Người dùng/, /^Vai trò và quyền/, /^Phòng ban/, /^Nhật ký hoạt động/]) {
-      await expect(page.getByRole("link", { name }).first()).toBeVisible();
-    }
+    await expect(page.getByRole("group", { name: "Các mục quản trị" })).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("link", { name: "Vai trò và quyền" })).toHaveCount(0);
   });
 
   test("staff (chỉ có listRoles): thấy vai trò, không có nút thêm; trang người dùng báo thiếu quyền", async ({ page }) => {
