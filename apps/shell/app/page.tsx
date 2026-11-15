@@ -2,14 +2,14 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import {
   AppShell, ArrowLeftRight, BookOpen, Button, KeyRound, PageHeader, ShieldCheck, Tag, User,
-  canSeeLink, formatDateTime, getNavLinks,
+  formatDateTime, getNavLinks, visibleNav,
 } from "@mfe/ui";
 import { getSession, gatewayFetch } from "@mfe/api";
 
 type Tile = { href: string; title: string; desc: string; icon: ReactNode; tile: string };
 type Recent = { id: string; message: string; createdAt: string; readAt?: string | null };
 
-// Lối tắt của từng phân hệ; hiện theo quyền bằng đúng quy tắc của thanh bên (canSeeLink trên danh sách nav).
+// Lối tắt của từng phân hệ; hiện theo quyền bằng đúng quy tắc của thanh bên (visibleNav trên danh sách nav).
 const MODULE_TILES: Record<string, Omit<Tile, "href">> = {
   "/catalog": { title: "Sách", desc: "Đầu sách và bản sao", icon: <BookOpen size={22} strokeWidth={1.75} />, tile: "bg-brand-50 text-brand-600" },
   "/circulation": { title: "Mượn trả", desc: "Mượn, trả, gia hạn", icon: <ArrowLeftRight size={22} strokeWidth={1.75} />, tile: "bg-emerald-50 text-emerald-600" },
@@ -39,8 +39,8 @@ export default async function Home() {
   const name = s?.username ?? s?.userId.slice(0, 8);
   const modules: Tile[] = s
     ? [
-        ...getNavLinks()
-          .filter((l) => MODULE_TILES[l.href] && canSeeLink(l, s))
+        ...visibleNav(getNavLinks(), s)
+          .filter((l) => MODULE_TILES[l.href])
           .map((l) => ({ href: l.href, ...MODULE_TILES[l.href] })),
         ...PERSONAL_TILES,
       ]
