@@ -63,4 +63,4 @@ Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/a
 
 ## Quy ước commit
 
-Message tiếng Việt có dấu, dòng đầu có prefix kiểu Conventional Commits: `feat:` (tính năng, thêm mới), `fix:` (sửa lỗi), `docs:` (tài liệu). Không thêm dòng `Co-Authored-By` hay attribution nào.
+Message tiếng Việt có dấu, không thêm `Co-Authored-By` hay attribution. Dòng đầu có prefix Conventional Commits, chỉ dùng 7 loại: `feat` (tính năng, đổi hành vi/giao diện), `fix` (sửa lỗi), `docs` (chỉ tài liệu), `refactor` (đổi cấu trúc, không đổi hành vi), `test`, `chore` (công cụ, skill), `build` (build, phụ thuộc). Scope tuỳ chọn theo app/package (`fix(admin):`, `feat(shell):`, `feat(ui):`); thay đổi phá vỡ hợp đồng thêm `!` (`feat(api)!:`). Commit riêng từng nhóm thay đổi. Quy ước đầy đủ ở `~/.claude/CLAUDE.md`.
