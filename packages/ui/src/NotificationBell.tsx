@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { bffFetch } from "@mfe/api/client";
 import { BellOutlined, Badge, Popover, Tooltip } from "./antd";
@@ -29,7 +30,11 @@ function writeSeen(userId: string, t: number) {
  * khi tab đang hiển thị. BE chưa có API đánh dấu đã đọc nên "chưa đọc" = `readAt == null` VÀ `createdAt` sau mốc
  * "đã xem lần cuối" (localStorage theo userId); mở popover thì cập nhật mốc. Lỗi: ẩn số, Tooltip "Không tải được thông báo".
  */
-export function NotificationBell({ userId }: { userId: string }) {
+/**
+ * `clientNav`: link "Xem tất cả" dùng next/link (giữ khung, không tải lại trang) và đóng popover khi bấm.
+ * Chỉ bật khi /notifications cùng app với khung (shell); trong zone có basePath (admin) phải để false, vì Link sẽ cộng basePath.
+ */
+export function NotificationBell({ userId, clientNav = false }: { userId: string; clientNav?: boolean }) {
   const [items, setItems] = useState<NotificationView[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [seen, setSeen] = useState(0);
@@ -90,9 +95,15 @@ export function NotificationBell({ userId }: { userId: string }) {
         </ul>
       )}
       <div className="mt-2 border-t border-line pt-2 text-right text-sm">
-        <a href="/notifications" className="font-medium text-brand-600 no-underline hover:underline">
-          Xem tất cả
-        </a>
+        {clientNav ? (
+          <Link href="/notifications" onClick={() => setOpen(false)} className="font-medium text-brand-600 no-underline hover:underline">
+            Xem tất cả
+          </Link>
+        ) : (
+          <a href="/notifications" className="font-medium text-brand-600 no-underline hover:underline">
+            Xem tất cả
+          </a>
+        )}
       </div>
     </div>
   );

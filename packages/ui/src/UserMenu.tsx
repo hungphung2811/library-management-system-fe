@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import { bffFetch } from "@mfe/api/client";
 import { Dropdown } from "./antd";
@@ -14,9 +15,12 @@ const ITEM =
 export function UserMenu({
   user,
   tenantId,
+  profileClient = false,
 }: {
   user: { id: string; name: string; role?: string };
   tenantId?: string;
+  /** Link Hồ sơ dùng next/link (giữ khung) và đóng menu khi bấm. Chỉ bật khi /profile cùng app với khung (shell), không bật ở zone có basePath. */
+  profileClient?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [tenants, setTenants] = useState<TenantSummary[] | null>(null);
@@ -51,9 +55,15 @@ export function UserMenu({
               {currentName && <div className="mt-1 truncate text-xs text-muted">Đơn vị: {currentName}</div>}
             </div>
             <div className="pt-1">
-              <a href="/profile" className={ITEM}>
-                Hồ sơ của tôi
-              </a>
+              {profileClient ? (
+                <Link href="/profile" onClick={() => setOpen(false)} className={ITEM}>
+                  Hồ sơ của tôi
+                </Link>
+              ) : (
+                <a href="/profile" className={ITEM}>
+                  Hồ sơ của tôi
+                </a>
+              )}
               <a href="/change-password" className={ITEM}>
                 Đổi mật khẩu
               </a>

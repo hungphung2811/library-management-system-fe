@@ -6,7 +6,7 @@ import { AppShell } from "@mfe/ui";
 const CRUMBS = { "/profile": "Hồ sơ", "/notifications": "Thông báo" };
 
 // Link trong sidebar thuộc cùng app này thì chuyển trang phía client (giữ sidebar). /admin là zone riêng nên KHÔNG có ở đây.
-const CLIENT_HREFS = ["/", "/catalog", "/circulation"];
+const CLIENT_HREFS = ["/", "/catalog", "/circulation", "/profile", "/notifications"];
 
 /**
  * Khung dùng chung cho mọi trang đã/đang vào hệ thống trong group. Chỉ đọc phiên để vẽ sidebar, KHÔNG redirect:

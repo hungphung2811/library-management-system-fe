@@ -181,3 +181,48 @@ test.describe("điều hướng phía client trong app gộp", () => {
     expect((await page.context().cookies()).some((c) => c.name === "lms_at")).toBeTruthy();
   });
 });
+
+test.describe("chuông thông báo và menu người dùng", () => {
+  test("Xem tất cả thông báo: chuyển phía client, popover đóng lại, khung giữ nguyên", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/catalog");
+    await markSpa(page);
+
+    await page.getByRole("button", { name: /^Thông báo/ }).click();
+    await page.locator(".ant-popover").getByRole("link", { name: "Xem tất cả" }).click();
+    await expect(page).toHaveURL(/\/notifications$/);
+    await expect(page.getByRole("heading", { name: "Thông báo" })).toBeVisible();
+    expect(await spa(page)).toBe(1);
+    await expect(page.locator(".ant-popover").getByRole("link", { name: "Xem tất cả" })).toBeHidden();
+  });
+
+  test("Hồ sơ của tôi: chuyển phía client và menu đóng lại", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/catalog");
+    await markSpa(page);
+
+    await page.getByRole("button", { name: "Tài khoản của tôi" }).click();
+    await page.getByRole("link", { name: "Hồ sơ của tôi" }).click();
+    await expect(page).toHaveURL(/\/profile$/);
+    await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
+    expect(await spa(page)).toBe(1);
+    await expect(page.getByRole("link", { name: "Hồ sơ của tôi" })).toBeHidden();
+  });
+
+  test("từ trang admin (có basePath) vẫn đi đúng /profile và /notifications, không thành /admin/...", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/admin/users");
+    await markSpa(page);
+
+    await page.getByRole("button", { name: "Tài khoản của tôi" }).click();
+    await page.getByRole("link", { name: "Hồ sơ của tôi" }).click();
+    await expect(page).toHaveURL(/\/profile$/);
+    await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
+    expect(await spa(page)).toBeUndefined();
+
+    await page.goto("/admin/users");
+    await page.getByRole("button", { name: /^Thông báo/ }).click();
+    await page.locator(".ant-popover").getByRole("link", { name: "Xem tất cả" }).click();
+    await expect(page).toHaveURL(/\/notifications$/);
+  });
+});

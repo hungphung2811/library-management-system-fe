@@ -325,8 +325,8 @@ export function ShellFrame({ items, current, basePath = "", clientHrefs = [], us
           </ol>
           {user && (
             <div className="ml-auto flex items-center gap-3">
-              <NotificationBell userId={user.id} />
-              <UserMenu user={user} tenantId={tenantId} />
+              <NotificationBell userId={user.id} clientNav={isClient("/notifications")} />
+              <UserMenu user={user} tenantId={tenantId} profileClient={isClient("/profile")} />
             </div>
           )}
         </header>
