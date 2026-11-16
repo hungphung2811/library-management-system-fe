@@ -94,17 +94,17 @@ export const BOOKS = [
 ];
 
 export const COPIES = [
-  { id: "c0000000-0000-4000-8000-000000000001", titleId: BOOKS[0].id, barcode: "BC-JAVA-001", status: "AVAILABLE" },
-  { id: "c0000000-0000-4000-8000-000000000002", titleId: BOOKS[0].id, barcode: "BC-JAVA-002", status: "AVAILABLE" },
-  { id: "c0000000-0000-4000-8000-000000000003", titleId: BOOKS[1].id, barcode: "BC-DSA-001", status: "LOANED" },
+  { id: "c0000000-0000-4000-8000-000000000001", titleId: BOOKS[0].id, barcode: "TV00010001", status: "AVAILABLE" },
+  { id: "c0000000-0000-4000-8000-000000000002", titleId: BOOKS[0].id, barcode: "TV00010002", status: "AVAILABLE" },
+  { id: "c0000000-0000-4000-8000-000000000003", titleId: BOOKS[1].id, barcode: "TV00010003", status: "LOANED" },
 ];
 
 export const DIRECTORY = [
-  { id: "u0000000-0000-4000-8000-000000000001", username: "doc.gia.mot", fullName: "Lê Văn Một", email: "mot@example.test", departmentId: "dept-1", status: "ACTIVE" },
-  { id: "u0000000-0000-4000-8000-000000000002", username: "doc.gia.hai", fullName: "Phạm Thị Hai", email: "hai@example.test", departmentId: "dept-1", status: "ACTIVE" },
+  { id: "u0000000-0000-4000-8000-000000000001", username: "hung.le", fullName: "Lê Văn Hùng", email: "hung.le@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
+  { id: "u0000000-0000-4000-8000-000000000002", username: "huong.pham", fullName: "Phạm Thị Hương", email: "huong.pham@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
 ];
 
 export const READER_PROFILES = [
-  { userId: DIRECTORY[0].id, cardNo: "RD-0001", fullName: DIRECTORY[0].fullName, email: DIRECTORY[0].email, readerType: "STUDENT", cardExpiryDate: "2030-12-31", status: "ACTIVE", cardValid: true },
-  { userId: DIRECTORY[1].id, cardNo: "RD-0002", fullName: DIRECTORY[1].fullName, email: DIRECTORY[1].email, readerType: "LECTURER", cardExpiryDate: "2020-01-31", status: "ACTIVE", cardValid: false },
+  { userId: DIRECTORY[0].id, cardNo: "SV21-04817", fullName: DIRECTORY[0].fullName, email: DIRECTORY[0].email, readerType: "STUDENT", cardExpiryDate: "2030-12-31", status: "ACTIVE", cardValid: true },
+  { userId: DIRECTORY[1].id, cardNo: "GV-0342", fullName: DIRECTORY[1].fullName, email: DIRECTORY[1].email, readerType: "LECTURER", cardExpiryDate: "2020-01-31", status: "ACTIVE", cardValid: false },
 ];

@@ -16,20 +16,20 @@ test.describe("/profile", () => {
 
     await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
     const main = page.getByRole("main");
-    await expect(main.getByText("Độc Giả Mẫu")).toBeVisible();
-    await expect(main.getByText("reader@example.test")).toBeVisible();
+    await expect(main.getByText("Đỗ Thị Mai Anh")).toBeVisible();
+    await expect(main.getByText("maianh.do@outlook.com")).toBeVisible();
     await expect(main.getByText("READER", { exact: true })).toBeVisible();
     await expect(main.getByText("Muốn đổi thông tin, liên hệ quản trị viên.")).toBeVisible();
     await expect(main.getByRole("link", { name: "Đổi mật khẩu" })).toHaveAttribute("href", "/change-password");
 
-    await expect(page.getByTestId("card-no")).toHaveText("RD-READER-01");
+    await expect(page.getByTestId("card-no")).toHaveText("TV26-000512");
     await expect(main.getByText("Sinh viên")).toBeVisible();
     await expect(main.getByText("31/12/2030")).toBeVisible();
     await expect(main.getByText("Thẻ hợp lệ")).toBeVisible();
 
     const google = page.getByTestId("external-google");
     await expect(google).toContainText("Đã liên kết");
-    await expect(google).toContainText("reader@gmail.test");
+    await expect(google).toContainText("maianh.do@gmail.com");
     await expect(page.getByTestId("external-microsoft")).toContainText("Chưa liên kết");
     // Cố ý ẩn: luồng liên kết OIDC cần cookie mà BFF không chuyển tiếp.
     await expect(main.getByRole("button", { name: /^Liên kết/ })).toHaveCount(0);
@@ -40,7 +40,7 @@ test.describe("/profile", () => {
     await loginAs(page, "member");
     await page.goto("/profile");
     const main = page.getByRole("main");
-    await expect(main.getByText("member@example.test")).toBeVisible();
+    await expect(main.getByText("khoi.tran@outlook.com")).toBeVisible();
     await expect(main.getByText("Thẻ thư viện", { exact: true })).toHaveCount(0);
     await expect(page.locator(".ant-alert-error")).toHaveCount(0);
     await expect(page.getByTestId("external-google")).toContainText("Chưa liên kết");

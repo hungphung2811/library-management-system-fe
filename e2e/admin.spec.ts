@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { SHELL, loginAs } from "./helpers";
+import { departmentSpec, person, readerCardNo, roleSpec } from "./fake.mjs";
 
 // 3 test đầu chuyển nguyên văn từ authorization.spec.ts ở pha 0 (giữ nguyên).
 // Phân quyền động của BE (ADR-0003): quản trị viên là claim admin=true (bỏ qua kiểm khóa),
@@ -31,10 +32,6 @@ test.describe("zone admin: phân quyền theo BE động", () => {
 });
 
 // ---- Các màn hình quản trị (pha 1). Mock: e2e/mock/admin.mjs; dữ liệu dùng chung nên mỗi test dùng tên riêng. ----
-// CHƯA CHẠY: các test dưới đây viết bám mock và code, chưa được chạy với Playwright.
-
-const uniq = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`;
-
 /** Mở trang và đợi hydrate xong (bấm nút khi React chưa hydrate thì không có tác dụng). */
 async function open(page: Page, path: string) {
   await page.goto(path);
@@ -42,9 +39,10 @@ async function open(page: Page, path: string) {
 }
 
 /** Tạo người dùng qua BFF (cookie của page đã đăng nhập) để test không phụ thuộc form tạo. */
-async function createUser(page: Page, sfx: string) {
+async function createUser(page: Page) {
+  const p = person(); // tên người Việt, tên đăng nhập và email như thật; duy nhất giữa các worker
   const res = await page.request.post(`${SHELL}/api/bff/users`, {
-    data: { username: `e2e.${sfx}`, fullName: `Người Thử ${sfx}`, email: `e2e.${sfx}@example.test` },
+    data: { username: p.username, fullName: p.fullName, email: p.email },
   });
   expect(res.status()).toBe(201);
   return (await res.json()) as { id: string; username: string; fullName: string };
@@ -81,7 +79,7 @@ test.describe("zone admin: lối vào và phân quyền hiển thị", () => {
   test("thủ thư (có USER_SEARCH): xem danh sách người dùng nhưng không có nút thêm", async ({ page }) => {
     await loginAs(page, "librarian");
     await page.goto("/admin/users");
-    await expect(page.getByRole("link", { name: "Lê Văn Một" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Lê Văn Hùng" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Thêm người dùng" })).toHaveCount(0);
   });
 });
@@ -90,25 +88,25 @@ test.describe("zone admin: người dùng", () => {
   test("danh sách hiện người dùng mẫu và trạng thái bằng chữ", async ({ page }) => {
     await loginAs(page, "admin");
     await page.goto("/admin/users");
-    await expect(page.getByRole("link", { name: "Lê Văn Một" }).first()).toBeVisible();
-    await expect(page.getByRole("cell", { name: "doc.gia.mot" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Lê Văn Hùng" }).first()).toBeVisible();
+    await expect(page.getByRole("cell", { name: "hung.le", exact: true })).toBeVisible();
     await expect(page.getByText("Đang hoạt động").first()).toBeVisible();
   });
 
   test("tạo người dùng kèm mật khẩu rồi chuyển sang trang chi tiết", async ({ page }) => {
-    const sfx = uniq();
+    const p = person();
     await loginAs(page, "admin");
     await open(page, "/admin/users");
     await page.getByRole("button", { name: "Thêm người dùng" }).click();
     const dlg = page.getByRole("dialog");
-    await dlg.getByLabel("Tên đăng nhập").fill(`tao.${sfx}`);
-    await dlg.getByLabel("Họ tên").fill(`Tạo Mới ${sfx}`);
-    await dlg.getByLabel("Email").fill(`tao.${sfx}@example.test`);
-    await dlg.getByLabel("Mật khẩu tạm").fill("MatKhau@12345");
+    await dlg.getByLabel("Tên đăng nhập").fill(p.username);
+    await dlg.getByLabel("Họ tên").fill(p.fullName);
+    await dlg.getByLabel("Email").fill(p.email);
+    await dlg.getByLabel("Mật khẩu tạm").fill("ThuVien@2026");
     await dlg.getByRole("button", { name: "Tạo", exact: true }).click();
 
     await expect(page).toHaveURL(/localhost:\d+\/admin\/users\/[0-9a-f-]{36}$/);
-    await expect(page.getByRole("heading", { name: `Tạo Mới ${sfx}` })).toBeVisible();
+    await expect(page.getByRole("heading", { name: p.fullName })).toBeVisible();
   });
 
   test("form tạo người dùng báo lỗi bắt buộc ngay dưới ô", async ({ page }) => {
@@ -122,16 +120,16 @@ test.describe("zone admin: người dùng", () => {
   });
 
   test("sửa thông tin, vô hiệu hóa rồi kích hoạt lại", async ({ page }) => {
-    const sfx = uniq();
     await loginAs(page, "admin");
-    const u = await createUser(page, sfx);
+    const u = await createUser(page);
+    const renamed = person().fullName; // đổi sang một họ tên khác (ví dụ khai sai chính tả lúc nhập)
     await open(page, `/admin/users/${u.id}`);
 
     await page.getByRole("button", { name: "Sửa" }).click();
     const dlg = page.getByRole("dialog");
-    await dlg.getByLabel("Họ tên").fill(`Đã Sửa ${sfx}`);
+    await dlg.getByLabel("Họ tên").fill(renamed);
     await dlg.getByRole("button", { name: "Lưu" }).click();
-    await expect(page.getByRole("heading", { name: `Đã Sửa ${sfx}` })).toBeVisible();
+    await expect(page.getByRole("heading", { name: renamed })).toBeVisible();
 
     await page.getByRole("button", { name: "Vô hiệu hóa" }).click();
     await popover(page).getByRole("button", { name: "Vô hiệu hóa" }).click();
@@ -149,9 +147,8 @@ test.describe("zone admin: người dùng", () => {
   });
 
   test("thêm rồi gỡ vai trò cho người dùng", async ({ page }) => {
-    const sfx = uniq();
     await loginAs(page, "admin");
-    const u = await createUser(page, sfx);
+    const u = await createUser(page);
     await open(page, `/admin/users/${u.id}?tab=roles`);
 
     await expect(page.getByText("Thay đổi vai trò có hiệu lực khi người dùng đăng nhập lại.")).toBeVisible();
@@ -169,9 +166,9 @@ test.describe("zone admin: người dùng", () => {
   });
 
   test("cấp thẻ độc giả, khóa thẻ rồi mở khóa", async ({ page }) => {
-    const sfx = uniq();
+    const card = readerCardNo();
     await loginAs(page, "admin");
-    const u = await createUser(page, sfx);
+    const u = await createUser(page);
     await open(page, `/admin/users/${u.id}?tab=reader`);
 
     await expect(page.getByText("Người này chưa có thẻ độc giả.")).toBeVisible();
@@ -181,14 +178,14 @@ test.describe("zone admin: người dùng", () => {
       await page.getByRole("button", { name: "Cấp thẻ độc giả" }).click();
       await expect(dlg).toBeVisible({ timeout: 3000 });
     }).toPass({ timeout: 20_000 });
-    await dlg.getByLabel("Số thẻ").fill(`RD-${sfx}`);
+    await dlg.getByLabel("Số thẻ").fill(card);
     await dlg.locator(".ant-select").click();
     await page.locator('.ant-select-item-option[title="Sinh viên"]').click();
-    await dlg.getByLabel("Hạn thẻ").fill("31/12/2035");
+    await dlg.getByLabel("Hạn thẻ").fill("30/06/2029");
     await dlg.getByLabel("Hạn thẻ").press("Enter");
     await dlg.getByRole("button", { name: "Cấp thẻ" }).click();
 
-    await expect(page.getByText(`RD-${sfx}`)).toBeVisible();
+    await expect(page.getByText(card)).toBeVisible();
     await expect(page.getByText("Hợp lệ", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Khóa thẻ" }).click();
@@ -203,17 +200,17 @@ test.describe("zone admin: người dùng", () => {
 
 test.describe("zone admin: vai trò và quyền", () => {
   test("tạo vai trò, gán rồi gỡ một quyền", async ({ page }) => {
-    const sfx = uniq().toUpperCase();
+    const role = roleSpec();
     await loginAs(page, "admin");
     await open(page, "/admin/roles");
     await page.getByRole("button", { name: "Thêm vai trò" }).click();
     const dlg = page.getByRole("dialog");
-    await dlg.getByLabel("Tên vai trò").fill(`VAITRO_${sfx}`);
-    await dlg.getByLabel("Mô tả").fill("Vai trò thử nghiệm");
+    await dlg.getByLabel("Tên vai trò").fill(role.name);
+    await dlg.getByLabel("Mô tả").fill(role.description);
     await dlg.getByRole("button", { name: "Tạo", exact: true }).click();
 
     await expect(page).toHaveURL(/localhost:\d+\/admin\/roles\/[0-9a-f-]{36}$/);
-    await expect(page.getByRole("heading", { name: `VAITRO_${sfx}` })).toBeVisible();
+    await expect(page.getByRole("heading", { name: role.name })).toBeVisible();
     await expect(page.getByText("Vai trò này chưa có quyền nào.")).toBeVisible();
 
     await page.getByLabel("Lọc danh mục quyền").fill("ReportController");
@@ -240,7 +237,7 @@ test.describe("zone admin: vai trò và quyền", () => {
     await page.getByRole("button", { name: "Thêm vai trò" }).click();
     const dlg = page.getByRole("dialog");
     await dlg.getByLabel("Tên vai trò").fill("CATALOGER");
-    await dlg.getByLabel("Mô tả").fill("Trùng tên");
+    await dlg.getByLabel("Mô tả").fill("Biên mục viên, trùng tên vai trò đã có");
     await dlg.getByRole("button", { name: "Tạo", exact: true }).click();
     await expect(dlg.getByText("Vai trò đã tồn tại")).toBeVisible();
   });
@@ -248,8 +245,8 @@ test.describe("zone admin: vai trò và quyền", () => {
 
 test.describe("zone admin: phòng ban", () => {
   test("hiện cây, tạo phòng ban gốc rồi ngừng dùng", async ({ page }) => {
-    const sfx = uniq();
-    const name = `Phòng thử ${sfx}`;
+    const dept = departmentSpec();
+    const name = dept.name;
     await loginAs(page, "admin");
     await open(page, "/admin/departments");
     await expect(page.getByText("Khoa Công nghệ thông tin")).toBeVisible();
@@ -259,7 +256,7 @@ test.describe("zone admin: phòng ban", () => {
 
     await page.getByRole("button", { name: /Thêm phòng ban$/ }).click();
     const dlg = page.getByRole("dialog");
-    await dlg.getByLabel("Mã", { exact: true }).fill(`E2E-${sfx}`);
+    await dlg.getByLabel("Mã", { exact: true }).fill(dept.code);
     await dlg.getByLabel("Tên", { exact: true }).fill(name);
     await dlg.getByRole("button", { name: "Tạo", exact: true }).click();
     await expect(page.getByText(name)).toBeVisible();

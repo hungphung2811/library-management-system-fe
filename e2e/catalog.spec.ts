@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { SHELL, loginAs } from "./helpers";
+import { book, copyBarcode } from "./fake.mjs";
 
-// Bám e2e/mock/catalog.mjs (dữ liệu riêng: "Sách thử trạng thái catalog", "Sách phân trang catalog NN").
+// Bám e2e/mock/catalog.mjs (dữ liệu riêng: "Hoàng Lê nhất thống chí" có đủ trạng thái bản sao, "Tuyển tập văn học Việt Nam, tập NN" để kiểm phân trang).
 // Mock dùng chung cho 2 worker: mỗi test dùng bản sao/sách riêng, không giả định số lượng bản ghi.
-// ⚠️ File này chưa được chạy (cổng E2E đang bị chiếm khi viết).
 
-const STATES_BOOK = "Sách thử trạng thái catalog";
+const STATES_BOOK = "Hoàng Lê nhất thống chí";
 
 async function openBook(page: Page, name: string) {
   await page.goto(`/catalog?q=${encodeURIComponent(name)}`);
@@ -14,13 +14,14 @@ async function openBook(page: Page, name: string) {
   await page.waitForLoadState("networkidle"); // đợi hydrate: bấm nút Popconfirm khi chưa hydrate thì không mở được
 }
 
-/** Tạo sách mới qua BFF (sách có tên riêng, chưa có bản sao). */
-async function createBook(page: Page, name: string) {
+/** Tạo sách mới qua BFF (đầu sách thật kèm lần tái bản riêng, chưa có bản sao). */
+async function createBook(page: Page) {
+  const b = book();
   const res = await page.request.post(`${SHELL}/api/bff/books`, {
-    data: { name, author: "Tác giả E2E", coverPrice: 1000 },
+    data: { name: b.name, author: b.author, isbn: b.isbn, coverPrice: b.coverPrice },
   });
   expect(res.status()).toBe(201);
-  return (await res.json()) as { id: string };
+  return { ...((await res.json()) as { id: string }), name: b.name };
 }
 
 const copyRow = (page: Page, barcode: string) => page.getByRole("row").filter({ hasText: barcode });
@@ -45,8 +46,8 @@ test.describe("zone catalog: danh sách và tìm sách", () => {
     await expect(table.getByRole("link", { name: "Lập trình Java cơ bản" })).toBeVisible();
     await expect(table.getByRole("link", { name: "Cấu trúc dữ liệu và giải thuật" })).toHaveCount(0);
 
-    await page.getByRole("searchbox").fill("khong-co-sach-nay-zzz");
-    await expect(page.getByText("Không tìm thấy sách cho «khong-co-sach-nay-zzz».")).toBeVisible();
+    await page.getByRole("searchbox").fill("Giải tích hàm nâng cao");
+    await expect(page.getByText("Không tìm thấy sách cho «Giải tích hàm nâng cao».")).toBeVisible();
     await page.getByRole("link", { name: "Xóa bộ lọc" }).or(page.getByRole("button", { name: "Xóa bộ lọc" })).click();
     await expect(page).toHaveURL(/\/catalog$/);
   });
@@ -62,7 +63,7 @@ test.describe("zone catalog: danh sách và tìm sách", () => {
 
   test("phân trang client 20 dòng mỗi trang", async ({ page }) => {
     await loginAs(page, "librarian");
-    await page.goto("/catalog?q=" + encodeURIComponent("Sách phân trang catalog"));
+    await page.goto("/catalog?q=" + encodeURIComponent("Tuyển tập văn học Việt Nam"));
     const rows = page.getByRole("table").locator("tbody tr.ant-table-row");
     await expect(rows).toHaveCount(20);
     await page.locator(".ant-pagination-item-2").click();
@@ -115,21 +116,20 @@ test.describe("zone catalog: chi tiết sách và bản sao", () => {
   test("thủ thư thấy bản sao, lọc theo trạng thái", async ({ page }) => {
     await loginAs(page, "librarian");
     await openBook(page, STATES_BOOK);
-    await expect(copyRow(page, "CAT-AVL-1")).toContainText("Sẵn sàng");
-    await expect(copyRow(page, "CAT-LOST-1")).toContainText("Đã mất");
+    await expect(copyRow(page, "TV00031031")).toContainText("Sẵn sàng");
+    await expect(copyRow(page, "TV00031041")).toContainText("Đã mất");
     await page.getByText(/^Đã mất \(/).click();
-    await expect(copyRow(page, "CAT-LOST-1")).toBeVisible();
-    await expect(copyRow(page, "CAT-AVL-1")).toHaveCount(0);
+    await expect(copyRow(page, "TV00031041")).toBeVisible();
+    await expect(copyRow(page, "TV00031031")).toHaveCount(0);
   });
 
   test("thêm bản sao: thành công, trùng mã vạch báo lỗi trong hộp thoại", async ({ page }) => {
     await loginAs(page, "librarian");
-    const name = `Sách thêm bản sao ${Date.now()}`;
-    await createBook(page, name);
+    const { name } = await createBook(page);
     await openBook(page, name);
     await expect(page.getByText("Đầu sách này chưa có bản sao nào.")).toBeVisible();
 
-    const barcode = `E2E-CP-${Date.now()}`;
+    const barcode = copyBarcode();
     await page.getByRole("button", { name: /Thêm bản sao/ }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Mã vạch").fill(barcode);
@@ -152,19 +152,19 @@ test.describe("zone catalog: chi tiết sách và bản sao", () => {
       await page.locator(".ant-popover").getByRole("button", { name: action }).click();
     };
 
-    await confirm("CAT-LOAN-1", "Báo hư hỏng");
-    await expect(copyRow(page, "CAT-LOAN-1")).toContainText("Hư hỏng");
+    await confirm("TV00031001", "Báo hư hỏng");
+    await expect(copyRow(page, "TV00031001")).toContainText("Hư hỏng");
 
-    await copyRow(page, "CAT-LOAN-2").getByRole("button", { name: "Báo mất" }).click();
+    await copyRow(page, "TV00031002").getByRole("button", { name: "Báo mất" }).click();
     await expect(page.locator(".ant-popover").getByText("Việc đổi trạng thái ở đây không tính tiền phạt.")).toBeVisible();
     await page.locator(".ant-popover").getByRole("button", { name: "Báo mất" }).click();
-    await expect(copyRow(page, "CAT-LOAN-2")).toContainText("Đã mất");
+    await expect(copyRow(page, "TV00031002")).toContainText("Đã mất");
 
-    await confirm("CAT-DMG-1", "Đã sửa xong, cho mượn lại");
-    await expect(copyRow(page, "CAT-DMG-1")).toContainText("Sẵn sàng");
+    await confirm("TV00031011", "Đã sửa xong, cho mượn lại");
+    await expect(copyRow(page, "TV00031011")).toContainText("Sẵn sàng");
 
-    await confirm("CAT-RES-1", "Nhả giữ chỗ");
-    await expect(copyRow(page, "CAT-RES-1")).toContainText("Sẵn sàng");
+    await confirm("TV00031021", "Nhả giữ chỗ");
+    await expect(copyRow(page, "TV00031021")).toContainText("Sẵn sàng");
   });
 });
 
@@ -185,25 +185,27 @@ test.describe("zone catalog: thêm sách", () => {
     await expect(page.getByText("Nhập tác giả")).toBeVisible();
     await expect(page.getByText("Nhập giá bìa")).toBeVisible();
 
-    const name = `Sách E2E mới ${Date.now()}`;
+    const b = book();
+    const name = b.name;
     await page.getByLabel("Tên sách").fill(name);
-    await page.getByLabel("Tác giả").fill("Tác giả thử nghiệm");
-    await page.getByLabel("ISBN").fill("9786049999999");
-    await page.getByLabel("Giá bìa").fill("85000");
+    await page.getByLabel("Tác giả").fill(b.author);
+    await page.getByLabel("ISBN").fill(b.isbn);
+    await page.getByLabel("Giá bìa").fill(String(b.coverPrice));
     await page.getByRole("button", { name: "Lưu", exact: true }).click();
 
     await expect(page).toHaveURL(/\/catalog\/books\/[^/]+$/);
     await expect(page.getByRole("heading", { name })).toBeVisible();
-    await expect(page.getByText("9786049999999")).toBeVisible();
+    await expect(page.getByText(b.isbn)).toBeVisible();
   });
 
   test("Lưu và thêm bản sao mở sẵn hộp thoại thêm bản sao", async ({ page }) => {
     await loginAs(page, "librarian");
     await page.goto("/catalog/books/new");
     await page.waitForLoadState("networkidle");
-    await page.getByLabel("Tên sách").fill(`Sách E2E có bản sao ${Date.now()}`);
-    await page.getByLabel("Tác giả").fill("Tác giả thử nghiệm");
-    await page.getByLabel("Giá bìa").fill("1000");
+    const b = book();
+    await page.getByLabel("Tên sách").fill(b.name);
+    await page.getByLabel("Tác giả").fill(b.author);
+    await page.getByLabel("Giá bìa").fill(String(b.coverPrice));
     await page.getByRole("button", { name: "Lưu và thêm bản sao" }).click();
     await expect(page).toHaveURL(/addCopy=1/);
     await expect(page.getByRole("dialog").getByLabel("Mã vạch")).toBeVisible();
@@ -223,16 +225,16 @@ test.describe("zone catalog: tra theo mã vạch", () => {
     await page.waitForLoadState("networkidle");
     const input = page.getByLabel("Quét hoặc nhập mã vạch");
 
-    await input.fill("CAT-AVL-1");
+    await input.fill("TV00031031");
     await input.press("Enter");
     await expect(page.getByText(STATES_BOOK).first()).toBeVisible();
     await expect(page.getByText("Sẵn sàng").first()).toBeVisible();
     await expect(input).toHaveValue("");
     await expect(input).toBeFocused();
 
-    await input.fill("ZZZ-KHONG-CO");
+    await input.fill("TV99999998");
     await input.press("Enter");
-    await expect(page.getByText("Không tìm thấy bản sao có mã vạch «ZZZ-KHONG-CO».")).toBeVisible();
+    await expect(page.getByText("Không tìm thấy bản sao có mã vạch «TV99999998».")).toBeVisible();
     await expect(input).toBeFocused();
   });
 });

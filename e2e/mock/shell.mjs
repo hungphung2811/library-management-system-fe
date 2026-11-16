@@ -22,11 +22,17 @@ const notificationsOf = (u) => NOTIFICATIONS_BY_USER[u] ?? NOTIFICATIONS;
 
 // Hồ sơ cá nhân. Chỉ `reader` có thẻ độc giả (người khác: 404, trang hồ sơ phải ẩn thẻ không báo lỗi).
 const PROFILES = {
-  reader: { fullName: "Độc Giả Mẫu" },
-  librarian: { fullName: "Thủ Thư Mẫu" },
+  admin: { fullName: "Nguyễn Quốc Bảo", username: "bao.nguyen" },
+  staff: { fullName: "Trần Thị Thu Hà", username: "ha.tran" },
+  member: { fullName: "Trần Minh Khôi", username: "khoi.tran" },
+  newbie: { fullName: "Lý Gia Bảo", username: "bao.ly" },
+  newbie2: { fullName: "Dương Thanh Trúc", username: "truc.duong" },
+  librarian: { fullName: "Vũ Quang Huy", username: "huy.vu" },
+  reader: { fullName: "Đỗ Thị Mai Anh", username: "maianh.do" },
+  multi: { fullName: "Hồ Anh Tuấn", username: "tuan.ho" },
 };
 const READER_CARD = {
-  userId: USERS.reader.id, cardNo: "RD-READER-01", fullName: "Độc Giả Mẫu", email: "reader@example.test",
+  userId: USERS.reader.id, cardNo: "TV26-000512", fullName: PROFILES.reader.fullName, email: `${PROFILES.reader.username}@outlook.com`,
   readerType: "STUDENT", cardExpiryDate: "2030-12-31", status: "ACTIVE", cardValid: true,
 };
 
@@ -37,8 +43,8 @@ const PROVIDERS = [
   { name: "microsoft", displayName: "Microsoft" },
 ];
 const EXTERNAL = {
-  reader: [{ provider: "google", email: "reader@gmail.test", linkedAt: "2026-10-01T08:00:00Z", lastUsedAt: "2026-11-10T08:00:00Z" }],
-  librarian: [{ provider: "google", email: "librarian@gmail.test", linkedAt: "2026-10-02T08:00:00Z", lastUsedAt: null }],
+  reader: [{ provider: "google", email: "maianh.do@gmail.com", linkedAt: "2026-10-01T08:00:00Z", lastUsedAt: "2026-11-10T08:00:00Z" }],
+  librarian: [{ provider: "google", email: "huy.vu@gmail.com", linkedAt: "2026-10-02T08:00:00Z", lastUsedAt: null }],
 };
 
 /** `tokens(username)` do mock-gateway truyền vào để cấp token mới sau khi chuyển đơn vị. */
@@ -52,8 +58,8 @@ export function handle({ method, url, body, caller, send, tokens }) {
   if (method === "GET" && p === "/api/users/me") {
     if (!caller) return send(401, { code: "UNAUTHENTICATED", message: "Chưa đăng nhập" }), true;
     return send(200, {
-      id: USERS[caller].id, username: caller, fullName: PROFILES[caller]?.fullName ?? `Người dùng ${caller}`,
-      email: `${caller}@example.test`, departmentId: "dept-1", status: "ACTIVE",
+      id: USERS[caller].id, username: caller, fullName: PROFILES[caller]?.fullName ?? caller,
+      email: `${PROFILES[caller]?.username ?? caller}@outlook.com`, departmentId: "dept-1", status: "ACTIVE",
     }), true;
   }
   if (method === "GET" && p === "/api/users/me/reader-profile") {

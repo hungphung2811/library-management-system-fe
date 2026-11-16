@@ -2,11 +2,11 @@ import { expect, test, type Page } from "@playwright/test";
 import { loginAs } from "./helpers";
 
 // Dữ liệu mock (e2e/mock/data.mjs và e2e/mock/circulation.mjs). Hằng số đặt lại ở đây vì spec .ts không import .mjs.
-const READER_VALID = { id: "u0000000-0000-4000-8000-000000000001", name: "Lê Văn Một" };
-const READER_EXPIRED_CARD = { name: "Phạm Thị Hai" };
+const READER_VALID = { id: "u0000000-0000-4000-8000-000000000001", name: "Lê Văn Hùng" };
+const READER_EXPIRED_CARD = { name: "Phạm Thị Hương" };
 const FINE_USER_ID = "f1000000-0000-4000-8000-0000000000f1";
-const COPY_JAVA_1 = { id: "c0000000-0000-4000-8000-000000000001", barcode: "BC-JAVA-001" };
-const COPY_JAVA_2 = { id: "c0000000-0000-4000-8000-000000000002", barcode: "BC-JAVA-002" };
+const COPY_JAVA_1 = { id: "c0000000-0000-4000-8000-000000000001", barcode: "TV00010001" };
+const COPY_JAVA_2 = { id: "c0000000-0000-4000-8000-000000000002", barcode: "TV00010002" };
 const BORROWING_OVERDUE_ID = "bd000000-0000-4000-8000-000000000001";
 const BORROWING_RETURNED_ID = "bd000000-0000-4000-8000-000000000002";
 const TITLE_DSA = { id: "b0000000-0000-4000-8000-000000000002", name: "Cấu trúc dữ liệu và giải thuật" };
@@ -93,7 +93,7 @@ test.describe("zone circulation: lập phiếu mượn", () => {
     await page.locator("#reader-select").fill("Lê Văn");
     await page.locator(".ant-select-item-option", { hasText: READER_VALID.name }).click();
     await expect(page.getByText("Thẻ hợp lệ")).toBeVisible();
-    await expect(page.getByText("RD-0001")).toBeVisible();
+    await expect(page.getByText("SV21-04817")).toBeVisible();
 
     // Bước 2: quét sách
     const scan = page.getByLabel("Quét hoặc nhập mã vạch sách");
@@ -106,14 +106,14 @@ test.describe("zone circulation: lập phiếu mượn", () => {
     await scan.press("Enter");
     await expect(page.getByText("Mã này đã có trong phiếu.")).toBeVisible();
 
-    await scan.fill("BC-DSA-001"); // LOANED trong mock
+    await scan.fill("TV00010003"); // LOANED trong mock
     await scan.press("Enter");
     await expect(page.getByText(/đang cho mượn/)).toBeVisible();
     await expect(page.getByText("1 cuốn", { exact: true })).toBeVisible();
 
-    await scan.fill("BC-KHONG-CO");
+    await scan.fill("TV99999999");
     await scan.press("Enter");
-    await expect(page.getByText("Không tìm thấy bản sao có mã vạch «BC-KHONG-CO».")).toBeVisible();
+    await expect(page.getByText("Không tìm thấy bản sao có mã vạch «TV99999999».")).toBeVisible();
 
     // Bước 3: lập phiếu
     await page.getByRole("button", { name: "Lập phiếu mượn" }).click();
@@ -209,7 +209,7 @@ test.describe("zone circulation: xem phiếu, gia hạn, trả sách", () => {
 
     const scan = page.getByLabel("Quét hoặc nhập mã vạch sách");
     // Sách không thuộc phiếu
-    await scan.fill("BC-DSA-001");
+    await scan.fill("TV00010003");
     await scan.press("Enter");
     await expect(page.getByText("Sách này không thuộc phiếu mượn đang chọn.")).toBeVisible();
 

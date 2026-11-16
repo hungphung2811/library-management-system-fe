@@ -10,9 +10,9 @@ test.describe("BFF và session dùng chung", () => {
 
   test("BFF gắn Bearer và mã hóa lại từng đoạn đường dẫn (barcode chứa ? và #)", async ({ page }) => {
     await loginAs(page, "librarian");
-    const ok = await page.request.get(`${SHELL}/api/bff/book-copies/by-barcode/BC-JAVA-001`);
+    const ok = await page.request.get(`${SHELL}/api/bff/book-copies/by-barcode/TV00010001`);
     expect(ok.status()).toBe(200);
-    expect((await ok.json()).barcode).toBe("BC-JAVA-001");
+    expect((await ok.json()).barcode).toBe("TV00010001");
 
     // Nếu không mã hóa lại thì "?" biến thành query và "#" thành fragment, mock sẽ trả sách/bản sao khác hoặc 404 khác.
     const odd = await page.request.get(`${SHELL}/api/bff/book-copies/by-barcode/${encodeURIComponent("BC?x#y")}`);

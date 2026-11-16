@@ -1,8 +1,8 @@
 // Mock của zone circulation: /api/borrowings*, /api/reservations* (zone circulation sở hữu file này).
 // Trạng thái nằm trong bộ nhớ, dùng chung cho 2 worker: test tự lập phiếu/đặt trước mới (id riêng) rồi thao tác trên
 // đúng id đó; các bản ghi seed bên dưới chỉ để ĐỌC (không test nào sửa chúng, trừ hủy đặt trước quá hạn).
-// Mock không theo dõi "bản sao đang mượn": hai test có thể cùng mượn BC-JAVA-001 mà không va chạm. Trạng thái bản sao
-// lấy từ data.mjs (BC-DSA-001 là LOANED nên mượn sẽ bị từ chối COPY_NOT_AVAILABLE).
+// Mock không theo dõi "bản sao đang mượn": hai test có thể cùng mượn TV00010001 mà không va chạm. Trạng thái bản sao
+// lấy từ data.mjs (TV00010003 là LOANED nên mượn sẽ bị từ chối COPY_NOT_AVAILABLE).
 import { randomUUID } from "node:crypto";
 import { BOOKS, COPIES, DIRECTORY, KEYS, READER_PROFILES } from "./data.mjs";
 

@@ -25,17 +25,17 @@ function recount(titleId) {
 
 // Dữ liệu riêng: sách có đủ trạng thái bản sao để test đổi trạng thái (mỗi test dùng bản sao khác nhau).
 export const SEED = {
-  states: addBook("Sách thử trạng thái catalog", "Tác giả Trạng Thái", "9786041110001", 99000),
-  noCopies: addBook("Sách chưa có bản sao catalog", "Tác giả Rỗng", null, 50000),
+  states: addBook("Hoàng Lê nhất thống chí", "Ngô gia văn phái", "9786041110001", 99000),
+  noCopies: addBook("Nhật ký trong tù", "Hồ Chí Minh", "9786041110018", 50000),
 };
-for (let i = 1; i <= 6; i++) addCopy(SEED.states, `CAT-LOAN-${i}`, "LOANED");
-addCopy(SEED.states, "CAT-DMG-1", "DAMAGED");
-addCopy(SEED.states, "CAT-DMG-2", "DAMAGED");
-addCopy(SEED.states, "CAT-RES-1", "RESERVED");
-addCopy(SEED.states, "CAT-AVL-1", "AVAILABLE");
-addCopy(SEED.states, "CAT-LOST-1", "LOST");
+for (let i = 1; i <= 6; i++) addCopy(SEED.states, `TV0003100${i}`, "LOANED");
+addCopy(SEED.states, "TV00031011", "DAMAGED");
+addCopy(SEED.states, "TV00031012", "DAMAGED");
+addCopy(SEED.states, "TV00031021", "RESERVED");
+addCopy(SEED.states, "TV00031031", "AVAILABLE");
+addCopy(SEED.states, "TV00031041", "LOST");
 // 25 đầu sách để kiểm phân trang client 20 dòng/trang.
-for (let i = 1; i <= 25; i++) addBook(`Sách phân trang catalog ${String(i).padStart(2, "0")}`, "Tác giả Phân Trang", null, 10000 + i);
+for (let i = 1; i <= 25; i++) addBook(`Tuyển tập văn học Việt Nam, tập ${String(i).padStart(2, "0")}`, "Hội Nhà văn Việt Nam", null, 78000 + i * 1000);
 
 const TRANSITIONS = {
   LOANED: ["DAMAGED", "LOST", "AVAILABLE"],
