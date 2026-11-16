@@ -1,6 +1,7 @@
 "use client";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import {
   ArrowLeftRight,
   BookOpen,
@@ -30,6 +31,11 @@ export type ShellFrameProps = {
   current?: string;
   /** basePath của zone ("/admin"); `usePathname()` không gồm basePath nên ghép lại để so với href đầy đủ. */
   basePath?: string;
+  /**
+   * Các đường dẫn thuộc CÙNG app với khung này: link khớp (bằng href hoặc nằm dưới href đó) dùng next/link nên giữ sidebar
+   * và không tải lại trang. Mặc định rỗng: mọi link là <a> (zone admin có basePath nên phải như vậy).
+   */
+  clientHrefs?: string[];
   user?: { id: string; name: string; role?: string };
   /** Đơn vị hiện tại (claim tenantId), để UserMenu đánh dấu khi chuyển đơn vị. */
   tenantId?: string;
@@ -72,13 +78,19 @@ function findActive(items: VisibleNavLink[], path: string) {
 
 const groupId = (href: string) => `nav-group-${href.replace(/\W+/g, "-")}`;
 
+/** next/link cho điều hướng trong cùng app (giữ sidebar, không tải lại trang), <a> cho link còn lại. */
+function NavAnchor({ client, href, ...rest }: ComponentProps<"a"> & { client: boolean; href: string }) {
+  return client ? <Link href={href} {...rest} /> : <a href={href} {...rest} />;
+}
+
 /**
  * Khung bám Metronic demo1: sidebar sáng 250px (logo ở đầu, nhóm mục có nhãn nhỏ), thanh trên trắng cao 70px
  * có nút thu gọn sidebar, nền trắng, nội dung là các card viền mảnh.
  * Chỉ MỘT phần tử <nav> (chứa cả link và khối người dùng) để landmark không bị trùng.
- * Sang zone admin là full page load nên dùng thẻ <a>, không dùng next/link (sidebar hiện dùng <a> cho mọi link).
+ * Link trong cùng app (clientHrefs) dùng next/link; sang zone admin là full page load nên vẫn dùng thẻ <a>.
  */
-export function ShellFrame({ items, current, basePath = "", user, tenantId, crumb, crumbs, children }: ShellFrameProps) {
+export function ShellFrame({ items, current, basePath = "", clientHrefs = [], user, tenantId, crumb, crumbs, children }: ShellFrameProps) {
+  const isClient = (href: string) => clientHrefs.some((p) => (p === "/" ? href === "/" : href === p || href.startsWith(`${p}/`)));
   // Trong zone, usePathname() trả đường dẫn KHÔNG gồm basePath (app-router bỏ basePath khỏi pathname), nên ghép lại.
   const pathname = usePathname();
   const path = `${basePath}${pathname === "/" ? "" : pathname}`.replace(/\/+$/, "") || "/";
@@ -123,9 +135,9 @@ export function ShellFrame({ items, current, basePath = "", user, tenantId, crum
       >
         <nav aria-label="Điều hướng chính" className="flex min-h-0 flex-1 flex-col">
           <div className="flex h-[64px] shrink-0 items-center justify-between px-5">
-            <a href="/" aria-label="Thư viện, về trang chủ" className="no-underline">
+            <NavAnchor client={isClient("/")} href="/" aria-label="Thư viện, về trang chủ" className="no-underline">
               <Logo />
-            </a>
+            </NavAnchor>
             <button
               type="button"
               aria-label="Đóng menu"
@@ -193,7 +205,8 @@ export function ShellFrame({ items, current, basePath = "", user, tenantId, crum
                             const on = active?.href === c.href;
                             return (
                               <li key={c.href} className="mb-px">
-                                <a
+                                <NavAnchor
+                                  client={isClient(c.href)}
                                   href={c.href}
                                   aria-current={on ? (active.exact ? "page" : "true") : undefined}
                                   className={`flex min-h-8 items-center rounded-md px-3 py-1.5 text-[13px] no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500 motion-reduce:transition-none ${
@@ -201,21 +214,22 @@ export function ShellFrame({ items, current, basePath = "", user, tenantId, crum
                                   }`}
                                 >
                                   {c.label}
-                                </a>
+                                </NavAnchor>
                               </li>
                             );
                           })}
                         </ul>
                       </>
                     ) : (
-                      <a
+                      <NavAnchor
+                        client={isClient(l.href)}
                         href={l.href}
                         aria-current={inSection ? (active?.exact ? "page" : "true") : undefined}
                         className={rowClass}
                       >
                         {icon}
                         {l.label}
-                      </a>
+                      </NavAnchor>
                     )}
                   </li>
                 </Fragment>
@@ -286,9 +300,9 @@ export function ShellFrame({ items, current, basePath = "", user, tenantId, crum
           )}
           <ol className="m-0 flex list-none items-center gap-1.5 p-0 text-sm text-muted">
             <li>
-              <a href="/" className="font-medium text-muted no-underline hover:text-brand-600">
+              <NavAnchor client={isClient("/")} href="/" className="font-medium text-muted no-underline hover:text-brand-600">
                 Trang chủ
-              </a>
+              </NavAnchor>
             </li>
             {parentLabel && parentLabel !== currentLabel && (
               <>

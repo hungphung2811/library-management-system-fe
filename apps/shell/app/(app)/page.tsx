@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowLeftRight, BookOpen, Button, KeyRound, PageHeader, ShieldCheck, Tag, User,
@@ -7,6 +8,13 @@ import {
 import { getSession, gatewayFetch } from "@mfe/api";
 
 type Tile = { href: string; title: string; desc: string; icon: ReactNode; tile: string };
+
+// Sách, Mượn trả, Hồ sơ cùng app với trang chủ nên dùng next/link (giữ sidebar). Quản trị là zone riêng và /change-password
+// nằm ngoài group (app), nên hai chỗ đó giữ <a> (tải lại trang).
+const CLIENT_LINKS = new Set(["/catalog", "/circulation", "/profile"]);
+function ModuleLink({ href, ...rest }: ComponentProps<"a"> & { href: string }) {
+  return CLIENT_LINKS.has(href) ? <Link href={href} {...rest} /> : <a href={href} {...rest} />;
+}
 type Recent = { id: string; message: string; createdAt: string; readAt?: string | null };
 
 // Lối tắt của từng phân hệ; hiện theo quyền bằng đúng quy tắc của thanh bên (visibleNav trên danh sách nav).
@@ -54,7 +62,7 @@ export default async function Home() {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="grid grid-cols-2 gap-5">
           {modules.map((m) => (
-            <a
+            <ModuleLink
               key={m.href}
               href={m.href}
               className="group flex flex-col rounded-xl [&:last-child:nth-child(odd)]:col-span-2 border border-line bg-white p-5 text-ink no-underline shadow-xs transition-colors hover:border-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 motion-reduce:transition-none"
@@ -62,7 +70,7 @@ export default async function Home() {
               <span className={`grid size-11 place-items-center rounded-xl ${m.tile}`}>{m.icon}</span>
               <span className="mt-8 text-2xl font-semibold group-hover:text-brand-500">{m.title}</span>
               <span className="mt-1 text-sm text-muted">{m.desc}</span>
-            </a>
+            </ModuleLink>
           ))}
         </div>
 
@@ -121,12 +129,12 @@ export default async function Home() {
           </div>
           {modules.some((m) => m.href === "/circulation") && (
           <div className="border-t border-line px-8 py-4 text-center">
-            <a
+            <Link
               href="/circulation"
               className="border-0 border-b border-dashed border-brand-500 pb-px text-sm font-medium text-brand-500 no-underline hover:text-brand-600"
             >
               Mở phân hệ Mượn trả
-            </a>
+            </Link>
           </div>
           )}
         </section>

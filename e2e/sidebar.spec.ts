@@ -116,3 +116,68 @@ test.describe("sidebar: mục con theo quyền và mục đang mở", () => {
     await expect(page.getByRole("navigation").getByRole("button", { name: "Quản trị" })).toHaveAttribute("aria-expanded", "true");
   });
 });
+
+// Bước 5 (docs/design/2026-11-16-gom-zone.md): trong app gộp (/, /catalog, /circulation) link dùng next/link nên giữ sidebar,
+// còn sang zone admin vẫn là <a> (tải lại trang). `window.__spa` là dấu hiệu: mất đi nghĩa là trang đã tải lại.
+const spa = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => (window as unknown as { __spa?: number }).__spa);
+const markSpa = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => {
+    (window as unknown as { __spa?: number }).__spa = 1;
+  });
+
+test.describe("điều hướng phía client trong app gộp", () => {
+  test("Sách -> Trang chủ bằng breadcrumb: không tải lại, sidebar vẫn thu gọn", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/catalog");
+    await page.getByRole("navigation").getByRole("button", { name: "Thu gọn menu" }).click();
+    await expect(page.getByRole("navigation")).toBeHidden();
+    await markSpa(page);
+
+    await page.getByRole("link", { name: "Trang chủ" }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
+    expect(await spa(page)).toBe(1);
+    await expect(page.getByRole("navigation")).toBeHidden();
+  });
+
+  test("Sách -> Mượn trả bằng sidebar: không tải lại, mục đang mở đổi theo", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/catalog");
+    const nav = page.getByRole("navigation");
+    await markSpa(page);
+
+    await openGroup(nav, "Mượn trả");
+    await nav.getByRole("link", { name: "Lập phiếu mượn" }).click();
+    await expect(page).toHaveURL(/\/circulation\/borrow$/);
+    await expect(page.getByRole("heading", { name: "Lập phiếu mượn" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Lập phiếu mượn" })).toHaveAttribute("aria-current", "page");
+    expect(await spa(page)).toBe(1);
+  });
+
+  test("sang Quản trị vẫn tải lại trang (zone riêng) và vào được /admin", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/catalog");
+    const nav = page.getByRole("navigation");
+    await markSpa(page);
+
+    await openGroup(nav, "Quản trị");
+    await nav.getByRole("link", { name: "Phòng ban" }).click();
+    await expect(page).toHaveURL(/\/admin\/departments$/);
+    await expect(page.getByRole("heading", { name: "Phòng ban" })).toBeVisible();
+    expect(await spa(page)).toBeUndefined();
+  });
+
+  test("access token hết hạn (còn refresh token): bấm link phía client vẫn về được trang đích", async ({ page }) => {
+    await loginAs(page, "admin");
+    await page.goto("/catalog");
+    const nav = page.getByRole("navigation");
+    await openGroup(nav, "Mượn trả");
+    await page.context().clearCookies({ name: "lms_at" });
+
+    await nav.getByRole("link", { name: "Nhận trả sách" }).click();
+    await expect(page).toHaveURL(/\/circulation\/return$/);
+    await expect(page.getByRole("heading", { name: "Nhận trả sách" })).toBeVisible();
+    expect((await page.context().cookies()).some((c) => c.name === "lms_at")).toBeTruthy();
+  });
+});

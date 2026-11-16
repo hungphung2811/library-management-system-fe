@@ -25,6 +25,7 @@ export function AppShell({
   links = getNavLinks(),
   crumb,
   crumbs,
+  clientHrefs,
   children,
 }: {
   /**
@@ -40,6 +41,8 @@ export function AppShell({
   crumb?: string;
   /** Tên breadcrumb theo đường dẫn, cho layout chung (ví dụ { "/profile": "Hồ sơ" }). */
   crumbs?: Record<string, string>;
+  /** Đường dẫn cùng app với khung này: link khớp dùng next/link (giữ sidebar, không tải lại trang). Xem ShellFrame. */
+  clientHrefs?: string[];
   children: ReactNode;
 }) {
   const items = visibleNav(links, session);
@@ -50,6 +53,7 @@ export function AppShell({
       basePath={basePath}
       crumb={crumb}
       crumbs={crumbs}
+      clientHrefs={clientHrefs}
       tenantId={session?.tenantId}
       user={
         session
