@@ -1,6 +1,5 @@
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
 import { Button, ErrorPanel, Input, NoPermission, PageHeader } from "@mfe/ui";
-import { AdminNav } from "../_components/AdminNav";
 import { load, pageNo, qp } from "../data";
 import type { AuditLogView, PageView } from "../types";
 import { AuditTable } from "./AuditTable";
@@ -35,7 +34,6 @@ export default async function AuditLogsPage({
     <>
       <PageHeader title="Nhật ký hoạt động" description="Các sự kiện nghiệp vụ được ghi lại trong hệ thống." />
       <div className="flex max-w-[1200px] flex-col gap-4">
-        <AdminNav session={s} current="/admin/audit-logs" />
         {/* Form GET thuần: hoạt động cả khi JS chưa tải; nộp form là về trang 1. */}
         <form method="get" action="/admin/audit-logs" className="flex flex-wrap items-end gap-3">
           <label className="flex min-w-64 flex-1 basis-64 flex-col gap-1 text-sm sm:max-w-sm">

@@ -1,9 +1,10 @@
 "use client";
-import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import {
   ArrowLeftRight,
   BookOpen,
+  ChevronDown,
   ChevronRight,
   LayoutDashboard,
   LayoutGrid,
@@ -18,14 +19,17 @@ import {
 import { Logo } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
 import { UserMenu } from "./UserMenu";
+import type { VisibleNavLink } from "./nav-links";
 
 export type ShellFrameProps = {
-  items: { href: string; label: string; group?: string }[];
+  items: VisibleNavLink[];
   /**
-   * Đường dẫn của mục đang mở. Có thì dùng nguyên (admin truyền "/admin" vì usePathname của zone đã bỏ basePath);
-   * thiếu thì tự suy ra từ usePathname().
+   * Mục dự phòng khi URL không khớp mục nào (trang 503 của zone, trang ngoài sidebar). Bỏ trống ở shell:
+   * mục đang mở tự suy ra từ URL.
    */
   current?: string;
+  /** basePath của zone ("/admin"); `usePathname()` không gồm basePath nên ghép lại để so với href đầy đủ. */
+  basePath?: string;
   user?: { id: string; name: string; role?: string };
   /** Đơn vị hiện tại (claim tenantId), để UserMenu đánh dấu khi chuyển đơn vị. */
   tenantId?: string;
@@ -39,14 +43,14 @@ export type ShellFrameProps = {
 const matchesPath = (pathname: string, href: string) =>
   href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
-/** Chọn href dài nhất khớp pathname (riêng "/" chỉ khớp đúng "/"). */
+/** Chọn href dài nhất khớp pathname (riêng "/" chỉ khớp đúng "/"). Dùng cho crumbs theo đường dẫn. */
 function longestMatch(pathname: string, hrefs: string[]): string | undefined {
   let best: string | undefined;
   for (const h of hrefs) if (matchesPath(pathname, h) && (best === undefined || h.length > best.length)) best = h;
   return best;
 }
 
-const ICON_PROPS = { size: 18, strokeWidth: 1.75, "aria-hidden": true } as const;
+const ICON_PROPS = { size: 17, strokeWidth: 1.75, "aria-hidden": true } as const;
 
 const ICONS: Record<string, ReactNode> = {
   "/": <LayoutDashboard {...ICON_PROPS} />,
@@ -55,13 +59,31 @@ const ICONS: Record<string, ReactNode> = {
   "/admin": <ShieldCheck {...ICON_PROPS} />,
 };
 
+/** Mục (lá) khớp nhất với đường dẫn: bằng nhau hoặc là tiền tố theo ranh giới "/", href dài nhất thắng. */
+function findActive(items: VisibleNavLink[], path: string) {
+  type Leaf = { href: string; label: string; parent?: VisibleNavLink };
+  const leaves: Leaf[] = items.flatMap((l): Leaf[] =>
+    l.children ? l.children.map((c) => ({ ...c, parent: l })) : [{ href: l.href, label: l.label }],
+  );
+  const match = (href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
+  const hit = leaves.filter((l) => match(l.href)).sort((a, b) => b.href.length - a.href.length)[0];
+  return hit && { ...hit, exact: hit.href === path };
+}
+
+const groupId = (href: string) => `nav-group-${href.replace(/\W+/g, "-")}`;
+
 /**
- * Khung bám Metronic demo1: sidebar sáng 280px (logo ở đầu, nhóm mục có nhãn nhỏ), thanh trên trắng cao 70px
+ * Khung bám Metronic demo1: sidebar sáng 250px (logo ở đầu, nhóm mục có nhãn nhỏ), thanh trên trắng cao 70px
  * có nút thu gọn sidebar, nền trắng, nội dung là các card viền mảnh.
  * Chỉ MỘT phần tử <nav> (chứa cả link và khối người dùng) để landmark không bị trùng.
  * Sang zone admin là full page load nên dùng thẻ <a>, không dùng next/link (sidebar hiện dùng <a> cho mọi link).
  */
-export function ShellFrame({ items, current: currentProp, user, tenantId, crumb, crumbs, children }: ShellFrameProps) {
+export function ShellFrame({ items, current, basePath = "", user, tenantId, crumb, crumbs, children }: ShellFrameProps) {
+  // Trong zone, usePathname() trả đường dẫn KHÔNG gồm basePath (app-router bỏ basePath khỏi pathname), nên ghép lại.
+  const pathname = usePathname();
+  const path = `${basePath}${pathname === "/" ? "" : pathname}`.replace(/\/+$/, "") || "/";
+  const active = findActive(items, path);
+  const [toggled, setToggled] = useState<Record<string, boolean>>({}); // nhóm do người dùng tự mở/thu gọn
   const [open, setOpen] = useState(false); // ngăn kéo trên màn hình nhỏ
   const [collapsed, setCollapsed] = useState(false); // ẩn sidebar trên màn hình lớn
 
@@ -72,10 +94,15 @@ export function ShellFrame({ items, current: currentProp, user, tenantId, crumb,
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const pathname = usePathname();
-  const current = currentProp ?? longestMatch(pathname, items.map((i) => i.href));
+  // Không khớp mục lá nào (trang gốc của nhóm như /circulation, trang 503 của zone): `current` nếu có,
+  // không thì suy từ URL (href mục cấp trên dài nhất khớp) để biết nhóm nào đang mở.
+  const currentHref = current ?? longestMatch(path, items.map((i) => i.href));
+  const fallback = active ? undefined : items.find((i) => i.href === currentHref);
+  // Tên breadcrumb: crumb (prop đơn) > crumbs (theo đường dẫn, cho layout chung) > mục sidebar khớp URL > mục dự phòng.
   const crumbKey = crumbs ? longestMatch(pathname, Object.keys(crumbs)) : undefined;
-  const currentLabel = crumb ?? (crumbKey ? crumbs?.[crumbKey] : undefined) ?? items.find((i) => i.href === current)?.label;
+  const crumbLabel = crumb ?? (crumbKey ? crumbs?.[crumbKey] : undefined);
+  const currentLabel = crumbLabel ?? active?.label ?? (fallback?.children ? undefined : fallback?.label);
+  const parentLabel = crumbLabel ? undefined : (active?.parent ?? fallback)?.label;
 
   return (
     <div className="min-h-screen">
@@ -90,12 +117,12 @@ export function ShellFrame({ items, current: currentProp, user, tenantId, crumb,
 
       <aside
         // `invisible` khi đã trượt ra ngoài: gỡ link khỏi thứ tự Tab và cây trợ năng (translate thôi thì phím Tab vẫn vào được).
-        className={`fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col border-r border-line bg-white transition-[transform,visibility] duration-200 motion-reduce:transition-none ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[250px] flex-col border-r border-line bg-white transition-[transform,visibility] duration-200 motion-reduce:transition-none ${
           open ? "visible translate-x-0" : "invisible -translate-x-full"
         } ${collapsed ? "lg:invisible lg:-translate-x-full" : "lg:visible lg:translate-x-0"}`}
       >
         <nav aria-label="Điều hướng chính" className="flex min-h-0 flex-1 flex-col">
-          <div className="flex h-[76px] shrink-0 items-center justify-between px-6">
+          <div className="flex h-[64px] shrink-0 items-center justify-between px-5">
             <a href="/" aria-label="Thư viện, về trang chủ" className="no-underline">
               <Logo />
             </a>
@@ -107,43 +134,89 @@ export function ShellFrame({ items, current: currentProp, user, tenantId, crumb,
             >
               <X size={18} strokeWidth={1.75} />
             </button>
+            <button
+              type="button"
+              aria-label="Thu gọn menu"
+              aria-expanded={!collapsed}
+              onClick={() => setCollapsed(true)}
+              className="hidden size-8 cursor-pointer place-items-center rounded-md border-0 bg-transparent text-muted hover:bg-subtle hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500 lg:grid"
+            >
+              <PanelLeftClose size={18} strokeWidth={1.75} />
+            </button>
           </div>
 
-          <ul className="m-0 flex-1 list-none overflow-y-auto px-4 pt-2 pb-4">
+          <ul className="m-0 flex-1 list-none overflow-y-auto px-3 pt-1 pb-3">
             {items.map((l, i) => {
-              const active = l.href === current;
               const newGroup = l.group && l.group !== items[i - 1]?.group;
+              const inSection = l.children ? (active ? active.parent === l : l.href === currentHref) : active?.href === l.href;
+              const expanded = l.children ? (toggled[l.href] ?? inSection) : false;
+              const icon = (
+                <span
+                  className={`grid size-5 shrink-0 place-items-center transition-colors motion-reduce:transition-none ${
+                    inSection ? "text-brand-600" : "text-muted group-hover:text-brand-600"
+                  }`}
+                >
+                  {ICONS[l.href] ?? <LayoutGrid {...ICON_PROPS} />}
+                </span>
+              );
+              const rowClass = `group flex min-h-9 w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13.5px] no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500 motion-reduce:transition-none ${
+                inSection && !l.children ? "bg-brand-50 font-semibold text-brand-600" : inSection ? "font-semibold text-brand-600 hover:bg-subtle" : "font-medium text-ink hover:bg-subtle"
+              }`;
               return (
                 <Fragment key={l.href}>
                   {newGroup && (
-                    <li aria-hidden className="mt-6 mb-2 px-3 text-[11px] font-semibold tracking-[0.08em] text-[#8a91a8] uppercase">
+                    <li aria-hidden className="mt-4 mb-1.5 px-3 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase">
                       {l.group}
                     </li>
                   )}
-                  <li className="relative mb-1">
-                    {active && (
-                      <span aria-hidden className="absolute top-2 -left-4 h-[calc(100%-1rem)] w-[3px] rounded-r-full bg-brand-500" />
-                    )}
-                    <a
-                      href={l.href}
-                      aria-current={active ? "page" : undefined}
-                      className={`group flex items-center gap-3 rounded-xl p-1.5 pr-3 text-sm no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500 motion-reduce:transition-none ${
-                        active
-                          ? "bg-brand-50 font-semibold text-brand-600"
-                          : "font-medium text-ink hover:bg-subtle"
-                      }`}
-                    >
-                      <span
-                        className={`grid size-9 shrink-0 place-items-center rounded-lg transition-colors motion-reduce:transition-none ${
-                          active
-                            ? "bg-brand-500 text-white shadow-[0_2px_6px_rgba(27,132,255,.35)]"
-                            : "bg-subtle text-muted group-hover:bg-white group-hover:text-brand-500"
-                        }`}
+                  <li className="relative mb-0.5">
+                    {l.children ? (
+                      <>
+                        <button
+                          type="button"
+                          aria-expanded={expanded}
+                          aria-controls={groupId(l.href)}
+                          onClick={() => setToggled((t) => ({ ...t, [l.href]: !expanded }))}
+                          className={`${rowClass} cursor-pointer border-0 bg-transparent`}
+                        >
+                          {icon}
+                          <span className="flex-1">{l.label}</span>
+                          <ChevronDown
+                            size={16}
+                            strokeWidth={1.75}
+                            aria-hidden
+                            className={`shrink-0 transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                        <ul id={groupId(l.href)} hidden={!expanded} className="m-0 mt-0.5 mb-1 ml-[22px] list-none border-l border-line p-0 pl-2">
+                          {l.children.map((c) => {
+                            const on = active?.href === c.href;
+                            return (
+                              <li key={c.href} className="mb-px">
+                                <a
+                                  href={c.href}
+                                  aria-current={on ? (active.exact ? "page" : "true") : undefined}
+                                  className={`flex min-h-8 items-center rounded-md px-3 py-1.5 text-[13px] no-underline transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-500 motion-reduce:transition-none ${
+                                    on ? "bg-brand-50 font-semibold text-brand-600" : "font-medium text-ink hover:bg-subtle"
+                                  }`}
+                                >
+                                  {c.label}
+                                </a>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </>
+                    ) : (
+                      <a
+                        href={l.href}
+                        aria-current={inSection ? (active?.exact ? "page" : "true") : undefined}
+                        className={rowClass}
                       >
-                        {ICONS[l.href] ?? <LayoutGrid {...ICON_PROPS} />}
-                      </span>
-                      {l.label}
-                    </a>
+                        {icon}
+                        {l.label}
+                      </a>
+                    )}
                   </li>
                 </Fragment>
               );
@@ -188,7 +261,7 @@ export function ShellFrame({ items, current: currentProp, user, tenantId, crumb,
         </nav>
       </aside>
 
-      <div className={`flex min-h-screen flex-col transition-[padding] duration-200 motion-reduce:transition-none ${collapsed ? "lg:pl-0" : "lg:pl-[280px]"}`}>
+      <div className={`flex min-h-screen flex-col transition-[padding] duration-200 motion-reduce:transition-none ${collapsed ? "lg:pl-0" : "lg:pl-[250px]"}`}>
         <header className="sticky top-0 z-20 flex h-[70px] shrink-0 items-center gap-4 border-b border-transparent bg-white/95 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
@@ -199,22 +272,33 @@ export function ShellFrame({ items, current: currentProp, user, tenantId, crumb,
           >
             <Menu size={18} strokeWidth={1.75} />
           </button>
-          <button
-            type="button"
-            aria-label={collapsed ? "Hiện thanh bên" : "Thu gọn thanh bên"}
-            aria-expanded={!collapsed}
-            onClick={() => setCollapsed((v) => !v)}
-            className="hidden size-9 cursor-pointer place-items-center rounded-lg border border-line bg-white text-muted hover:bg-subtle hover:text-ink lg:grid"
-          >
-            {collapsed ? <PanelLeftOpen size={18} strokeWidth={1.75} /> : <PanelLeftClose size={18} strokeWidth={1.75} />}
-          </button>
+          {/* Sidebar thu gọn là ẩn hẳn, nên nút mở lại phải nằm ngoài sidebar; khi sidebar đang hiện, nút toggle nằm cạnh logo. */}
+          {collapsed && (
+            <button
+              type="button"
+              aria-label="Mở rộng menu"
+              aria-expanded={false}
+              onClick={() => setCollapsed(false)}
+              className="hidden size-9 cursor-pointer place-items-center rounded-lg border border-line bg-white text-muted hover:bg-subtle hover:text-ink lg:grid"
+            >
+              <PanelLeftOpen size={18} strokeWidth={1.75} />
+            </button>
+          )}
           <ol className="m-0 flex list-none items-center gap-1.5 p-0 text-sm text-muted">
             <li>
               <a href="/" className="font-medium text-muted no-underline hover:text-brand-600">
                 Trang chủ
               </a>
             </li>
-            {currentLabel && current !== "/" && (
+            {parentLabel && parentLabel !== currentLabel && (
+              <>
+                <li aria-hidden className="grid place-items-center text-[#b5bacb]">
+                  <ChevronRight size={14} strokeWidth={2} />
+                </li>
+                <li>{parentLabel}</li>
+              </>
+            )}
+            {currentLabel && path !== "/" && (
               <>
                 <li aria-hidden className="grid place-items-center text-[#b5bacb]">
                   <ChevronRight size={14} strokeWidth={2} />

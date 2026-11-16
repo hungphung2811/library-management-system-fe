@@ -1,6 +1,5 @@
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
 import { Card, ErrorPanel, NoPermission, PageHeader } from "@mfe/ui";
-import { AdminNav } from "../_components/AdminNav";
 import { load, qp } from "../data";
 import type { DepartmentNode } from "../types";
 import { DepartmentsView } from "./DepartmentsView";
@@ -27,7 +26,6 @@ export default async function DepartmentsPage({
     <>
       <PageHeader title="Phòng ban" description="Cây phòng ban của đơn vị." />
       <div className="flex max-w-[1200px] flex-col gap-4">
-        <AdminNav session={s} current="/admin/departments" />
         {tree.error ? (
           <ErrorPanel error={tree.error} retryHref="/admin/departments" />
         ) : (

@@ -10,7 +10,7 @@ test.describe("phân quyền: thanh điều hướng", () => {
       const p = await ctx.newPage();
       await loginAs(p, user);
       await p.goto("/");
-      await expect(p.getByRole("navigation").getByRole("link", { name: "Quản trị" }), `user ${user}`).toHaveCount(visible);
+      await expect(p.getByRole("navigation").getByRole("button", { name: "Quản trị" }), `user ${user}`).toHaveCount(visible);
       await ctx.close();
     }
   });
@@ -21,7 +21,7 @@ test.describe("phân quyền: thanh điều hướng", () => {
       const p = await ctx.newPage();
       await loginAs(p, user);
       await p.goto("/");
-      await expect(p.getByRole("navigation").getByRole("link", { name: "Mượn trả" }), `user ${user}`).toHaveCount(visible);
+      await expect(p.getByRole("navigation").getByRole("button", { name: "Mượn trả" }), `user ${user}`).toHaveCount(visible);
       await ctx.close();
     }
   });

@@ -1,6 +1,5 @@
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
 import { DataTable, ErrorPanel, NoPermission, PageHeader } from "@mfe/ui";
-import { AdminNav } from "../_components/AdminNav";
 import { load, pageNo, qp } from "../data";
 import type { DepartmentView, UserPage } from "../types";
 import { CreateUserButton } from "./_components/CreateUserButton";
@@ -57,7 +56,6 @@ export default async function UsersPage({
         }
       />
       <div className="flex max-w-[1200px] flex-col gap-4">
-        <AdminNav session={s} current="/admin/users" />
         <UserFilters departments={deptOptions} />
         {users.error ? (
           <ErrorPanel error={users.error} retryHref="/admin/users" />

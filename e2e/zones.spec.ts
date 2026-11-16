@@ -30,6 +30,11 @@ test.describe("độc lập giữa các zone", () => {
     expect(down?.status()).toBe(503);
     await expect(page.getByRole("heading", { name: /admin.*không khả dụng/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Về trang chủ/ })).toBeVisible();
+    // Trang 503 phải nằm trong khung ứng dụng (sidebar + header), không rơi về bản HTML tĩnh của lib-zone-proxy.
+    await expect(page.getByText("Chưa kết nối được tới module này")).toBeVisible();
+    await expect(page.locator("aside nav")).toBeVisible();
+    // Có hai <header>: thanh trên của khung và PageHeader của nội dung; chỉ cần thanh trên (phần tử đầu tiên) hiện.
+    await expect(page.locator("header").first()).toBeVisible();
 
     // Sách và Mượn trả giờ là trang của chính shell nên vẫn sống khi admin chết.
     for (const path of ["/catalog", "/circulation", "/"]) {

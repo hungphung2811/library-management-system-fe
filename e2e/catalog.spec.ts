@@ -69,19 +69,22 @@ test.describe("zone catalog: danh sách và tìm sách", () => {
     await expect(rows).toHaveCount(5);
   });
 
-  test("nút Thêm sách và Tra theo mã vạch chỉ hiện khi có quyền", async ({ page, browser }) => {
+  test("mục Thêm sách và Tra mã vạch ở sidebar chỉ hiện khi có quyền; đầu danh sách không còn nút điều hướng", async ({ page, browser }) => {
     await loginAs(page, "librarian");
     await page.goto("/catalog");
-    await expect(page.getByRole("link", { name: "Thêm sách" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Tra theo mã vạch" })).toBeVisible();
+    const nav = page.getByRole("navigation");
+    await expect(nav.getByRole("link", { name: "Thêm sách" })).toHaveAttribute("href", "/catalog/books/new");
+    await expect(nav.getByRole("link", { name: "Tra mã vạch" })).toHaveAttribute("href", "/catalog/barcode");
+    await expect(page.getByRole("main").getByRole("link", { name: "Tra theo mã vạch" })).toHaveCount(0);
 
     const ctx = await browser.newContext();
     const r = await ctx.newPage();
     await loginAs(r, "reader");
     await r.goto("/catalog");
     await expect(r.getByRole("table")).toBeVisible();
-    await expect(r.getByRole("link", { name: "Thêm sách" })).toHaveCount(0);
-    await expect(r.getByRole("link", { name: "Tra theo mã vạch" })).toHaveCount(0);
+    await expect(r.getByRole("navigation").getByRole("link", { name: "Danh sách sách" })).toBeVisible();
+    await expect(r.getByRole("navigation").getByRole("link", { name: "Thêm sách" })).toHaveCount(0);
+    await expect(r.getByRole("navigation").getByRole("link", { name: "Tra mã vạch" })).toHaveCount(0);
     await ctx.close();
   });
 });

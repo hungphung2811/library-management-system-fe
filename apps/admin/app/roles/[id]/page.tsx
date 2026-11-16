@@ -1,6 +1,5 @@
 import { PERMISSIONS, can, requireSession } from "@mfe/api";
 import { Breadcrumb, Button, ErrorPanel, NoPermission, PageHeader, Result } from "@mfe/ui";
-import { AdminNav } from "../../_components/AdminNav";
 import { load } from "../../data";
 import { isAdminRole, type PermissionView, type RoleView } from "../../types";
 import { RoleDetail } from "./RoleDetail";
@@ -52,7 +51,6 @@ export default async function RoleDetailPage({ params }: { params: Promise<{ id:
           ]}
         />
         <PageHeader title={r.name} description={r.description} />
-        <AdminNav session={s} current="/admin/roles" />
         <RoleDetail
           roleId={r.id}
           isAdmin={isAdminRole(r)}
