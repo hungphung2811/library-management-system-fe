@@ -8,3 +8,6 @@ playwright-report
 .worktrees/
 
 .playwright-mcp/
+
+# Build tĩnh của app Vite
+dist
