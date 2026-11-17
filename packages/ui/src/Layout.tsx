@@ -27,10 +27,10 @@ export function PageHeader({
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3 pt-2">
       <div className="min-w-0">
-        <Title level={1} className="mb-0! text-xl! leading-snug! font-medium!">
+        <Title level={1} className="mb-0! text-lg! leading-snug! font-semibold!">
           {title}
         </Title>
-        {description && <p className="mt-1 mb-0 text-sm text-muted">{description}</p>}
+        {description && <p className="mt-0.5 mb-0 text-[13px] text-muted">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>

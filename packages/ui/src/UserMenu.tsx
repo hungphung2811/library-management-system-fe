@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { bffFetch } from "@mfe/api/client";
 import { Dropdown } from "./antd";
+import { ChevronDown } from "./icons";
 import { TenantSwitchModal, type TenantSummary } from "./TenantSwitchModal";
 
 const ITEM =
@@ -94,9 +95,19 @@ export function UserMenu({
           aria-haspopup="menu"
           aria-expanded={open}
           title={user.name}
-          className="grid size-10 cursor-pointer place-items-center rounded-full border-0 bg-brand-50 text-sm font-semibold text-brand-600 ring-2 ring-white hover:bg-brand-100"
+          className="flex cursor-pointer items-center gap-2.5 rounded-full border-0 bg-transparent py-1 pr-2 pl-1 hover:bg-subtle"
         >
-          <span aria-hidden>{initial}</span>
+          <span
+            aria-hidden
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-50 text-sm font-semibold text-brand-600"
+          >
+            {initial}
+          </span>
+          <span className="hidden min-w-0 max-w-[160px] text-left text-sm leading-tight sm:block">
+            <span className="block truncate font-medium text-ink">{user.name}</span>
+            {user.role && <span className="block truncate text-xs text-muted">{user.role}</span>}
+          </span>
+          <ChevronDown size={14} aria-hidden className="hidden text-muted sm:block" />
         </button>
       </Dropdown>
       <TenantSwitchModal

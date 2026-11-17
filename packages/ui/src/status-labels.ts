@@ -1,10 +1,10 @@
-export type StatusDomain = "copy" | "borrowing" | "reservation" | "user" | "reader" | "department";
+export type StatusDomain = "copy" | "borrowing" | "reservation" | "user" | "reader" | "department" | "fine";
 
 export type StatusMeta = { label: string; color: string };
 
 /**
  * Bảng nhãn và màu trạng thái (đặc tả UI 0.4). `borrowing.OVERDUE` là giá trị tổng hợp do zone tự suy ra
- * (ACTIVE và dueDate < hôm nay); StatusTag không tự tính ngày. Domain `fine` chưa có (BE chưa mở endpoint phạt).
+ * (ACTIVE và dueDate < hôm nay); StatusTag không tự tính ngày.
  */
 export const STATUS_LABELS: Record<StatusDomain, Record<string, StatusMeta>> = {
   copy: {
@@ -37,5 +37,9 @@ export const STATUS_LABELS: Record<StatusDomain, Record<string, StatusMeta>> = {
   department: {
     ACTIVE: { label: "Đang dùng", color: "success" },
     INACTIVE: { label: "Ngừng dùng", color: "default" },
+  },
+  fine: {
+    UNPAID: { label: "Chưa thanh toán", color: "warning" },
+    PAID: { label: "Đã thanh toán", color: "success" },
   },
 };

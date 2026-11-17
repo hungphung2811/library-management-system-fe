@@ -2,7 +2,7 @@
  * Khóa quyền của BE (ADR-0003): khóa là "TênController/tênMethod" của controller NỘI BỘ xử lý endpoint đó,
  * không phải mã cố định. BE đổi tên controller hoặc method thì khóa đổi theo và danh sách này phải cập nhật.
  * Quản trị viên (claim admin=true) bỏ qua kiểm khóa nên `can()` luôn đúng với họ.
- * Không có hằng cho endpoint lms-api chưa mở (returnCopy, reportLost, byReader, FineController/*, resetPassword).
+ * Không có hằng cho endpoint lms-api chưa mở (returnCopy, reportLost, byReader, resetPassword).
  */
 export const PERMISSIONS = {
   /** GET /api/roles */
@@ -13,6 +13,12 @@ export const PERMISSIONS = {
   RETURN_BOOK: "BorrowingController/returnBook",
   /** POST /api/borrowings/{id}/renewals */
   RENEW: "BorrowingController/renew",
+  /** GET /api/borrowings/search (danh sách phiếu mượn có lọc và phân trang) */
+  BORROWING_SEARCH: "BorrowingController/search",
+  /** GET /api/fines?readerId (phạt của một độc giả, dành cho thủ thư) */
+  FINE_BY_READER: "FineController/byReader",
+  /** POST /api/fines/payments (thu phạt) */
+  FINE_COLLECT: "FineController/collect",
   /** GET /api/books */
   BOOK_SEARCH: "TitleController/search",
   /** GET /api/books/{id} */

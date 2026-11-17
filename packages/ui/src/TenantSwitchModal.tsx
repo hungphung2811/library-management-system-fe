@@ -5,7 +5,7 @@ import { Alert, Modal, Radio } from "./antd";
 
 export type TenantSummary = { id: string; code: string; name: string };
 
-async function postSwitch(tenantId: string) {
+export async function postSwitch(tenantId: string) {
   const call = () =>
     fetch("/api/session/switch-tenant", {
       method: "POST",

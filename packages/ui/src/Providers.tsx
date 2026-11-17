@@ -14,7 +14,7 @@ import { theme } from "./theme";
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AntdRegistry layer>
-      <ConfigProvider theme={theme} locale={viVN}>
+      <ConfigProvider theme={theme} locale={viVN} componentSize="small">
         <App component={false}>{children}</App>
       </ConfigProvider>
     </AntdRegistry>

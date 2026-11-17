@@ -67,7 +67,6 @@ export function ScanInput({
       <Input
         id={id}
         ref={input}
-        size="large"
         inputMode="text"
         autoComplete="off"
         spellCheck={false}

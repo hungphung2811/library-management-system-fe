@@ -66,9 +66,14 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
       {
         href: "/circulation/borrowings",
         label: "Tra phiếu mượn",
-        permission: [PERMISSIONS.BORROW_BOOK, PERMISSIONS.RETURN_BOOK, PERMISSIONS.RENEW],
+        permission: [PERMISSIONS.BORROW_BOOK, PERMISSIONS.RETURN_BOOK, PERMISSIONS.RENEW, PERMISSIONS.BORROWING_SEARCH],
       },
       { href: "/circulation/reservations", label: "Đặt trước", permission: PERMISSIONS.RESERVATION_MINE },
+      {
+        href: "/circulation/fines",
+        label: "Phạt",
+        permission: [PERMISSIONS.FINE_BY_READER, PERMISSIONS.FINE_COLLECT, PERMISSIONS.RESERVATION_MINE],
+      },
     ],
   },
   {

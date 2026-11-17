@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LogIn,
-  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
+import { TenantSwitcher } from "./TenantSwitcher";
 import { UserMenu } from "./UserMenu";
 import type { VisibleNavLink } from "./nav-links";
 
@@ -161,7 +161,8 @@ export function ShellFrame({ items, current, basePath = "", clientHrefs = [], us
             {items.map((l, i) => {
               const newGroup = l.group && l.group !== items[i - 1]?.group;
               const inSection = l.children ? (active ? active.parent === l : l.href === currentHref) : active?.href === l.href;
-              const expanded = l.children ? (toggled[l.href] ?? inSection) : false;
+              // Mặc định mở hết mọi nhóm; chỉ thu gọn khi người dùng tự bấm nút cha.
+              const expanded = l.children ? (toggled[l.href] ?? true) : false;
               const icon = (
                 <span
                   className={`grid size-5 shrink-0 place-items-center transition-colors motion-reduce:transition-none ${
@@ -237,32 +238,8 @@ export function ShellFrame({ items, current, basePath = "", clientHrefs = [], us
             })}
           </ul>
 
+          {!user && (
           <div className="shrink-0 border-t border-line p-4">
-            {user ? (
-              <form method="post" action="/api/session/logout" className="m-0">
-                <div className="mb-3 flex items-center gap-3 px-1">
-                  <span
-                    aria-hidden
-                    className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-50 text-sm font-semibold text-brand-600"
-                  >
-                    {user.name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <span className="min-w-0 text-sm leading-tight">
-                    <span title={user.id} className="block truncate font-medium text-ink">
-                      {user.name}
-                    </span>
-                    {user.role && <span className="block truncate text-xs text-muted">{user.role}</span>}
-                  </span>
-                </div>
-                <button
-                  type="submit"
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-subtle motion-reduce:transition-none"
-                >
-                  <LogOut size={16} strokeWidth={1.75} aria-hidden />
-                  Đăng xuất
-                </button>
-              </form>
-            ) : (
               <a
                 href="/login"
                 className="flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white no-underline hover:bg-brand-600"
@@ -270,8 +247,8 @@ export function ShellFrame({ items, current, basePath = "", clientHrefs = [], us
                 <LogIn size={16} strokeWidth={1.75} aria-hidden />
                 Đăng nhập
               </a>
-            )}
           </div>
+          )}
         </nav>
       </aside>
 
@@ -325,6 +302,7 @@ export function ShellFrame({ items, current, basePath = "", clientHrefs = [], us
           </ol>
           {user && (
             <div className="ml-auto flex items-center gap-3">
+              <TenantSwitcher tenantId={tenantId} />
               <NotificationBell userId={user.id} clientNav={isClient("/notifications")} />
               <UserMenu user={user} tenantId={tenantId} profileClient={isClient("/profile")} />
             </div>
