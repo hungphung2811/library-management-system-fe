@@ -1,0 +1,67 @@
+import { Typography } from "antd";
+export { Tag, type TagProps } from "./Tag";
+
+export {
+  Alert,
+  App,
+  Badge,
+  Breadcrumb,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Collapse,
+  DatePicker,
+  Descriptions,
+  Divider,
+  Drawer,
+  Dropdown,
+  Empty,
+  Form,
+  Input,
+  InputNumber,
+  List,
+  Modal,
+  Pagination,
+  Popconfirm,
+  Popover,
+  Radio,
+  Result,
+  Row,
+  Segmented,
+  Select,
+  Skeleton,
+  Space,
+  Spin,
+  Statistic,
+  Steps,
+  Switch,
+  Table,
+  Tabs,
+  Tooltip,
+  Tree,
+  TreeSelect,
+} from "antd";
+export {
+  BellOutlined,
+  CheckCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  ExclamationCircleOutlined,
+  LinkOutlined,
+  LockOutlined,
+  LogoutOutlined,
+  PlusOutlined,
+  ReadOutlined,
+  ReloadOutlined,
+  ScanOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  SwapOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+export { default as dayjs } from "dayjs";
+
+export const Title = Typography.Title;
+export const Text = Typography.Text;
+export const Paragraph = Typography.Paragraph;

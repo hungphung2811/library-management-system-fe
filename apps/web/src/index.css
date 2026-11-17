@@ -1,0 +1,35 @@
+/* Thứ tự layer: antd nằm giữa base và components, utilities của Tailwind luôn thắng antd. */
+@layer theme, base, antd, components, utilities;
+@import "tailwindcss";
+@import "@fontsource-variable/inter/index.css";
+
+@import "./theme/theme.css";
+
+/* Màn hình cảm ứng: vùng bấm tối thiểu ~28px cho nút mở rộng hàng của bảng antd (mặc định 17px). */
+@layer components {
+  @media (pointer: coarse) {
+    .ant-table-row-expand-icon {
+      width: 28px;
+      height: 28px;
+      line-height: 26px;
+    }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-ink antialiased;
+  }
+}
+
+/* In phiếu mượn: ẩn khung ứng dụng (sidebar, thanh trên), chỉ giữ nội dung trang.
+   Chỉ áp dụng khi trang có data-print-scope (đặt ở trang/phần bọc của circulation). */
+@media print {
+  body:has([data-print-scope]) aside,
+  body:has([data-print-scope]) header.sticky {
+    display: none !important;
+  }
+  body:has([data-print-scope]) div.min-h-screen.flex-col {
+    padding-left: 0 !important;
+  }
+}

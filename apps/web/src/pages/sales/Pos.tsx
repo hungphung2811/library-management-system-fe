@@ -1,0 +1,381 @@
+import { useRef, useState } from "react";
+import { useSearchParams } from "react-router";
+import { PERMISSIONS, apiFetch, can, toErrorInfo, useInvalidateApi, useSession, type ErrorInfo } from "@/api";
+import {
+  Alert,
+  Button,
+  Card,
+  DeleteOutlined,
+  Input,
+  InputNumber,
+  RemoteSelect,
+  ScanInput,
+  Segmented,
+  describeError,
+  formatMoney,
+} from "@/ui";
+import { MoneyInput } from "./_components/MoneyInput";
+import { ReceiptPanel } from "./_components/ReceiptPanel";
+import { SalesGate } from "./_components/SalesGate";
+import {
+  PAYMENT_METHODS,
+  estimateDiscount,
+  newRequestId,
+  normIsbn,
+  notFoundError,
+  parseKv,
+  searchBooks,
+  type Discount,
+  type Page,
+  type SalesOrder,
+  type StockItem,
+} from "./_lib/sales";
+
+type CartLine = {
+  titleId: string;
+  name: string;
+  isbn?: string | null;
+  unitPrice: number;
+  available: number;
+  quantity: number;
+  discount?: Discount;
+};
+
+type Cand = { id: string; name: string; isbn?: string | null };
+
+/** Giảm giá theo số tiền (đồng) hoặc phần trăm (nhập %, gửi BE dưới dạng điểm cơ bản: 10% = 1000). */
+function DiscountInput({ value, onChange, label }: { value?: Discount; onChange: (d: Discount | undefined) => void; label: string }) {
+  const [type, setType] = useState<"AMOUNT" | "PERCENT">(value?.type ?? "AMOUNT");
+  const set = (t: "AMOUNT" | "PERCENT", n: number | null) => onChange(n && n > 0 ? { type: t, value: n } : undefined);
+  return (
+    <div className="flex items-center gap-1" role="group" aria-label={label}>
+      <Segmented
+        size="small"
+        value={type}
+        onChange={(v) => {
+          setType(v as "AMOUNT" | "PERCENT");
+          onChange(undefined);
+        }}
+        options={[
+          { label: "₫", value: "AMOUNT" },
+          { label: "%", value: "PERCENT" },
+        ]}
+      />
+      {type === "AMOUNT" ? (
+        <MoneyInput value={value?.type === "AMOUNT" ? value.value : null} onChange={(n) => set("AMOUNT", n)} placeholder="0" />
+      ) : (
+        <InputNumber
+          className="w-24"
+          min={0}
+          max={100}
+          step={0.5}
+          precision={2}
+          decimalSeparator=","
+          aria-label={`${label} (%)`}
+          value={value?.type === "PERCENT" ? value.value / 100 : null}
+          onChange={(n) => set("PERCENT", n == null ? null : Math.round(n * 100))}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function PosPage() {
+  const s = useSession();
+  const invalidate = useInvalidateApi();
+  const canDiscount = can(s, PERMISSIONS.POS_ORDER_CREATE_DISCOUNTED);
+  const canSell = canDiscount || can(s, PERMISSIONS.POS_ORDER_CREATE);
+  const canBookSearch = can(s, PERMISSIONS.BOOK_SEARCH);
+  // Đổi hàng: mở từ phiếu trả (?exchangeOfReturnId=<id>); đơn mới gắn với phiếu trả, chênh lệch tiền xử lý ngoài hệ thống.
+  const [sp, setSp] = useSearchParams();
+  const exchangeOfReturnId = sp.get("exchangeOfReturnId") ?? "";
+
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [orderDiscount, setOrderDiscount] = useState<Discount | undefined>();
+  const [payment, setPayment] = useState<keyof typeof PAYMENT_METHODS>("CASH");
+  const [walkName, setWalkName] = useState("");
+  const [walkPhone, setWalkPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<ErrorInfo | null>(null);
+  const [done, setDone] = useState<SalesOrder | null>(null);
+  const [added, setAdded] = useState<string | null>(null);
+  const [pickError, setPickError] = useState<string | null>(null);
+  const busy = useRef(false);
+  // clientRequestId gắn với nội dung đơn: gửi lại đúng đơn đó (sau lỗi mạng) thì dùng lại id, đổi nội dung thì sinh id mới.
+  const req = useRef<{ sig: string; id: string } | null>(null);
+
+  /** Tìm đầu sách: qua catalog nếu có khóa tra sách, không thì lọc theo tên trong danh sách mặt hàng tồn. */
+  const findTitles = async (keyword: string): Promise<Cand[]> => {
+    if (canBookSearch) return (await searchBooks(keyword)).map((b) => ({ id: b.id, name: b.name, isbn: b.isbn }));
+    const kw = keyword.toLowerCase();
+    const p = await apiFetch<Page<StockItem>>("/api/sales/stock-items?page=0&size=100");
+    return p.items.filter((i) => (i.titleName ?? "").toLowerCase().includes(kw)).map((i) => ({ id: i.titleId, name: i.titleName ?? i.titleId }));
+  };
+
+  const addTitle = async (c: Cand) => {
+    const it = await apiFetch<StockItem>(`/api/sales/stock-items/${encodeURIComponent(c.id)}`);
+    if (it.effectivePrice == null) throw notFoundError(`«${c.name}» chưa có giá bán.`);
+    if (it.available <= 0) throw notFoundError(`«${c.name}» đã hết hàng.`);
+    setError(null);
+    setCart((cur) => {
+      const i = cur.findIndex((l) => l.titleId === c.id);
+      if (i < 0) return [...cur, { titleId: c.id, name: it.titleName ?? c.name, isbn: c.isbn, unitPrice: it.effectivePrice!, available: it.available, quantity: 1 }];
+      return cur.map((l, k) => (k === i ? { ...l, available: it.available, unitPrice: it.effectivePrice!, quantity: Math.min(l.quantity + 1, it.available) } : l));
+    });
+    setAdded(`Đã thêm «${it.titleName ?? c.name}».`);
+  };
+
+  const scan = async (code: string) => {
+    const found = await findTitles(code);
+    const exact = found.find((b) => normIsbn(b.isbn) === normIsbn(code));
+    const one = exact ?? (found.length === 1 ? found[0] : undefined);
+    if (!one) throw notFoundError(found.length ? "Có nhiều kết quả, hãy chọn ở ô tìm theo tên." : "Không tìm thấy sách có mã hoặc ISBN này.");
+    await addTitle(one);
+  };
+
+  const update = (titleId: string, patch: Partial<CartLine>) => setCart((cur) => cur.map((l) => (l.titleId === titleId ? { ...l, ...patch } : l)));
+
+  const gross = cart.reduce((a, l) => a + l.unitPrice * l.quantity, 0);
+  const lineDisc = cart.reduce((a, l) => a + estimateDiscount(l.unitPrice * l.quantity, canDiscount ? l.discount : undefined), 0);
+  const orderDisc = estimateDiscount(gross - lineDisc, canDiscount ? orderDiscount : undefined);
+  const estimate = gross - lineDisc - orderDisc;
+
+  const checkout = async () => {
+    if (busy.current || cart.length === 0) return;
+    const body: Record<string, unknown> = {
+      lines: cart.map((l) => ({
+        titleId: l.titleId,
+        quantity: l.quantity,
+        ...(canDiscount && l.discount ? { discount: l.discount } : {}),
+      })),
+      paymentMethod: payment,
+      ...(walkName.trim() || walkPhone.trim() ? { walkIn: { name: walkName.trim() || null, phone: walkPhone.trim() || null } } : {}),
+      ...(canDiscount && orderDiscount ? { orderDiscount } : {}),
+      ...(exchangeOfReturnId ? { exchangeOfReturnId } : {}),
+    };
+    const sig = JSON.stringify(body);
+    if (req.current?.sig !== sig) req.current = { sig, id: newRequestId() };
+    busy.current = true;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const o = await apiFetch<SalesOrder>(canDiscount ? "/api/sales/pos-orders/discounted" : "/api/sales/pos-orders", {
+        method: "POST",
+        json: { ...body, clientRequestId: req.current.id },
+      });
+      setDone(o);
+      setCart([]);
+      setOrderDiscount(undefined);
+      setWalkName("");
+      setWalkPhone("");
+      req.current = null;
+      if (exchangeOfReturnId) setSp(new URLSearchParams(), { replace: true });
+      void invalidate("/api/sales/stock-items", "/api/sales/orders");
+    } catch (e) {
+      const info = toErrorInfo(e);
+      setError(info);
+      if (info.code === "INSUFFICIENT_STOCK") {
+        for (const g of parseKv(info.details)) {
+          const n = Number(g.available);
+          if (g.titleId && Number.isFinite(n)) setCart((cur) => cur.map((l) => (l.titleId === g.titleId ? { ...l, available: n, quantity: Math.max(1, Math.min(l.quantity, n)) } : l)));
+        }
+      }
+    } finally {
+      busy.current = false;
+      setSubmitting(false);
+    }
+  };
+
+  const errorNode = (() => {
+    if (!error) return null;
+    const d = describeError(error);
+    if (error.code === "INSUFFICIENT_STOCK") {
+      const groups = parseKv(error.details);
+      return (
+        <Alert
+          type="error"
+          showIcon
+          title={d.text}
+          description={
+            groups.length > 0 ? (
+              <ul className="m-0 pl-4">
+                {groups.map((g, i) => (
+                  <li key={i}>
+                    «{cart.find((l) => l.titleId === g.titleId)?.name ?? g.titleId?.slice(0, 8) ?? "Mặt hàng"}»: chỉ còn {g.available ?? "?"} cuốn khả dụng.
+                  </li>
+                ))}
+              </ul>
+            ) : undefined
+          }
+        />
+      );
+    }
+    return <Alert type="error" showIcon title={d.text} description={d.details?.length ? d.details.join("; ") : d.detail} />;
+  })();
+
+  return (
+    <SalesGate title="Bán tại quầy" description="Quét hoặc tìm sách, lập đơn và thu tiền." permission={[PERMISSIONS.POS_ORDER_CREATE, PERMISSIONS.POS_ORDER_CREATE_DISCOUNTED]}>
+      {done ? (
+        <div className="flex max-w-[1000px] flex-col gap-4">
+          <div className="flex flex-col gap-3 print:hidden">
+            <Alert
+              type="success"
+              showIcon
+              title={
+                <span data-testid="pos-done">
+                  Đã bán đơn <span className="font-mono">{done.orderNo}</span>, tổng {formatMoney(done.grandTotal)}.
+                </span>
+              }
+            />
+            <div>
+              <Button type="primary" onClick={() => setDone(null)}>
+                Bán đơn mới
+              </Button>
+            </div>
+          </div>
+          {can(s, PERMISSIONS.SALES_ORDER_RECEIPT) && <ReceiptPanel orderId={done.id} />}
+        </div>
+      ) : (
+        canSell && (
+          <div className="flex max-w-[1200px] flex-col gap-4">
+            {exchangeOfReturnId && (
+              <Alert
+                type="info"
+                showIcon
+                data-testid="pos-exchange"
+                title={`Đổi hàng theo phiếu trả ${exchangeOfReturnId.slice(0, 8)}`}
+                description="Đơn mới được gắn với phiếu trả (mỗi phiếu chỉ đổi một lần). Chênh lệch tiền được xử lý ngoài hệ thống: khoản hoàn của phiếu trả và thanh toán của đơn mới là hai bản ghi riêng."
+                action={
+                  <Button size="small" onClick={() => setSp(new URLSearchParams(), { replace: true })}>
+                    Bỏ đổi hàng
+                  </Button>
+                }
+              />
+            )}
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+            <Card title="Thêm hàng">
+              <div className="flex flex-col gap-4">
+                <ScanInput
+                  label="Quét mã ISBN hoặc nhập mã rồi Enter"
+                  hint="Chỉ thêm khi khớp đúng ISBN hoặc chỉ có một kết quả."
+                  autoFocus
+                  maxLength={64}
+                  onScan={scan}
+                  status={added}
+                />
+                <div>
+                  <label htmlFor="pos-search" className="mb-1 block text-sm font-medium text-ink">
+                    Tìm theo tên sách
+                  </label>
+                  <RemoteSelect
+                    id="pos-search"
+                    placeholder="Gõ tên sách"
+                    onChange={(o) => {
+                      if (!o) return;
+                      setPickError(null);
+                      addTitle({ id: o.value, name: o.label.replace(/ \(\S+\)$/, "") }).catch((e) => setPickError(describeError(toErrorInfo(e)).text));
+                    }}
+                    fetcher={async (q) => (await findTitles(q)).slice(0, 20).map((b) => ({ value: b.id, label: b.isbn ? `${b.name} (${b.isbn})` : b.name }))}
+                    notFoundText="Không tìm thấy sách"
+                  />
+                  {pickError && <div className="mt-1 text-sm text-red-600" role="alert">{pickError}</div>}
+                </div>
+              </div>
+            </Card>
+            <Card title="Giỏ hàng">
+              <div className="flex flex-col gap-3">
+                {cart.length === 0 ? (
+                  <p className="m-0 text-muted" data-testid="cart-empty">
+                    Chưa có mặt hàng nào. Quét mã hoặc tìm sách để thêm.
+                  </p>
+                ) : (
+                  <ul className="m-0 flex list-none flex-col gap-2 p-0" aria-label="Các dòng trong giỏ">
+                    {cart.map((l) => (
+                      <li key={l.titleId} className="rounded-card border border-line p-2.5" data-testid="cart-line">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-medium text-ink">{l.name}</div>
+                            <div className="text-xs text-muted">
+                              {formatMoney(l.unitPrice)} · còn {l.available}
+                            </div>
+                          </div>
+                          <Button size="small" aria-label={`Bỏ ${l.name}`} icon={<DeleteOutlined />} onClick={() => setCart((c) => c.filter((x) => x.titleId !== l.titleId))} />
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                          <InputNumber
+                            aria-label={`Số lượng ${l.name}`}
+                            min={1}
+                            max={Math.max(1, l.available)}
+                            precision={0}
+                            value={l.quantity}
+                            onChange={(n) => update(l.titleId, { quantity: n ?? 1 })}
+                          />
+                          {canDiscount && <DiscountInput label={`Giảm giá ${l.name}`} value={l.discount} onChange={(d) => update(l.titleId, { discount: d })} />}
+                          <span className="ml-auto font-medium">{formatMoney(l.unitPrice * l.quantity)}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {canDiscount && cart.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-ink">Giảm giá cả đơn</span>
+                    <DiscountInput label="Giảm giá cả đơn" value={orderDiscount} onChange={setOrderDiscount} />
+                  </div>
+                )}
+
+                <div>
+                  <div className="mb-1 text-sm font-medium text-ink">Hình thức thanh toán</div>
+                  <Segmented
+                    aria-label="Hình thức thanh toán"
+                    value={payment}
+                    onChange={(v) => setPayment(v as keyof typeof PAYMENT_METHODS)}
+                    options={Object.entries(PAYMENT_METHODS).map(([value, label]) => ({ value, label }))}
+                  />
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="walk-name" className="mb-1 block text-sm text-muted">
+                      Tên khách (tùy chọn)
+                    </label>
+                    <Input id="walk-name" autoComplete="off" maxLength={200} value={walkName} onChange={(e) => setWalkName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label htmlFor="walk-phone" className="mb-1 block text-sm text-muted">
+                      Điện thoại (tùy chọn)
+                    </label>
+                    <Input id="walk-phone" autoComplete="off" maxLength={30} value={walkPhone} onChange={(e) => setWalkPhone(e.target.value)} />
+                  </div>
+                </div>
+
+                <dl className="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-line pt-2">
+                  <dt className="text-muted">Tạm tính</dt>
+                  <dd className="m-0 text-right">{formatMoney(gross)}</dd>
+                  {lineDisc + orderDisc > 0 && (
+                    <>
+                      <dt className="text-muted">Giảm giá (ước tính)</dt>
+                      <dd className="m-0 text-right">-{formatMoney(lineDisc + orderDisc)}</dd>
+                    </>
+                  )}
+                  <dt className="font-semibold">Cần thu (ước tính)</dt>
+                  <dd className="m-0 text-right text-base font-semibold" data-testid="pos-estimate">
+                    {formatMoney(estimate)}
+                  </dd>
+                </dl>
+                <p className="m-0 text-xs text-muted">Số tiền cuối cùng (thuế, giảm giá) do hệ thống tính khi thanh toán.</p>
+
+                {errorNode}
+                <Button type="primary" size="large" loading={submitting} disabled={cart.length === 0} onClick={() => void checkout()}>
+                  Thanh toán
+                </Button>
+              </div>
+            </Card>
+          </div>
+          </div>
+        )
+      )}
+    </SalesGate>
+  );
+}
