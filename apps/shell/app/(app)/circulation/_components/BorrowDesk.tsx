@@ -414,7 +414,7 @@ export function BorrowDesk({
         <span className="text-sm text-muted">
           {reader ? `Độc giả ${reader.label} · ${cart.length} cuốn` : "Chưa chọn độc giả"}
         </span>
-        <Button type="primary" size="large" loading={submitting} disabled={!canSubmit} onClick={() => void submit()}>
+        <Button type="primary" loading={submitting} disabled={!canSubmit} onClick={() => void submit()}>
           Lập phiếu mượn
         </Button>
       </div>

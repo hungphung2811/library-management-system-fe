@@ -20,14 +20,13 @@ export function LookupForm() {
       <div className="flex gap-2">
         <Input
           id="lookup-code"
-          size="large"
           autoComplete="off"
           spellCheck={false}
           value={code}
           onChange={(e) => setCode(e.target.value)}
           onPressEnter={go}
         />
-        <Button size="large" type="primary" disabled={!valid} onClick={go}>
+        <Button type="primary" disabled={!valid} onClick={go}>
           Xem phiếu
         </Button>
       </div>

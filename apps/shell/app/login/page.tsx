@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <Title level={1} className="mb-2! text-center text-2xl! leading-tight! font-semibold!">Đăng nhập vào Thư viện</Title>
+      <Title level={1} className="mb-2! text-center text-xl! leading-tight! font-semibold!">Đăng nhập vào Thư viện</Title>
       <p className="mt-0 mb-7 text-center text-sm text-muted">Nhập tài khoản được cấp để vào hệ thống quản lý thư viện.</p>
 
       <Form<Values> layout="vertical" onFinish={onFinish} requiredMark={false} size="large">

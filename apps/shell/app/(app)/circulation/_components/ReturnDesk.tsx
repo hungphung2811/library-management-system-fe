@@ -61,7 +61,6 @@ export function ReturnDesk({
         <div className="flex gap-2">
           <Input
             id="borrowing-code"
-            size="large"
             autoFocus
             autoComplete="off"
             spellCheck={false}
@@ -69,7 +68,7 @@ export function ReturnDesk({
             onChange={(e) => setCode(e.target.value)}
             onPressEnter={() => void load()}
           />
-          <Button size="large" type="primary" loading={loading} disabled={!valid} onClick={() => void load()}>
+          <Button type="primary" loading={loading} disabled={!valid} onClick={() => void load()}>
             Tải phiếu
           </Button>
         </div>

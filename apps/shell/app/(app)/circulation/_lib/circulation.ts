@@ -13,6 +13,13 @@ export type BorrowingView = {
   items: BorrowingItem[];
 };
 
+/** Trang kết quả của GET /api/borrowings/search (page đánh số từ 0 ở BE). */
+export type BorrowingPage = { items: BorrowingView[]; total: number; page: number; size: number };
+
+/** Bộ lọc trạng thái trên URL của danh sách phiếu mượn: "" là tất cả; OVERDUE là ACTIVE đã quá hạn (BE: overdue=true). */
+export const BORROWING_FILTERS = ["ACTIVE", "OVERDUE", "RETURNED"] as const;
+export type BorrowingFilter = (typeof BORROWING_FILTERS)[number];
+
 /** Thông tin hiển thị của một bản sao (BE không trả kèm trong phiếu nên FE gọi thêm). */
 export type CopyInfo = { titleName?: string; barcode?: string };
 
@@ -34,6 +41,28 @@ export type ReservationView = {
   reservedAt?: string | null;
   copyId?: string | null;
   holdUntil?: string | null;
+};
+
+/** `FineView` của BE. */
+export type FineView = {
+  id: string;
+  readerId: string;
+  borrowingId: string;
+  bookCopyId: string;
+  reason: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+  paidAt: string | null;
+};
+
+/** `ReaderFinesView` của GET /api/fines và /api/fines/mine. */
+export type ReaderFines = { readerId: string; totalUnpaid: number; fines: FineView[] };
+
+export const FINE_REASONS: Record<string, string> = {
+  LATE_RETURN: "Trả trễ hạn",
+  LOST: "Mất sách",
+  DAMAGED: "Sách hỏng",
 };
 
 export const MAX_RENEWALS = 2;
