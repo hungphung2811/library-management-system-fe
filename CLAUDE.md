@@ -2,67 +2,112 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-FE của hệ thống quản lý thư viện: hai app Next.js 16 ghép bằng Multi-Zones: app chính `shell` (nghiệp vụ thư viện) và zone `admin` (App Router, React 19, TypeScript, npm workspaces), UI bằng antd 6 + Tailwind v4. BE ở repo anh em `../library-management-system` (Spring Boot, xem CLAUDE.md và ADR-0003/0004 ở đó). README.md có bảng app/cổng, biến môi trường và các bước thêm zone; không lặp lại ở đây.
+FE của hệ thống quản lý thư viện: **một SPA** React 19 + Vite 7 + TypeScript (npm workspaces, app duy nhất `apps/web` = `@lms/web`), UI bằng antd 6 + Tailwind v4, routing bằng react-router v7 (`createBrowserRouter`), dữ liệu bằng `@tanstack/react-query`. Không SSR. BE ở repo anh em `../library-management-system` (Spring Boot, xem CLAUDE.md và ADR-0003/0004 ở đó). README.md có bảng cấu trúc và cách deploy; quyết định chuyển đổi và lý do ở `docs/design/2026-11-17-chuyen-vite-spa.md`.
 
 ## Lệnh thường dùng
 
 ```bash
 npm install
-npm run dev                          # cả 2 app song song (npm-run-all)
-npm run dev -w @mfe/admin            # một app
-npm run build                        # build tất cả workspace
-npm run typecheck                    # tsc --noEmit mọi workspace
-npm run typecheck:e2e                # typecheck thư mục e2e/
-npm run test:e2e                     # build tất cả rồi chạy Playwright (93 test)
-npm run test:e2e:only                # chỉ chạy test, dùng bản build sẵn
-npx playwright test -g "tên test"    # một test (vẫn dựng đủ 4 server nên mất ~20s khởi động)
+npm run dev                              # = npm run dev -w @lms/web, http://localhost:3000, proxy /api -> http://localhost:8085
+npm run dev -w @lms/web -- --port 3100   # cổng khác (khi 3000 đang bận)
+npm run typecheck -w @lms/web
+npm run build -w @lms/web                # tsc --noEmit + vite build -> apps/web/dist/
+npm run preview -w @lms/web              # phục vụ dist/ với cùng proxy (thêm -- --port 3000 --strictPort nếu cần)
+npm run typecheck:e2e                    # typecheck thư mục e2e/
+npm run test:e2e                         # build apps/web rồi chạy Playwright
+npm run test:e2e:only                    # chỉ chạy test, dùng bản build sẵn (apps/web/dist)
+npx playwright test e2e/auth.spec.ts     # một file (hoặc -g "tên test"); khởi động 2 server mất vài giây
 ```
 
 - Không có lint. Kiểm tra gồm `typecheck` và E2E Playwright.
-- E2E chạy trên bản **build** (`next start`), BE được thay bằng `e2e/mock-gateway.mjs` (cổng 8090; user `admin` (admin=true), `staff` (có khóa), `member`, `newbie`/`newbie2` (phải đổi mật khẩu)), không cần docker. Cổng 3000, 3003, 3100, 8090 phải trống (cấu hình không tái sử dụng server đang chạy). Dev server đang chiếm cổng thì đặt `E2E_PORT_BASE=4200` (xem `e2e/ports.ts`) và build shell với `ADMIN_URL=http://localhost:4203`, vì rewrite asset được tính lúc build. Sửa code app thì phải build lại, `test:e2e` đã tự build. Shell thứ hai ở cổng 3100 có zone admin trỏ vào cổng chết để test zone chết.
-- `workers: 2` và `ZONE_TIMEOUT_MS=30000` là chủ ý: 4 server Node + Chromium làm SSR chậm, 4 worker làm test flaky. Test form login phải mở trang bằng `openLogin` (đợi hydrate).
-- Cần BE thật chạy ở `GATEWAY_URL` (mặc định `http://localhost:8080` = nginx của BE: `docker compose --profile apps up -d --build` trong repo BE) khi dùng `npm run dev`. Dev account: `admin` / `Admin@12345`.
+- Đích proxy `/api` đổi bằng biến `VITE_API_TARGET` (ví dụ `VITE_API_TARGET=http://localhost:8080 npm run dev`). Mặc định là lms-api `http://localhost:8085`. Cần BE thật chạy (repo BE: `scripts/dev-start.ps1`, hoặc `docker compose --profile apps up -d --build` rồi trỏ `VITE_API_TARGET` tới nginx 8080). Dev account: `admin` / `Admin@12345`.
+- E2E chạy trên bản **build tĩnh** của `apps/web` (`vite preview` + proxy `/api` -> mock, qua `VITE_API_TARGET`), BE được thay bằng `e2e/mock-gateway.mjs` (user `admin` (admin=true), `staff` (có khóa), `member`, `newbie`/`newbie2` (phải đổi mật khẩu), `librarian`, `reader`, `multi`/`multi2` (2 đơn vị)), không cần docker. Chỉ 2 server: web ở `E2E_PORT_BASE` (mặc định 4200) và mock ở base+1; không đụng 3000/3100/8085-8090. Chạy song song nhiều bộ thì đặt `E2E_PORT_BASE` khác nhau (4200, 4300...). Sửa code `apps/web` thì phải build lại (`test:e2e` đã tự build). Helper và cách đăng nhập nhanh (`loginAs`: ghi `lms_rt`) xem `e2e/README-e2e.md`.
+- `workers: 2` là chủ ý (mỗi worker một Chromium). Test form login phải mở trang bằng `openLogin` (đợi sẵn sàng). Cả bộ e2e (26 file spec, 266 test, gồm catalog/circulation/admin) đã chạy được trên app Vite; `platform.spec.ts` "mô tả và đoạn đọc thử" từng fail một lần khi chạy song song (hai test cùng ghi mô tả của một sách trong mock), chạy lại đơn lẻ thì pass.
 
 ## Kiến trúc
 
-Hai app, build riêng (quyết định và lý do: `docs/design/2026-11-16-gom-zone.md`). Trình duyệt chỉ nói chuyện với **shell** (3000). Shell chứa nghiệp vụ thư viện (Sách `/catalog`, Mượn trả `/circulation`), đăng nhập, hồ sơ, thông báo và BFF; `apps/admin` (3003) là zone riêng mà shell chuyển tiếp tới:
+Mọi thứ ở `apps/web`; trình duyệt chỉ cầm SPA tĩnh và gọi `/api/**` cùng origin (dev qua proxy Vite, production qua nginx). Mọi link là route client, không còn khái niệm zone hay `basePath`.
 
-- Khung `AppShell` nằm ở `app/(app)/layout.tsx` của shell (chỉ `getSession()`, không redirect) nên `loading.tsx`/`error.tsx` chỉ thay phần nội dung. `login` và `change-password` ở ngoài group, dùng `AuthShell`. Trang mới của shell đặt trong `app/(app)/`; mọi trang vẫn gọi `requireSession(path)`.
-- Zone `admin` đặt `basePath: "/admin"` và `assetPrefix: "/admin-static"` (kèm rewrite `/admin-static/_next/* → /_next/*` trong chính zone) để asset không đụng `/_next` của shell. Vì có basePath, `next/link` trong package dùng chung sẽ cộng basePath hai lần (ra `/admin/admin/...`): trong zone admin dùng `<a>`.
-- Shell chuyển tiếp **trang** admin bằng route handler `app/admin/[[...path]]/route.ts` (logic ở `lib-zone-proxy.ts`), không dùng `rewrites`, vì rewrite không bắt được lỗi: zone chết/timeout 10s/5xx → trả trang 503 tiếng Việt thay vì 500 trần. Chỉ **asset** `/admin-static/*` đi qua `rewrites` trong `next.config.ts`; rewrite này được tính LÚC BUILD nên `ADMIN_URL` phải đặt cả khi build. Ba chỗ phải cùng đủ zone: route handler, `ZONES` và `ZONE_PATHS` (`zone-unavailable/[zone]/page.tsx`), cùng `matcher` của `proxy.ts`.
-- `proxy.ts` của shell (tên file của Next 16, thay cho `middleware.ts`) chặn các trang cần đăng nhập và zone admin khi thiếu cookie access token: còn refresh token thì sang `/api/session/refresh`, không thì `/login`. Đây chỉ là lớp ngoài; mỗi trang vẫn phải gọi `requireSession(path)` vì zone admin gọi thẳng cổng của nó sẽ không qua shell.
-- Từ shell sang admin (và ngược lại) là full page load: dùng `<a>`, không dùng `next/link`. Trong shell, Sách và Mượn trả là route của chính app.
+```
+apps/web/
+  index.html, vite.config.ts, tsconfig.json (alias @/ -> src)
+  src/
+    main.tsx          gốc: RootErrorBoundary > Providers > RouterProvider
+    index.css         Tailwind + CSS layer + token thương hiệu + CSS in phiếu (data-print-scope)
+    api/              errors, session (decode JWT bằng atob, can), permissions (PERMISSIONS),
+                      token-store, client (apiFetch, refresh), hooks (useApi, useApiMutation), index
+    auth/             AuthProvider (useAuth/useSession/useTenants), ProtectedRoute (+ BootScreen, safeNext)
+    ui/               điểm vào duy nhất "@/ui": antd, icon, Providers, AppShell/ShellFrame, DataTable,
+                      SearchBar, FormModal, ConfirmAction, ScanInput, RemoteSelect, QueryBoundary,
+                      LinkButton, ErrorPanel, NoPermission, PageSkeleton, StatusTag, KeyValueList, format...
+    routes/router.tsx khai báo MỌI đường dẫn
+    pages/            Home, Login, ChangePassword, Profile, Notifications, NotFound, RouteError
+                      catalog/, circulation/, admin/ (theo nhóm, xem "Việc chuyển đổi" về tiến độ port)
+```
 
-### Xác thực
+Import trong trang: `@/ui` (UI), `@/api` (`apiFetch`, `useApi`, `useApiMutation`, `PERMISSIONS`, `can`, `toErrorInfo`, `ApiCallError`, `useSession`), `@/auth/AuthProvider` (cùng hook phiên).
 
-Token nằm trong cookie `httpOnly` (`lms_at`, `lms_rt`) do shell đặt qua `/api/session/{login,refresh,logout}`; trình duyệt không cầm token. Cookie dùng chung cho mọi zone vì mọi thứ cùng origin qua shell.
-- Server component gọi BE bằng `gatewayFetch` (`@mfe/api`, gắn Bearer từ cookie).
-- Client component gọi `/api/bff/<đường dẫn BE>`; shell gắn Bearer rồi chuyển tiếp (không dính CORS).
-- `getSession()` chỉ decode payload JWT, không verify chữ ký; BE là nơi verify và kiểm quyền. Ẩn/hiện UI theo `can()` chỉ là UX, không phải bảo mật.
-- Redirect sau login/refresh chỉ chấp nhận đường dẫn bắt đầu bằng `/` và không phải `//` (chống open redirect); giữ nguyên khi sửa.
+### Tuyến đường và khung
 
-### Package dùng chung (nhúng ở mức source, mỗi app có bản riêng lúc build)
+- `/login` công khai. `/change-password` dưới `ProtectedRoute allowMustChange` (ngoài khung). Mọi trang còn lại: `ProtectedRoute` > `AppShell` (layout route, `<Outlet/>`) > trang.
+- `ProtectedRoute` đợi boot xong (`BootScreen`); chưa đăng nhập thì `/login?next=<đường dẫn+query>`; `mustChangePassword` thì `/change-password`. `safeNext` chỉ nhận đường dẫn bắt đầu bằng `/` và không phải `//` (chống open redirect); giữ nguyên khi sửa.
+- Nhóm `catalog`, `circulation`, `admin` dùng `React.lazy` + `Suspense` (skeleton chỉ thay vùng nội dung, khung giữ nguyên); `vite.config.ts` gom chunk theo thư mục `pages/<nhóm>`.
+- Tiêu đề tab lấy từ `handle.title` của route khớp sâu nhất. Lỗi của trang: `errorElement` trong khung (giữ sidebar).
+- Nav: `DEFAULT_NAV_LINKS` trong `ui/nav-links.ts` (Sách, Mượn trả, Bán hàng, Quản trị, Nền tảng SaaS), mục thêm thì sửa file này và `ICONS` trong `ShellFrame.tsx`; breadcrumb cho trang ngoài sidebar ở `CRUMBS` trong `ui/AppShell.tsx`. Danh sách link là hằng số trong code, không còn đọc từ biến môi trường.
 
-- `@mfe/api`: `config` (hằng số, **không** import `next/headers`, nên `proxy.ts` import được qua `@mfe/api/config`), `session`, `gateway`.
-- `@mfe/ui`: `Providers` (bắt buộc ở root layout mọi app), `AppShell` (sidebar + thanh trên, bọc nội dung mọi trang đã đăng nhập; chỉ một `<nav>`), `AuthShell` (khung login/đổi mật khẩu), `PageHeader`, các component antd, `theme.ts`, `tailwind.css`.
-- Sửa package dùng chung thì phải build lại và deploy lại cả hai app. Danh sách link `Nav` đọc lúc chạy từ env `MFE_NAV_LINKS` (JSON, đặt cùng giá trị cho mọi app), không phải sửa code.
+### Thêm trang mới
+
+1. Tạo component trong `src/pages/<nhóm>/` (nhóm lazy) hoặc `src/pages/`.
+2. Khai báo route trong `routes/router.tsx` (đặt `handle.title`; dưới `AppShell` nếu cần khung).
+3. Lấy dữ liệu bằng `useApi`, bọc `QueryBoundary`; ghi bằng `useApiMutation`. Ẩn/hiện nút theo `can(session, PERMISSIONS.x)`.
+4. Cần mục sidebar thì thêm vào `nav-links.ts`.
+
+### Xác thực (không còn BFF, không còn cookie httpOnly)
+
+- Access token **chỉ trong bộ nhớ** (`api/token-store.ts`, đẩy vào `AuthProvider` qua `useSyncExternalStore`); refresh token ở **localStorage khóa `lms_rt`**. Boot: có `lms_rt` mà chưa có access token thì `POST /api/auth/refresh {refreshToken}` (F5 không mất phiên); BE từ chối (4xx) thì xóa phiên, lỗi mạng/5xx giữ `lms_rt`.
+- `apiFetch(path, {json, ...})` gắn Bearer; 401 thì refresh một lần (gọi đồng thời dùng chung một promise) rồi gọi lại; vẫn 401 thì xóa phiên và ném `ApiCallError(401)`. 204 trả `undefined`. Bảng lỗi tiếng Việt ở `ui/error-messages.ts` (`describeError`, `toErrorInfo`, `ErrorPanel`).
+- `useSession()` chỉ dùng trong vùng `ProtectedRoute`; trang công khai dùng `useSessionOptional()`. Session chỉ decode payload JWT (không verify chữ ký); BE là nơi verify và kiểm quyền. Hiển thị tên bằng claim `username`, không dùng `sub` (UUID).
+- Chuyển tenant: `useAuth().switchTenant(id)` (`POST /api/auth/switch-tenant {tenantId, refreshToken}`) thay token, bỏ cache của tenant cũ, rồi điều hướng `/?switched=1`.
+- Đánh đổi: refresh token ở localStorage nên một lỗ XSS đọc được nó. Giảm thiểu: không dùng `dangerouslySetInnerHTML`, nên thêm CSP ở nginx, `switch-tenant`/đăng xuất thu hồi refresh token cũ.
+
+### Dữ liệu
+
+`useApi<T>("/api/...")` (khóa `["api", tenantId, path]`, đổi tenant là khóa mới và tự tải lại). `useApiMutation(fn, { invalidate: ["/api/x"] })` tải lại các truy vấn có path bắt đầu bằng tiền tố. `<QueryBoundary query={q}>{(data) => ...}</QueryBoundary>`: đang tải là `PageSkeleton`, lỗi là `ErrorPanel` có "Thử lại". Mặc định chỉ thử lại lỗi mạng/5xx một lần. Bộ lọc và phân trang nằm trên URL (`useSearchParams`): `SearchBar`, `DataTable` (`pagination.mode: "server"` dựng link `?page=n`). Nút trỏ route dùng `LinkButton`, không dùng `<Button href>`.
 
 ### UI: antd + Tailwind
 
-- antd cho control, Tailwind cho layout/khoảng cách. Hai bên cùng sống nhờ CSS layer `theme, base, antd, components, utilities` (khai báo đầu `tailwind.css`, và `<AntdRegistry layer>` trong `Providers`); đừng bỏ prop `layer` hay đổi thứ tự layer, preflight sẽ đè antd.
-- Component antd được re-export từ `packages/ui/src/antd.tsx` (file `"use client"`) để server component dùng được. Server component chỉ truyền props serialize được: `Table` dùng `dataIndex`, không dùng `render`; cần tuỳ biến thì viết client component. Compound component (`Typography.Title`) phải export thành const riêng như `Title`/`Text`.
-- Tailwind không tự quét package workspace: mỗi app cần `app/globals.css` có `@source "../../../packages/ui/src"` và `postcss.config.mjs`. Thiếu hai file này ở zone mới thì class của `@mfe/ui` không được sinh ra.
-- Icon điều hướng/trang dùng `lucide-react` (re-export ở `packages/ui/src/icons.ts`, thêm icon mới vào đó); icon antd chỉ còn trong control của antd. Logo là `Logo`/`LogoMark` (`packages/ui/src/Logo.tsx`); favicon `app/icon.svg` của bốn app vẽ cùng hình, đổi logo thì sửa cả năm chỗ.
-- Màu thương hiệu nằm ở hai nơi phải sửa cùng lúc: `@theme` trong `tailwind.css` và `brand`/`theme` trong `theme.ts`.
+- antd cho control, Tailwind cho layout/khoảng cách. Hai bên cùng sống nhờ CSS layer `theme, base, antd, components, utilities` (khai báo đầu `index.css`) và `<StyleProvider layer>` (`@ant-design/cssinjs`) trong `Providers`; đừng bỏ prop `layer` hay đổi thứ tự layer, preflight sẽ đè antd. Tailwind v4 qua plugin `@tailwindcss/vite` tự quét `src`, không cần `@source`.
+- Import UI từ `@/ui` (antd, icon, component dùng chung). Icon điều hướng/trang dùng `lucide-react` (re-export ở `ui/icons.ts`, thêm icon mới vào đó); icon antd chỉ còn trong control của antd. Theme ở `ui/theme.ts` (token, `componentSize="small"`), font Inter (`@fontsource-variable/inter`).
+- Màu thương hiệu nằm ở hai nơi phải sửa cùng lúc: `@theme` trong `index.css` và `brand`/`theme` trong `ui/theme.ts`.
+
+### Deploy
+
+Build tĩnh `apps/web/dist/`, phục vụ bằng nginx, proxy `/api` tới lms-api (cùng origin nên không cần CORS). **Bắt buộc fallback SPA** (`try_files $uri /index.html`), nếu không F5 trên `/catalog/...` ra 404; `assets/` cache dài (tên file có hash), `index.html` không cache lâu. Mẫu cấu hình ở README.md (chưa tích hợp vào `docker-compose` của BE).
+
+## Khu vực nghiệp vụ mới (SaaS, bán hàng)
+
+- **platform** (`/platform/*`, chỉ platform admin: claim không có `tenantId`, trang tự chặn bằng `PlatformGate`): đơn vị (tenant, `tenants/`, chi tiết có module bật/tắt, hợp đồng, website/origin), tổ chức (`organizations/`), hợp đồng sắp hết hạn (`contracts/`), trang website CMS (`CmsPages`, `CmsPageDetail`), yêu cầu liên hệ. Thuật ngữ UI: tenant gọi là "đơn vị"; "tổ chức" chỉ dành cho organization (nhóm nhiều đơn vị). Danh sách tenant của BE không trả hợp đồng nên chưa cảnh báo "đơn vị chưa có hợp đồng". Trang CMS chưa có xem trước Markdown (node_modules chưa có react-markdown/dompurify; không thêm phụ thuộc khi chưa được duyệt), nội dung đã xuất bản hiển thị dạng văn bản thô.
+- **admin** (`/admin/*`, theo đơn vị đang chọn): người dùng, vai trò (sửa/xóa role: `PUT/DELETE /api/roles/{id}`), phòng ban, nhật ký, menu (`Menus`), hợp đồng của đơn vị mình (`MyContract`, chỉ đọc), website (`StorefrontOrigins`, cần module SALES).
+- **sales** (`/sales/*`, module SALES, pha 1-2: bán tại quầy, đơn hàng, hoàn tiền, nhật ký, tồn kho, phiếu nhập, nhà cung cấp, cấu hình): mỗi trang tự kiểm module và khóa (`SalesGate`); BE quyết định cuối.
+- **Điều hướng động**: `ui/useNavItems.ts` lấy menu từ `GET /api/menus/me`; lỗi hoặc rỗng thì dùng `DEFAULT_NAV_LINKS`. Mục có thể khai báo `module`, `platformOnly`, `tenantOnly`, `permission` (any-of); thêm mục mới phải có route trong `routes/router.tsx` và không trùng `href` với mục khác.
+- **Lỗi theo đơn vị/module**: `MODULE_NOT_ENABLED` (403, đơn vị chưa bật module; claim `modules` đổi sau khi đăng nhập/refresh lại) và `TENANT_REQUIRED` (token chưa có `tenantId`, cần chọn đơn vị) có thông điệp ở `ui/error-messages.ts`.
+
+## Chạy E2E an toàn khi nhiều agent làm chung
+
+- `E2E_PORT_BASE=4700 npx playwright test` (hoặc `npm run test:e2e:only` sau khi build): web ở base, mock ở base+1; mỗi agent một base cách nhau từ 2 trở lên.
+- Mọi bộ E2E dùng chung `apps/web/dist`. Nhiều agent chạy `npm run build -w @lms/web` cùng lúc sẽ ghi đè/xóa dist của nhau (test lỗi 404 asset hoặc trang trắng): build xong mới chạy test, build một lần rồi dùng `test:e2e:only`, và không build trong lúc bộ test khác đang chạy. Dừng đúng tiến trình `vite preview` do mình tạo, không dừng tiến trình của agent khác.
 
 ## Phân quyền theo BE động (ADR-0003)
 
-- Khóa quyền là `TênController/tênMethod` của controller **nội bộ** xử lý endpoint (ví dụ `AccessControlController/listRoles`, `BorrowingController/borrow`), không phải mã cố định. Danh sách FE dùng nằm ở `packages/api/src/permissions.ts`; BE đổi tên controller/method thì phải sửa ở đó (và literal trong `nav-links.ts`). Quyền mới của role chỉ có hiệu lực ở lần đăng nhập/refresh kế tiếp.
+- Khóa quyền là `TênController/tênMethod` của controller **nội bộ** xử lý endpoint (ví dụ `AccessControlController/listRoles`, `BorrowingController/borrow`), không phải mã cố định. Danh sách FE dùng nằm ở `apps/web/src/api/permissions.ts` (`PERMISSIONS`); BE đổi tên controller/method thì phải sửa ở đó (và literal trong `ui/nav-links.ts`). Quyền mới của role chỉ có hiệu lực ở lần đăng nhập/refresh kế tiếp.
 - `can(session, key)` đúng khi claim `admin=true` (quản trị viên, bỏ qua kiểm khóa, thường không có permission nào) hoặc `permissions` chứa khóa. Chỉ để ẩn/hiện UI; BE trả 403 mới là quyết định cuối.
-- `mustChangePassword`: token của tài khoản này không mang `admin`/`permissions`. `requireSession` chuyển sang `/change-password` (trang ở shell, gọi `POST /api/auth/password` qua BFF), đổi xong thì xoá phiên và bắt đăng nhập lại để lấy token đầy đủ.
-- Hiển thị tên bằng claim `username`, không dùng `sub` (UUID).
+- `mustChangePassword`: token của tài khoản này không mang `admin`/`permissions`. `ProtectedRoute` chuyển sang `/change-password` (gọi `POST /api/auth/password`), đổi xong thì xoá phiên và bắt đăng nhập lại để lấy token đầy đủ.
 - API cho FE đi qua `lms-api`/nginx; nhiều API nghiệp vụ trong BE đã chuyển sang `/internal/**` (nginx trả 404), FE chỉ dùng `/api/**`. Phân hệ Sách (`/catalog`) dùng `/api/books`, `/api/book-copies`.
+
+## Việc chuyển đổi
+
+Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/ui`, `@mfe/api`, `MFE_NAV_LINKS`, `basePath`) **đã bỏ** và được thay bằng `apps/web`. Các thư mục `apps/shell`, `apps/admin`, `packages/*` hiện vẫn còn trong repo chỉ để đối chiếu khi port trang; chúng sẽ bị xóa sau khi người dùng duyệt (chưa duyệt, chưa xóa). Không phát triển thêm trong các thư mục đó; script `npm run dev:legacy` chỉ để chạy bản cũ. Tiến độ: pha 1 (nền tảng) xong; trang `catalog/`, `circulation/`, `admin/` còn là stub cần port (mỗi stub ghi đường dẫn nguồn cũ ở dòng đầu); e2e `catalog/circulation/admin.spec.ts` chưa viết lại. Chi tiết: `docs/design/2026-11-17-chuyen-vite-spa.md`.
 
 ## Quy ước commit
 
-Message tiếng Việt có dấu, không thêm `Co-Authored-By` hay attribution. Dòng đầu có prefix Conventional Commits, chỉ dùng 7 loại: `feat` (tính năng, đổi hành vi/giao diện), `fix` (sửa lỗi), `docs` (chỉ tài liệu), `refactor` (đổi cấu trúc, không đổi hành vi), `test`, `chore` (công cụ, skill), `build` (build, phụ thuộc). Scope tuỳ chọn theo app/package (`fix(admin):`, `feat(shell):`, `feat(ui):`); thay đổi phá vỡ hợp đồng thêm `!` (`feat(api)!:`). Commit riêng từng nhóm thay đổi. Quy ước đầy đủ ở `~/.claude/CLAUDE.md`.
+Message tiếng Việt có dấu, không thêm `Co-Authored-By` hay attribution. Dòng đầu có prefix Conventional Commits, chỉ dùng 7 loại: `feat` (tính năng, đổi hành vi/giao diện), `fix` (sửa lỗi), `docs` (chỉ tài liệu), `refactor` (đổi cấu trúc, không đổi hành vi), `test`, `chore` (công cụ, skill), `build` (build, phụ thuộc). Scope tuỳ chọn theo khu vực (`fix(web):`, `feat(ui):`, `feat(api):`); thay đổi phá vỡ hợp đồng thêm `!` (`feat(api)!:`). Commit riêng từng nhóm thay đổi. Quy ước đầy đủ ở `~/.claude/CLAUDE.md`.

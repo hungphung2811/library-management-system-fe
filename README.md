@@ -1,60 +1,91 @@
 # Library Management System - FE
 
-Hai app Next.js ghép bằng Multi-Zones (npm workspaces): app chính `shell` (nghiệp vụ thư viện) và zone `admin` (quản lý hệ thống). Gọi BE qua API Gateway (`library-management-system`).
+Một SPA React 19 + Vite 7 + TypeScript (npm workspaces, app duy nhất `apps/web` = `@lms/web`): react-router v7, antd 6 + Tailwind v4, `@tanstack/react-query`. Gọi BE qua `lms-api` (`library-management-system`), cùng origin qua proxy `/api`. Không SSR.
 
-| App | Cổng | Đường dẫn | Vai trò |
-|---|---|---|---|
-| `apps/shell` | 3000 | `/`, `/catalog`, `/circulation`, `/profile`, `/notifications`, `/login` | Điểm vào duy nhất của trình duyệt: nghiệp vụ Sách và Mượn trả, đăng nhập, hồ sơ, thông báo, BFF, proxy tới zone admin (có trang fallback khi zone chết) |
-| `apps/admin` | 3003 | `/admin` | Quản trị: người dùng, vai trò và quyền, phòng ban, nhật ký (zone riêng) |
-| `packages/ui` | - | - | UI dùng chung: Tailwind v4 (layout, spacing, tokens `@theme`) + antd 6 (control) + `AppShell`, `AuthShell`, `PageHeader`, `Providers` |
-| `packages/api` | - | - | Session từ JWT, `requireSession`, `gatewayFetch` |
+## Cấu trúc `apps/web`
+
+```
+index.html, vite.config.ts, tsconfig.json (alias @/ -> src)
+src/
+  main.tsx            gốc: RootErrorBoundary > Providers > RouterProvider
+  index.css           Tailwind + CSS layer + token thương hiệu + CSS in phiếu
+  api/                apiFetch, useApi, useApiMutation, session (decode JWT), can, PERMISSIONS, token-store
+  auth/               AuthProvider, ProtectedRoute
+  ui/                 điểm vào "@/ui": antd, icon, AppShell, DataTable, SearchBar, FormModal, QueryBoundary...
+  routes/router.tsx   khai báo mọi đường dẫn
+  pages/              Home, Login, Profile, Notifications...; catalog/, circulation/, admin/ (lazy theo nhóm)
+```
+
+| Đường dẫn | Nội dung |
+|---|---|
+| `/login`, `/change-password` | Đăng nhập, đổi mật khẩu (ngoài khung) |
+| `/`, `/profile`, `/notifications` | Trang chủ, hồ sơ, thông báo |
+| `/catalog`, `/circulation` | Sách, Mượn trả |
+| `/admin/...` | Quản trị: người dùng, vai trò và quyền, phòng ban, nhật ký |
 
 ## Chạy
 
 ```bash
 npm install
-npm run dev          # cả 2 app
+npm run dev                              # http://localhost:3000, proxy /api -> http://localhost:8085
+npm run dev -w @lms/web -- --port 3100   # cổng khác khi 3000 bận
+npm run typecheck -w @lms/web
+npm run build -w @lms/web                # tsc + vite build -> apps/web/dist/
+npm run preview -w @lms/web              # phục vụ dist/ với cùng proxy
 ```
 
-BE: `docker compose --profile apps up -d --build` ở repo `library-management-system`. Tài khoản dev `admin` / `Admin@12345`.
+BE: `scripts/dev-start.ps1` ở repo `library-management-system` (chạy Maven/jar, kèm FE), hoặc `docker compose --profile apps up -d --build` rồi `VITE_API_TARGET=http://localhost:8080 npm run dev`. Tài khoản dev `admin` / `Admin@12345`.
 
 ## Biến môi trường
 
 | Biến | Dùng ở | Mặc định | Ý nghĩa |
 |---|---|---|---|
-| `GATEWAY_URL` | mọi app | `http://localhost:8080` | API Gateway |
-| `SHELL_URL` | admin | `http://localhost:3000` | URL công khai của shell, nơi zone admin chuyển người chưa đăng nhập tới |
-| `ADMIN_URL` | shell | `http://localhost:3003` | Địa chỉ zone admin. Rewrite asset `/admin-static` được tính lúc BUILD, nên biến này phải đặt cả khi build |
-| `ZONE_TIMEOUT_MS` | shell | `10000` | Quá ngưỡng (ms) thì coi zone không khả dụng và trả trang 503 |
-| `MFE_NAV_LINKS` | shell, admin | xem `packages/ui/src/nav-links.ts` | JSON `[{href,label,permission?,group?,children?}]`; đặt cùng giá trị cho cả hai app |
+| `VITE_API_TARGET` | `vite dev` / `vite preview` | `http://localhost:8085` | Đích proxy `/api` (lms-api hoặc nginx của BE). Không ảnh hưởng bản build tĩnh: production proxy ở nginx |
+| `E2E_PORT_BASE` | Playwright | `4200` | Cổng web của E2E; mock gateway ở base+1 |
 
-## Thêm zone mới
+## Xác thực và phân quyền
 
-Trang nghiệp vụ mới (Sách, Mượn trả...) chỉ cần thêm thư mục trong `apps/shell/app/(app)/`; khung `AppShell` lấy từ layout của group. Chỉ tách thành zone riêng khi có lý do (đội riêng, hạ tầng riêng, xem `docs/design/2026-11-16-gom-zone.md`):
+- Access token chỉ trong bộ nhớ; refresh token ở localStorage khóa `lms_rt`. F5 thì khôi phục phiên bằng `POST /api/auth/refresh`. 401 giữa phiên thì refresh một lần rồi gọi lại, thất bại thì về `/login?next=...`.
+- Phân quyền động theo BE (ADR-0003): khóa `TênController/tênMethod`, `can(session, PERMISSIONS.x)` chỉ ẩn/hiện UI, BE trả 403 mới là quyết định cuối. Danh sách ở `src/api/permissions.ts`.
+- Dữ liệu: `useApi("/api/...")` + `QueryBoundary`, ghi bằng `useApiMutation(fn, { invalidate })`; bộ lọc và phân trang nằm trên URL.
 
-1. Copy `apps/admin`, đổi tên, `basePath`, `assetPrefix`, cổng.
-2. Shell: thêm URL vào `ZONES` ([lib-zone-proxy.ts](apps/shell/lib-zone-proxy.ts)) và `ZONE_PATHS` ở `zone-unavailable/[zone]/page.tsx`, thêm `app/<zone>/[[...path]]/route.ts` và `<zone>` vào `matcher` của `proxy.ts`.
-3. Thêm link vào `MFE_NAV_LINKS`.
+## Thêm trang mới
 
-## Quy ước
-
-- Từ shell sang zone admin (và ngược lại) là tải trang đầy đủ: dùng thẻ `<a>`, không dùng `next/link`. Trong shell, Sách và Mượn trả là route của chính app.
-- Mỗi trang gọi `requireSession(path)`; không chỉ dựa vào proxy của shell (zone admin còn có thể được gọi thẳng cổng của nó).
-- Token nằm trong cookie `httpOnly` do shell đặt; client component gọi BE qua `/api/bff/...`.
+1. Tạo component trong `apps/web/src/pages/<nhóm>/`.
+2. Khai báo route (và `handle.title`) trong `routes/router.tsx`.
+3. Cần mục sidebar thì thêm vào `ui/nav-links.ts` (icon ở `ICONS` trong `ui/ShellFrame.tsx`).
 
 ## UI: Tailwind + antd
 
-- **antd** cho control (Button, Form, Input, Table, Menu, Alert...), theme ở [theme.ts](packages/ui/src/theme.ts). Import từ `@mfe/ui` (đã bọc client module), không import `antd` trực tiếp trong server component.
-- **Tailwind v4** cho layout, khoảng cách, màu nền; tokens (`brand-*`, `surface`, `ink`) ở [tailwind.css](packages/ui/src/tailwind.css). Đổi màu thương hiệu thì sửa cả `@theme` và `brand` trong `theme.ts`.
-- Hai bên sống chung nhờ CSS layer: `theme, base, antd, components, utilities` (`<AntdRegistry layer>` trong `Providers`). Utility của Tailwind luôn thắng antd, preflight không phá antd.
-- Mỗi app có `postcss.config.mjs` và `app/globals.css` (import `@mfe/ui/tailwind.css` + `@source` trỏ vào `packages/ui/src`). Zone mới copy 2 file này (trong shell, `globals.css` đã quét `app/`).
-- Server component truyền props cho component antd phải serialize được (Table dùng `dataIndex`, không dùng `render`).
+- **antd** cho control (Button, Form, Input, Table, Menu...), theme ở `src/ui/theme.ts`; import từ `@/ui`.
+- **Tailwind v4** cho layout, khoảng cách, màu nền (plugin `@tailwindcss/vite`, tự quét `src`); token (`brand-*`, `surface`, `ink`) ở `@theme` trong `src/index.css`. Đổi màu thương hiệu thì sửa cả `@theme` và `brand` trong `theme.ts`.
+- Hai bên sống chung nhờ CSS layer `theme, base, antd, components, utilities` (đầu `index.css`) và `<StyleProvider layer>` trong `Providers`. Đừng bỏ prop `layer`.
+
+## Deploy
+
+Build tĩnh `apps/web/dist/`, phục vụ bằng nginx và proxy `/api` tới lms-api (cùng origin nên không cần CORS). Bắt buộc fallback SPA, nếu không F5 trên `/catalog/...` ra 404:
+
+```nginx
+server {
+  listen 8080;
+  root /usr/share/nginx/html;          # nội dung apps/web/dist
+  location /api/ { proxy_pass http://lms-api:8085; }
+  location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; try_files $uri =404; }
+  location / { try_files $uri /index.html; }
+}
+```
+
+`index.html` không nên cache lâu (tên file trong `assets/` có hash). Mẫu tham khảo, chưa tích hợp vào `docker-compose` của BE.
 
 ## Test E2E (Playwright)
 
 ```bash
-npm run test:e2e          # build rồi chạy 93 test
+npm run test:e2e          # build apps/web rồi chạy Playwright
 npm run test:e2e:only     # dùng bản build sẵn
 ```
 
-Chạy trên bản build với mock gateway (`e2e/mock-gateway.mjs`), không cần BE hay docker. Cần trống các cổng 3000, 3003, 3100 và 8090 (4 server). Dev server đang chiếm cổng thì đặt `E2E_PORT_BASE` (ví dụ `E2E_PORT_BASE=4200`: shell 4200, admin 4203, shell "zone chết" 4300, gateway 9290) và build shell với `ADMIN_URL=http://localhost:4203` vì rewrite asset tính lúc build (xem `e2e/ports.ts`). Báo cáo HTML ở `playwright-report/`.
+Chạy trên bản build tĩnh (`vite preview`) với mock gateway (`e2e/mock-gateway.mjs`), không cần BE hay docker. Chỉ 2 server: web ở `E2E_PORT_BASE` (mặc định 4200) và mock ở base+1; không đụng 3000/3100/8085-8090. Báo cáo HTML ở `playwright-report/`. Chi tiết: `e2e/README-e2e.md`. Một số spec (`catalog`, `circulation`, `admin`) chưa viết lại cho app Vite.
+
+## Việc chuyển đổi
+
+Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/*`, `MFE_NAV_LINKS`, `basePath`) đã bỏ. Các thư mục `apps/shell`, `apps/admin`, `packages/*` còn trong repo chỉ để đối chiếu khi port trang và sẽ bị xóa sau khi người dùng duyệt (chưa duyệt, chưa xóa); `npm run dev:legacy` chạy bản cũ. Pha 1 (nền tảng) xong; trang `catalog/`, `circulation/`, `admin/` còn là stub chờ port. Xem `docs/design/2026-11-17-chuyen-vite-spa.md`.
