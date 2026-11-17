@@ -4,7 +4,9 @@ import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/ui/AppShell";
 import { PageSkeleton } from "@/ui/PageSkeleton";
 import ChangePassword from "@/pages/ChangePassword";
+import ForgotPassword from "@/pages/ForgotPassword";
 import Home from "@/pages/Home";
+import ResetPassword from "@/pages/ResetPassword";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 import Notifications from "@/pages/Notifications";
@@ -16,6 +18,10 @@ const CatalogList = lazy(() => import("@/pages/catalog/CatalogList"));
 const BookNew = lazy(() => import("@/pages/catalog/BookNew"));
 const BookDetail = lazy(() => import("@/pages/catalog/BookDetail"));
 const Barcode = lazy(() => import("@/pages/catalog/Barcode"));
+const CatalogAuthors = lazy(() => import("@/pages/catalog/reference/Authors"));
+const CatalogPublishers = lazy(() => import("@/pages/catalog/reference/Publishers"));
+const CatalogCategories = lazy(() => import("@/pages/catalog/reference/Categories"));
+const CatalogShelfLocations = lazy(() => import("@/pages/catalog/reference/ShelfLocations"));
 
 const CirculationHome = lazy(() => import("@/pages/circulation/CirculationHome"));
 const Borrow = lazy(() => import("@/pages/circulation/Borrow"));
@@ -25,6 +31,7 @@ const BorrowingDetail = lazy(() => import("@/pages/circulation/BorrowingDetail")
 const Reservations = lazy(() => import("@/pages/circulation/Reservations"));
 const Fines = lazy(() => import("@/pages/circulation/Fines"));
 const MyBorrowings = lazy(() => import("@/pages/circulation/Mine"));
+const CirculationPolicy = lazy(() => import("@/pages/circulation/Policy"));
 
 const AdminHome = lazy(() => import("@/pages/admin/AdminHome"));
 const Users = lazy(() => import("@/pages/admin/Users"));
@@ -48,12 +55,15 @@ const SalesReceipts = lazy(() => import("@/pages/sales/Receipts"));
 const SalesSettings = lazy(() => import("@/pages/sales/Settings"));
 const SalesRefunds = lazy(() => import("@/pages/sales/Refunds"));
 const SalesAudit = lazy(() => import("@/pages/sales/Audit"));
+const SalesContacts = lazy(() => import("@/pages/sales/Contacts"));
+const SalesContactDetail = lazy(() => import("@/pages/sales/ContactDetail"));
 
 // Quản trị nền tảng SaaS: chỉ platform admin (trang tự chặn bằng PlatformGate, BE trả 403 là quyết định cuối).
 const CmsPages = lazy(() => import("@/pages/platform/CmsPages"));
 const CmsPageDetail = lazy(() => import("@/pages/platform/CmsPageDetail"));
 const ContactRequests = lazy(() => import("@/pages/platform/ContactRequests"));
 const ContactRequestDetail = lazy(() => import("@/pages/platform/ContactRequestDetail"));
+const Onboarding = lazy(() => import("@/pages/platform/onboarding/Onboarding"));
 const Tenants = lazy(() => import("@/pages/platform/tenants/Tenants"));
 const TenantDetailPage = lazy(() => import("@/pages/platform/tenants/TenantDetail"));
 const Organizations = lazy(() => import("@/pages/platform/organizations/Organizations"));
@@ -109,6 +119,8 @@ export const router = createBrowserRouter([
     errorElement: <RouteError />,
     children: [
       { path: "login", element: <Login />, handle: { title: "Đăng nhập" } },
+      { path: "forgot-password", element: <ForgotPassword />, handle: { title: "Quên mật khẩu" } },
+      { path: "reset-password", element: <ResetPassword />, handle: { title: "Đặt lại mật khẩu" } },
       {
         // Đổi mật khẩu: đã đăng nhập (kể cả tài khoản mustChangePassword), nằm ngoài khung ứng dụng.
         element: <ProtectedRoute allowMustChange />,
@@ -136,6 +148,10 @@ export const router = createBrowserRouter([
                       { path: "books/new", element: <BookNew /> },
                       { path: "books/:id", element: <BookDetail /> },
                       { path: "barcode", element: <Barcode /> },
+                      { path: "authors", element: <CatalogAuthors />, handle: { title: "Tác giả" } },
+                      { path: "publishers", element: <CatalogPublishers />, handle: { title: "Nhà xuất bản" } },
+                      { path: "categories", element: <CatalogCategories />, handle: { title: "Thể loại" } },
+                      { path: "shelf-locations", element: <CatalogShelfLocations />, handle: { title: "Vị trí kệ" } },
                     ],
                   },
                   {
@@ -156,6 +172,7 @@ export const router = createBrowserRouter([
                           { path: "reservations", element: <Reservations /> },
                           { path: "fines", element: <Fines /> },
                           { path: "mine", element: <MyBorrowings /> },
+                          { path: "policy", element: <CirculationPolicy />, handle: { title: "Chính sách mượn trả" } },
                           { path: "*", element: <NotFound /> },
                         ],
                       },
@@ -194,6 +211,8 @@ export const router = createBrowserRouter([
                       { path: "settings", element: <SalesSettings />, handle: { title: "Cấu hình bán hàng" } },
                       { path: "refunds", element: <SalesRefunds />, handle: { title: "Hoàn tiền" } },
                       { path: "audit", element: <SalesAudit />, handle: { title: "Nhật ký bán hàng" } },
+                      { path: "contacts", element: <SalesContacts />, handle: { title: "Liên hệ khách" } },
+                      { path: "contacts/:id", element: <SalesContactDetail />, handle: { title: "Chi tiết liên hệ" } },
                       { path: "*", element: <NotFound /> },
                     ],
                   },
@@ -203,6 +222,7 @@ export const router = createBrowserRouter([
                     handle: { title: "Nền tảng SaaS" },
                     children: [
                       { index: true, element: <Navigate to="/platform/cms-pages" replace /> },
+                      { path: "onboarding", element: <Onboarding />, handle: { title: "Triển khai khách mới" } },
                       { path: "tenants", element: <Tenants />, handle: { title: "Đơn vị (tenant)" } },
                       { path: "tenants/:id", element: <TenantDetailPage />, handle: { title: "Chi tiết đơn vị" } },
                       { path: "tenants/:id/contracts/:contractId", element: <ContractDetailPage />, handle: { title: "Chi tiết hợp đồng" } },

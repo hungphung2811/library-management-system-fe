@@ -73,6 +73,14 @@ export const PERMISSIONS = {
   USER_STATUS: "UserController/changeStatus",
   /** POST /api/users/{id}/password-reset (quản trị đặt lại mật khẩu) */
   USER_RESET_PASSWORD: "UserController/resetPassword",
+  /** POST /api/users/{id}/unlock */
+  USER_UNLOCK: "UserController/unlock",
+  /** POST /api/users/{id}/sessions/revocation */
+  USER_REVOKE_SESSIONS: "UserController/revokeSessions",
+  /** POST /api/users/imports */
+  USER_IMPORT: "UserController/importUsers",
+  /** GET /api/users/export */
+  USER_EXPORT: "UserController/exportUsers",
   /** POST /api/auth/credentials */
   CREDENTIAL_CREATE: "AuthController/register",
   /** GET /api/users/{id}/reader-profile */
@@ -217,10 +225,76 @@ export const PERMISSIONS = {
   REFUND_MARK_REFUNDED: "RefundController/markRefunded",
   /** GET /api/sales/audit-log */
   SALES_AUDIT_SEARCH: "SalesAuditController/search",
+  /** POST /public/t/{code}/contact-requests (khách, qua customer-api; FE nhân viên không gọi) */
+  SHOP_CONTACT_CREATE: "ShopContactController/create",
+  /** GET /api/sales/contact-requests */
+  SALES_CONTACT_SEARCH: "SalesContactController/search",
+  /** GET /api/sales/contact-requests/{id} */
+  SALES_CONTACT_VIEW: "SalesContactController/get",
+  /** GET /api/sales/contact-requests/{id}/contact (liên hệ khách đầy đủ) */
+  SALES_CONTACT_FULL: "SalesContactController/getContact",
+  /** PUT /api/sales/contact-requests/{id}/status */
+  SALES_CONTACT_STATUS: "SalesContactController/updateStatus",
+  /** POST /api/sales/contact-requests/{id}/anonymization */
+  SALES_CONTACT_ANONYMIZE: "SalesContactController/anonymize",
   /** GET /api/contracts (hợp đồng của tenant mình, chỉ đọc) */
   CONTRACT_LIST: "TenantContractController/list",
   /** GET /api/contracts/current */
   CONTRACT_CURRENT: "TenantContractController/current",
   /** GET /api/storefront-origins (website của tenant mình, chỉ đọc) */
   STOREFRONT_ORIGIN_LIST: "TenantStorefrontOriginController/list",
+  /** GET /api/circulation/policy */
+  CIRCULATION_POLICY_GET: "CirculationPolicyController/get",
+  /** PUT /api/circulation/policy */
+  CIRCULATION_POLICY_UPDATE: "CirculationPolicyController/update",
+  /** GET /api/authors */
+  AUTHOR_SEARCH: "AuthorController/search",
+  /** GET /api/authors/options */
+  AUTHOR_OPTIONS: "AuthorController/options",
+  /** GET /api/authors/{id} */
+  AUTHOR_VIEW: "AuthorController/get",
+  /** POST /api/authors */
+  AUTHOR_CREATE: "AuthorController/create",
+  /** PUT /api/authors/{id} */
+  AUTHOR_UPDATE: "AuthorController/update",
+  /** PUT /api/authors/{id}/status */
+  AUTHOR_SET_STATUS: "AuthorController/setStatus",
+  /** GET /api/publishers */
+  PUBLISHER_SEARCH: "PublisherController/search",
+  /** GET /api/publishers/options */
+  PUBLISHER_OPTIONS: "PublisherController/options",
+  /** GET /api/publishers/{id} */
+  PUBLISHER_VIEW: "PublisherController/get",
+  /** POST /api/publishers */
+  PUBLISHER_CREATE: "PublisherController/create",
+  /** PUT /api/publishers/{id} */
+  PUBLISHER_UPDATE: "PublisherController/update",
+  /** PUT /api/publishers/{id}/status */
+  PUBLISHER_SET_STATUS: "PublisherController/setStatus",
+  /** GET /api/categories */
+  CATEGORY_SEARCH: "CategoryController/search",
+  /** GET /api/categories/options */
+  CATEGORY_OPTIONS: "CategoryController/options",
+  /** GET /api/categories/{id} */
+  CATEGORY_VIEW: "CategoryController/get",
+  /** POST /api/categories */
+  CATEGORY_CREATE: "CategoryController/create",
+  /** PUT /api/categories/{id} */
+  CATEGORY_UPDATE: "CategoryController/update",
+  /** PUT /api/categories/{id}/status */
+  CATEGORY_SET_STATUS: "CategoryController/setStatus",
+  /** GET /api/shelf-locations */
+  SHELF_LOCATION_SEARCH: "ShelfLocationController/search",
+  /** GET /api/shelf-locations/options */
+  SHELF_LOCATION_OPTIONS: "ShelfLocationController/options",
+  /** GET /api/shelf-locations/{id} */
+  SHELF_LOCATION_VIEW: "ShelfLocationController/get",
+  /** POST /api/shelf-locations */
+  SHELF_LOCATION_CREATE: "ShelfLocationController/create",
+  /** PUT /api/shelf-locations/{id} */
+  SHELF_LOCATION_UPDATE: "ShelfLocationController/update",
+  /** PUT /api/shelf-locations/{id}/status */
+  SHELF_LOCATION_SET_STATUS: "ShelfLocationController/setStatus",
+  /** PUT /api/book-copies/{id}/shelf-location (đổi/gỡ vị trí kệ của bản sao) */
+  COPY_MOVE_SHELF_LOCATION: "BookCopyController/moveShelfLocation",
 } as const;

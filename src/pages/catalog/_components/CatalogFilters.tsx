@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
+import { PERMISSIONS, can, useApi, useSession } from "@/api";
 import { Button, Input, Select, Text } from "@/ui";
 import { AvailableToggle } from "./AvailableToggle";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZES, SORTS, parseSize, parseSort } from "./catalog-filters";
@@ -58,13 +59,42 @@ function IsbnInput() {
   );
 }
 
-/** Hàng điều khiển: ISBN, còn bản, sắp xếp, cỡ trang. Từ khóa nằm ở SearchBar (cùng hàng qua `extra`). */
+type RefOption = { id: string; name: string };
+
+/** Lọc theo một danh mục chuẩn (tải `/options`, tối đa 200 mục). Không có quyền `options` thì không hiện ô. */
+function RefFilter({ path, param, permission, label }: { path: "/api/categories" | "/api/publishers"; param: string; permission: string; label: string }) {
+  const s = useSession();
+  const [sp] = useSearchParams();
+  const set = useSetParams();
+  const allowed = can(s, permission);
+  const q = useApi<RefOption[]>(allowed ? `${path}/options` : null);
+  if (!allowed) return null;
+  const current = sp.get(param) ?? undefined;
+  const options = (q.data ?? []).map((o) => ({ value: o.id, label: o.name }));
+  return (
+    <Select
+      aria-label={`Lọc theo ${label.toLowerCase()}`}
+      className="w-44"
+      allowClear
+      showSearch={{ optionFilterProp: "label" }}
+      loading={q.isPending}
+      placeholder={label}
+      value={current}
+      options={options}
+      onChange={(v) => set({ [param]: v ?? null })}
+    />
+  );
+}
+
+/** Hàng điều khiển: ISBN, thể loại, NXB, còn bản, sắp xếp, cỡ trang. Từ khóa nằm ở SearchBar (cùng hàng qua `extra`). */
 export function CatalogControls({ available }: { available: boolean }) {
   const [sp] = useSearchParams();
   const set = useSetParams();
   return (
     <>
       <IsbnInput />
+      <RefFilter path="/api/categories" param="categoryId" permission={PERMISSIONS.CATEGORY_OPTIONS} label="Thể loại" />
+      <RefFilter path="/api/publishers" param="publisherId" permission={PERMISSIONS.PUBLISHER_OPTIONS} label="Nhà xuất bản" />
       <AvailableToggle checked={available} />
       <Select
         aria-label="Sắp xếp"
@@ -104,7 +134,7 @@ function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
 export function ActiveFilters({ total, q, isbn, available }: { total: number; q: string; isbn: string; available: boolean }) {
   const [sp, setSp] = useSearchParams();
   const set = useSetParams();
-  const active = !!q || !!isbn || available;
+  const active = !!q || !!isbn || available || !!sp.get("categoryId") || !!sp.get("publisherId");
   const clear = () => {
     const keep = new URLSearchParams();
     for (const k of ["sort", "size"]) if (sp.get(k)) keep.set(k, sp.get(k)!);
@@ -121,6 +151,8 @@ export function ActiveFilters({ total, q, isbn, available }: { total: number; q:
       {isbn && (
         <Chip label={`ISBN: ${isbn}`} onRemove={() => set({ isbn: null })} />
       )}
+      {sp.get("categoryId") && <Chip label="Có lọc thể loại" onRemove={() => set({ categoryId: null })} />}
+      {sp.get("publisherId") && <Chip label="Có lọc nhà xuất bản" onRemove={() => set({ publisherId: null })} />}
       {available && (
         <Chip label="Còn bản sẵn sàng" onRemove={() => set({ available: null })} />
       )}

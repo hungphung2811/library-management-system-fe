@@ -46,7 +46,11 @@ export type ApiInit = Omit<RequestInit, "body"> & {
   body?: BodyInit | null;
   /** true: không gắn Bearer và không refresh khi 401 (login, refresh). */
   anonymous?: boolean;
+  /** true: thân trả về là tệp (dùng qua apiDownload), không parse JSON. */
+  download?: boolean;
 };
+
+export type Downloaded = { blob: Blob; filename: string | null };
 
 /**
  * Gọi lms-api cùng origin (`/api/...`, proxy ở dev, nginx ở production). Gắn Bearer từ bộ nhớ.
@@ -54,7 +58,24 @@ export type ApiInit = Omit<RequestInit, "body"> & {
  * Lỗi ném ApiCallError; 204 trả undefined. Đoạn đường dẫn chứa dữ liệu người dùng phải tự encodeURIComponent.
  */
 export async function apiFetch<T = unknown>(path: `/api/${string}`, init: ApiInit = {}): Promise<T> {
-  const { json, headers, anonymous, body, ...rest } = init;
+  const { json, headers, anonymous, body, download, ...rest } = init;
+  const readOk = async (r: Response): Promise<T> => {
+    if (download) {
+      const cd = r.headers.get("Content-Disposition") ?? "";
+      const m = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
+      const raw = m?.[1] ?? m?.[2];
+      let filename: string | null = null;
+      try {
+        filename = raw ? decodeURIComponent(raw) : null;
+      } catch {
+        filename = raw ?? null;
+      }
+      return { blob: await r.blob(), filename } as T;
+    }
+    if (r.status === 204) return undefined as T;
+    const t = await r.text();
+    return (t ? JSON.parse(t) : undefined) as T;
+  };
   let usedToken: string | null = null;
   const call = async () => {
     const token = anonymous ? null : getAccessToken();
@@ -92,16 +113,27 @@ export async function apiFetch<T = unknown>(path: `/api/${string}`, init: ApiIni
     // ADR-0009: 403 MODULE_NOT_ENABLED có thể do token cũ (module vừa được bật): làm mới phiên một lần rồi gọi lại.
     if (err.code === "MODULE_NOT_ENABLED" && !anonymous && (await refreshSession())) {
       res = await call();
-      if (res.ok) {
-        if (res.status === 204) return undefined as T;
-        const t = await res.text();
-        return (t ? JSON.parse(t) : undefined) as T;
-      }
+      if (res.ok) return readOk(res);
       throw await parseError(res);
     }
     throw err;
   }
-  if (res.status === 204) return undefined as T;
-  const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return readOk(res);
+}
+
+/** GET một tệp (CSV...) có Bearer và refresh-on-401 như apiFetch. Trả Blob và tên tệp từ Content-Disposition (nếu có). */
+export function apiDownload(path: `/api/${string}`, init: Omit<ApiInit, "download"> = {}): Promise<Downloaded> {
+  return apiFetch<Downloaded>(path, { ...init, download: true });
+}
+
+/** Kích hoạt trình duyệt lưu Blob thành tệp `filename`. */
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

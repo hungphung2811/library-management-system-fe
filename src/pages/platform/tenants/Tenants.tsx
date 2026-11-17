@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router";
 import { toErrorInfo, useApi } from "@/api";
-import { Button, DataTable, ErrorPanel, PageHeader, PageSkeleton, SearchBar, Select, Tag } from "@/ui";
+import { Button, DataTable, LinkButton, ErrorPanel, PageHeader, PageSkeleton, SearchBar, Select, Tag } from "@/ui";
 import { keepPreviousData, pageNo, qp } from "../../admin/_lib/params";
 import { PagerWithSize } from "../_components/PagerWithSize";
 import { PlatformGate } from "../_components/PlatformGate";
@@ -60,7 +60,12 @@ function List() {
       <PageHeader
         title="Đơn vị (tenant)"
         description="Quản lý đơn vị thuê dịch vụ: trạng thái, quản trị viên và module được bật."
-        actions={<CreateTenantButton organizations={orgOptions} />}
+        actions={
+          <>
+            <LinkButton to="/platform/onboarding">Triển khai khách mới</LinkButton>
+            <CreateTenantButton organizations={orgOptions} />
+          </>
+        }
       />
       <div className="flex max-w-[1200px] flex-col gap-4">
         <SearchBar

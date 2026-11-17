@@ -72,6 +72,7 @@ export function BarcodeLookup({ canChange }: { canChange: boolean }) {
               },
               { label: "Trạng thái", value: <StatusTag domain="copy" value={current.status} /> },
               { label: "Giá bìa", value: formatMoney(current.coverPrice) },
+              ...(current.shelfLocationCode ? [{ label: "Vị trí kệ", value: current.shelfLocationCode, mono: true }] : []),
             ]}
           />
           {canChange && (

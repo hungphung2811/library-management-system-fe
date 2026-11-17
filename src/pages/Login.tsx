@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { toErrorInfo } from "@/api";
 import { BootScreen, safeNext } from "@/auth/ProtectedRoute";
 import { useAuth } from "@/auth/AuthProvider";
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   // Sau khi đổi mật khẩu, change-password chuyển về đây kèm ?changed=1
   const changed = sp.get("changed") === "1";
+  const reset = sp.get("reset") === "1";
   const next = safeNext(sp.get("next"));
 
   if (!ready) return <BootScreen />;
@@ -50,6 +51,12 @@ export default function LoginPage() {
         {changed && !error && (
           <Alert type="success" showIcon title="Đổi mật khẩu thành công, vui lòng đăng nhập lại." className="mb-4" />
         )}
+        {reset && !changed && !error && (
+          <Alert type="success" showIcon title="Đã đặt lại mật khẩu, vui lòng đăng nhập bằng mật khẩu mới." className="mb-4" />
+        )}
+        <p className="mt-0 mb-4 text-right text-sm">
+          <Link to="/forgot-password">Quên mật khẩu?</Link>
+        </p>
         {error && <Alert type="error" showIcon title={error} className="mb-4" />}
         <Button type="primary" htmlType="submit" block loading={loading}>
           Đăng nhập

@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { apiFetch, toErrorInfo, useApiMutation } from "@/api";
 import { Alert, App, Button, Card, Form, Input, InputNumber, LinkButton, Space, describeError, type DescribedError } from "@/ui";
+import { ClassificationFields, classificationBody, type ClassificationValues } from "./ClassificationFields";
 import type { TitleView } from "./types";
 
-type Values = { name: string; author: string; isbn?: string; coverPrice: number };
+type Values = { name: string; author: string; isbn?: string; coverPrice: number } & ClassificationValues;
 
 export function NewBookForm() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export function NewBookForm() {
       const isbn = v.isbn?.trim();
       return apiFetch<TitleView>("/api/books", {
         method: "POST",
-        json: { name: v.name.trim(), author: v.author.trim(), ...(isbn ? { isbn } : {}), coverPrice: v.coverPrice },
+        json: { name: v.name.trim(), author: v.author.trim(), ...(isbn ? { isbn } : {}), coverPrice: v.coverPrice, ...classificationBody(v) },
       });
     },
     { invalidate: ["/api/books"] },
@@ -43,7 +44,7 @@ export function NewBookForm() {
       const rest: string[] = [];
       for (const line of d.details ?? []) {
         const m = /^(\w+)\s*:\s*(.+)$/.exec(line);
-        if (m && ["name", "author", "isbn", "coverPrice"].includes(m[1])) fields.push({ name: [m[1]], errors: [m[2]] });
+        if (m && ["name", "author", "isbn", "coverPrice", "publisherId", "categoryId", "authorIds"].includes(m[1])) fields.push({ name: [m[1]], errors: [m[2]] });
         else rest.push(line);
       }
       if (fields.length) form.setFields(fields as never);
@@ -111,6 +112,7 @@ export function NewBookForm() {
             parser={(v) => Number((v ?? "").replace(/\./g, "")) as 0}
           />
         </Form.Item>
+        <ClassificationFields />
         <Space wrap>
           <Button type="primary" htmlType="submit" loading={submitting === "save"} disabled={!!submitting}>
             Lưu

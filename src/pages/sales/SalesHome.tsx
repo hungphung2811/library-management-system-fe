@@ -9,6 +9,7 @@ export default function SalesHome() {
   const targets: [string, string[]][] = [
     ["/sales/pos", [PERMISSIONS.POS_ORDER_CREATE, PERMISSIONS.POS_ORDER_CREATE_DISCOUNTED]],
     ["/sales/orders", [PERMISSIONS.SALES_ORDER_SEARCH]],
+    ["/sales/contacts", [PERMISSIONS.SALES_CONTACT_SEARCH]],
     ["/sales/refunds", [PERMISSIONS.REFUND_SEARCH]],
     ["/sales/audit", [PERMISSIONS.SALES_AUDIT_SEARCH]],
     ["/sales/stock", [PERMISSIONS.STOCK_SEARCH]],

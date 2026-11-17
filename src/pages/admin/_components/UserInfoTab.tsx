@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { apiFetch, useApiMutation } from "@/api";
-import { App, Button, ConfirmAction, EditOutlined, Form, FormModal, Input, KeyValueList, Select, StatusTag, Text } from "@/ui";
+import { PERMISSIONS, apiFetch, can, useApiMutation, useSession } from "@/api";
+import { App, Button, ConfirmAction, EditOutlined, Form, FormModal, Input, KeyValueList, Select, StatusTag, Tag, Text, dayjs } from "@/ui";
 import type { UserView } from "../_lib/types";
 
 type Option = { value: string; label: string };
@@ -20,6 +20,9 @@ export function UserInfoTab({
   canStatus: boolean;
 }) {
   const { message } = App.useApp();
+  const session = useSession();
+  const canUnlock = can(session, PERMISSIONS.USER_UNLOCK);
+  const canRevoke = can(session, PERMISSIONS.USER_REVOKE_SESSIONS);
   const [editing, setEditing] = useState(false);
   const active = user.status === "ACTIVE";
   const deptName = departments?.find((d) => d.value === user.departmentId)?.label;
@@ -38,6 +41,9 @@ export function UserInfoTab({
     { invalidate: ["/api/users"] },
   );
 
+  const unlock = useApiMutation(() => apiFetch<UserView>(`${url}/unlock`, { method: "POST" }), { invalidate: ["/api/users"] });
+  const revoke = useApiMutation(() => apiFetch<{ revokedSessions: number }>(`${url}/sessions/revocation`, { method: "POST" }));
+
   const setStatus = async () => {
     await status.mutateAsync();
     message.success(active ? "Đã vô hiệu hóa người dùng." : "Đã kích hoạt lại người dùng.");
@@ -52,7 +58,19 @@ export function UserInfoTab({
           { label: "Tên đăng nhập", value: user.username, mono: true },
           { label: "Email", value: user.email },
           { label: "Phòng ban", value: deptName },
-          { label: "Trạng thái", value: <StatusTag domain="user" value={user.status} /> },
+          {
+            label: "Trạng thái",
+            value: (
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <StatusTag domain="user" value={user.status} />
+                {user.locked && (
+                  <Tag color="error">
+                    Đang bị khóa{user.lockedUntil ? ` đến ${dayjs(user.lockedUntil).format("HH:mm DD/MM")}` : ""}
+                  </Tag>
+                )}
+              </span>
+            ),
+          },
         ]}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -70,6 +88,33 @@ export function UserInfoTab({
             onConfirm={setStatus}
           >
             <Button danger={active}>{active ? "Vô hiệu hóa" : "Kích hoạt lại"}</Button>
+          </ConfirmAction>
+        )}
+        {canUnlock && user.locked && (
+          <ConfirmAction
+            title={`Mở khóa đăng nhập cho «${user.fullName}»?`}
+            description="Xóa số lần đăng nhập sai để người này đăng nhập lại ngay."
+            okText="Mở khóa"
+            onConfirm={async () => {
+              await unlock.mutateAsync();
+              message.success("Đã mở khóa tài khoản.");
+            }}
+          >
+            <Button>Mở khóa</Button>
+          </ConfirmAction>
+        )}
+        {canRevoke && (
+          <ConfirmAction
+            danger
+            title={`Đăng xuất «${user.fullName}» khỏi mọi thiết bị?`}
+            description="Mọi phiên đăng nhập sẽ bị thu hồi, không làm mới được nữa. Phiên truy cập đã cấp còn hiệu lực tối đa 15 phút."
+            okText="Đăng xuất mọi thiết bị"
+            onConfirm={async () => {
+              const r = await revoke.mutateAsync();
+              message.success(`Đã thu hồi ${r?.revokedSessions ?? 0} phiên.`);
+            }}
+          >
+            <Button danger>Đăng xuất mọi thiết bị</Button>
           </ConfirmAction>
         )}
         {canStatus && isSelf && <Text type="secondary">Bạn không thể vô hiệu hóa chính mình.</Text>}

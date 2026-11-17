@@ -64,6 +64,10 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
       { href: "/catalog", label: "Danh sách sách", permission: PERMISSIONS.BOOK_SEARCH },
       { href: "/catalog/barcode", label: "Tra mã vạch", permission: PERMISSIONS.COPY_BY_BARCODE },
       { href: "/catalog/books/new", label: "Thêm sách", permission: PERMISSIONS.BOOK_CREATE },
+      { href: "/catalog/authors", label: "Tác giả", permission: PERMISSIONS.AUTHOR_SEARCH },
+      { href: "/catalog/publishers", label: "Nhà xuất bản", permission: PERMISSIONS.PUBLISHER_SEARCH },
+      { href: "/catalog/categories", label: "Thể loại", permission: PERMISSIONS.CATEGORY_SEARCH },
+      { href: "/catalog/shelf-locations", label: "Vị trí kệ", permission: PERMISSIONS.SHELF_LOCATION_SEARCH, module: "LENDING" },
     ],
   },
   {
@@ -90,6 +94,7 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
         label: "Phạt",
         permission: [PERMISSIONS.FINE_BY_READER, PERMISSIONS.FINE_COLLECT, PERMISSIONS.RESERVATION_MINE],
       },
+      { href: "/circulation/policy", label: "Chính sách mượn trả", permission: PERMISSIONS.CIRCULATION_POLICY_GET },
     ],
   },
   {
@@ -100,6 +105,7 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
     children: [
       { href: "/sales/pos", label: "Bán tại quầy", module: "SALES", permission: [PERMISSIONS.POS_ORDER_CREATE, PERMISSIONS.POS_ORDER_CREATE_DISCOUNTED] },
       { href: "/sales/orders", label: "Đơn hàng", module: "SALES", permission: PERMISSIONS.SALES_ORDER_SEARCH },
+      { href: "/sales/contacts", label: "Liên hệ khách", module: "SALES", permission: PERMISSIONS.SALES_CONTACT_SEARCH },
       { href: "/sales/refunds", label: "Hoàn tiền", module: "SALES", permission: PERMISSIONS.REFUND_SEARCH },
       { href: "/sales/audit", label: "Nhật ký", module: "SALES", permission: PERMISSIONS.SALES_AUDIT_SEARCH },
       { href: "/sales/stock", label: "Tồn kho", module: "SALES", permission: PERMISSIONS.STOCK_SEARCH },
@@ -127,6 +133,7 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
     label: "Nền tảng SaaS",
     group: "Hệ thống",
     children: [
+      { href: "/platform/onboarding", label: "Triển khai khách mới", platformOnly: true },
       { href: "/platform/tenants", label: "Đơn vị (tenant)", platformOnly: true },
       { href: "/platform/contracts", label: "Hợp đồng", platformOnly: true },
       { href: "/platform/organizations", label: "Tổ chức", platformOnly: true },

@@ -6,6 +6,9 @@ export type UserView = {
   email: string;
   departmentId?: string | null;
   status: string;
+  /** Khóa đăng nhập tự động còn hiệu lực (sau nhiều lần sai). */
+  locked?: boolean;
+  lockedUntil?: string | null;
 };
 
 export type UserPage = { items: UserView[]; total: number; page: number; size: number };

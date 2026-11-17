@@ -16,6 +16,8 @@ import * as platformTenants from "./mock/platform-tenants.mjs";
 import * as platformContracts from "./mock/platform-contracts.mjs";
 import * as platformOrigins from "./mock/platform-origins.mjs";
 import * as sales from "./mock/sales.mjs";
+import * as salesContacts from "./mock/sales-contacts.mjs";
+import * as catalogReference from "./mock/catalog-reference.mjs";
 
 const PORT = Number(process.env.PORT ?? 4201);
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
@@ -23,7 +25,7 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 // Thứ tự dispatch: common -> shell -> catalog -> circulation -> admin (nên /api/users/me rơi vào shell trước admin).
 // platformTenants đứng đầu: chặn GET /api/users?tenantId= của platform admin trước khi common/admin kiểm khóa USER_SEARCH.
 // platformContracts đứng trước platformTenants (nó trả 404 cho mọi /api/platform/** lạ) và nhận cả /api/contracts của tenant admin.
-const MODULES = [platformOrigins, platformContracts, platformTenants, common, shell, catalog, circulation, admin, platform, sales];
+const MODULES = [platformOrigins, platformContracts, platformTenants, common, shell, catalogReference, catalog, circulation, admin, platform, salesContacts, sales];
 
 function claimsOf(username) {
   const u = USERS[username];

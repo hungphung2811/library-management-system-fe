@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { apiFetch, useApiMutation } from "@/api";
 import { Button, EditOutlined, Form, FormModal, Input, InputNumber } from "@/ui";
+import { ClassificationFields, classificationBody, classificationOf, type ClassificationValues } from "./ClassificationFields";
 import type { TitleView } from "./types";
 
-type Values = { name: string; author: string; isbn?: string; coverPrice: number };
+type Values = { name: string; author: string; isbn?: string; coverPrice: number } & ClassificationValues;
 
 /** Nút "Sửa" + hộp thoại sửa đầu sách (PUT /api/books/{id}, khóa TitleController/update). Ô có sẵn giá trị hiện tại. */
 export function BookEditButton({ book }: { book: TitleView }) {
@@ -13,7 +14,7 @@ export function BookEditButton({ book }: { book: TitleView }) {
       const isbn = v.isbn?.trim();
       return apiFetch<TitleView>(`/api/books/${encodeURIComponent(book.id)}`, {
         method: "PUT",
-        json: { name: v.name.trim(), author: v.author.trim(), isbn: isbn ? isbn : null, coverPrice: v.coverPrice },
+        json: { name: v.name.trim(), author: v.author.trim(), isbn: isbn ? isbn : null, coverPrice: v.coverPrice, ...classificationBody(v) },
       });
     },
     { invalidate: ["/api/books"] },
@@ -29,7 +30,7 @@ export function BookEditButton({ book }: { book: TitleView }) {
         title="Sửa thông tin sách"
         successMessage="Đã cập nhật thông tin sách."
         onCancel={() => setOpen(false)}
-        initialValues={{ name: book.name, author: book.author, isbn: book.isbn ?? "", coverPrice: book.coverPrice }}
+        initialValues={{ name: book.name, author: book.author, isbn: book.isbn ?? "", coverPrice: book.coverPrice, ...classificationOf(book) }}
         onSubmit={async (v) => {
           await save.mutateAsync(v);
         }}
@@ -74,6 +75,7 @@ export function BookEditButton({ book }: { book: TitleView }) {
             parser={(v) => Number((v ?? "").replace(/\./g, "")) as 0}
           />
         </Form.Item>
+        <ClassificationFields book={book} />
       </FormModal>
     </>
   );

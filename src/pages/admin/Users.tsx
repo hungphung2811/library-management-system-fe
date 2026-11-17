@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
-import { DataTable, NoPermission, PageHeader, PageSkeleton } from "@/ui";
+import { DataTable, NoPermission, PageHeader, PageSkeleton, Tag } from "@/ui";
 import { CreateUserButton } from "./_components/CreateUserButton";
+import { ExportUsersButton } from "./_components/ExportUsersButton";
+import { ImportUsersButton } from "./_components/ImportUsersButton";
 import { ErrorBlock } from "./_components/ErrorBlock";
 import { ServerPager } from "./_components/ServerPager";
 import { UserFilters } from "./_components/UserFilters";
@@ -51,9 +53,15 @@ export default function UsersPage() {
         title="Người dùng"
         description="Tài khoản, phòng ban và trạng thái."
         actions={
-          can(s, PERMISSIONS.USER_CREATE) ? (
-            <CreateUserButton departments={deptOptions} canCredential={can(s, PERMISSIONS.CREDENTIAL_CREATE)} />
-          ) : undefined
+          <>
+            {can(s, PERMISSIONS.USER_EXPORT) && (
+              <ExportUsersButton filters={{ keyword: q || undefined, departmentId: dept || undefined, status: status || undefined }} />
+            )}
+            {can(s, PERMISSIONS.USER_IMPORT) && <ImportUsersButton />}
+            {can(s, PERMISSIONS.USER_CREATE) && (
+              <CreateUserButton departments={deptOptions} canCredential={can(s, PERMISSIONS.CREDENTIAL_CREATE)} />
+            )}
+          </>
         }
       />
       <div className="flex max-w-[1200px] flex-col gap-4">
@@ -73,6 +81,12 @@ export default function UsersPage() {
                 { key: "email", title: "Email", dataIndex: "email" },
                 { key: "departmentName", title: "Phòng ban", dataIndex: "departmentName", render: (v) => (v as string | null) ?? "—" },
                 { key: "status", title: "Trạng thái", dataIndex: "status", kind: "status", statusDomain: "user" },
+                {
+                  key: "locked",
+                  title: "Khóa đăng nhập",
+                  dataIndex: "locked",
+                  render: (v) => (v ? <Tag color="error">Đang bị khóa</Tag> : "—"),
+                },
               ]}
               empty={
                 hasFilter

@@ -6,11 +6,23 @@ export type TitleView = {
   isbn?: string | null;
   coverPrice: number;
   availableCopies: number;
+  publisherId?: string | null;
+  publisherName?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  authors?: { id: string; name: string }[] | null;
 };
 
 export type CopyStatus = "AVAILABLE" | "LOANED" | "RESERVED" | "DAMAGED" | "LOST";
 
-export type CopyView = { id: string; titleId: string; barcode: string; status: CopyStatus | string };
+export type CopyView = {
+  id: string;
+  titleId: string;
+  barcode: string;
+  status: CopyStatus | string;
+  shelfLocationId?: string | null;
+  shelfLocationCode?: string | null;
+};
 
 export type CopyDetailsView = CopyView & { titleName?: string; coverPrice?: number };
 

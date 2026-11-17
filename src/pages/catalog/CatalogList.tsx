@@ -22,6 +22,10 @@ export default function CatalogListPage() {
   const params = new URLSearchParams();
   if (q) params.set("keyword", q);
   if (available) params.set("available", "true");
+  const categoryId = sp.get("categoryId");
+  const publisherId = sp.get("publisherId");
+  if (categoryId) params.set("categoryId", categoryId);
+  if (publisherId) params.set("publisherId", publisherId);
   const qs = params.size ? `?${params}` : "";
   const query = useApi<TitleView[]>(allowed ? `/api/books${qs}` : null);
 
@@ -35,10 +39,10 @@ export default function CatalogListPage() {
     );
   }
 
-  const filtered = !!q || !!isbn || available;
+  const filtered = !!q || !!isbn || available || !!categoryId || !!publisherId;
   const empty = filtered
     ? {
-        title: q ? `Không tìm thấy sách cho «${q}».` : isbn ? `Không có sách nào có ISBN chứa «${isbn}».` : "Không có sách nào còn bản sẵn sàng.",
+        title: q ? `Không tìm thấy sách cho «${q}».` : categoryId || publisherId ? "Không có sách nào thuộc thể loại/nhà xuất bản đã chọn." : isbn ? `Không có sách nào có ISBN chứa «${isbn}».` : "Không có sách nào còn bản sẵn sàng.",
         hint: "Thử bớt bộ lọc (bỏ chip hoặc bấm «Xóa bộ lọc» phía trên) hoặc dùng từ khóa khác.",
       }
     : {

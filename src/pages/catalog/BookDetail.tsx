@@ -85,6 +85,9 @@ export default function BookDetailPage() {
           items={[
             { label: "Tên sách", value: book.name },
             { label: "Tác giả", value: book.author },
+            ...(book.authors?.length ? [{ label: "Tác giả (danh mục)", value: book.authors.map((a) => a.name).join(", ") }] : []),
+            { label: "Nhà xuất bản", value: book.publisherName },
+            { label: "Thể loại", value: book.categoryName },
             { label: "ISBN", value: book.isbn, mono: true },
             { label: "Giá bìa", value: formatMoney(book.coverPrice) },
             {
