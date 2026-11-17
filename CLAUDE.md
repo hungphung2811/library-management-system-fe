@@ -2,34 +2,34 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-FE của hệ thống quản lý thư viện: **một SPA** React 19 + Vite 7 + TypeScript (npm workspaces, app duy nhất `apps/web` = `@lms/web`), UI bằng antd 6 + Tailwind v4, routing bằng react-router v7 (`createBrowserRouter`), dữ liệu bằng `@tanstack/react-query`. Không SSR. BE ở repo anh em `../library-management-system` (Spring Boot, xem CLAUDE.md và ADR-0003/0004 ở đó). README.md có bảng cấu trúc và cách deploy; quyết định chuyển đổi và lý do ở `docs/design/2026-11-17-chuyen-vite-spa.md`.
+FE của hệ thống quản lý thư viện: **một SPA** React 19 + Vite 7 + TypeScript (một package ở gốc repo, không còn npm workspaces), UI bằng antd 6 + Tailwind v4, routing bằng react-router v7 (`createBrowserRouter`), dữ liệu bằng `@tanstack/react-query`. Không SSR. BE ở repo anh em `../library-management-system` (Spring Boot, xem CLAUDE.md và ADR-0003/0004 ở đó). README.md có bảng cấu trúc và cách deploy; quyết định chuyển đổi và lý do ở `docs/design/2026-11-17-chuyen-vite-spa.md`.
 
 ## Lệnh thường dùng
 
 ```bash
 npm install
-npm run dev                              # = npm run dev -w @lms/web, http://localhost:3000, proxy /api -> http://localhost:8085
-npm run dev -w @lms/web -- --port 3100   # cổng khác (khi 3000 đang bận)
-npm run typecheck -w @lms/web
-npm run build -w @lms/web                # tsc --noEmit + vite build -> apps/web/dist/
-npm run preview -w @lms/web              # phục vụ dist/ với cùng proxy (thêm -- --port 3000 --strictPort nếu cần)
+npm run dev                              # http://localhost:3000, proxy /api -> http://localhost:8085
+npm run dev -- --port 3100   # cổng khác (khi 3000 đang bận)
+npm run typecheck
+npm run build                # tsc --noEmit + vite build -> dist/
+npm run preview              # phục vụ dist/ với cùng proxy (thêm -- --port 3000 --strictPort nếu cần)
 npm run typecheck:e2e                    # typecheck thư mục e2e/
-npm run test:e2e                         # build apps/web rồi chạy Playwright
-npm run test:e2e:only                    # chỉ chạy test, dùng bản build sẵn (apps/web/dist)
+npm run test:e2e                         # build rồi chạy Playwright
+npm run test:e2e:only                    # chỉ chạy test, dùng bản build sẵn (dist)
 npx playwright test e2e/auth.spec.ts     # một file (hoặc -g "tên test"); khởi động 2 server mất vài giây
 ```
 
 - Không có lint. Kiểm tra gồm `typecheck` và E2E Playwright.
 - Đích proxy `/api` đổi bằng biến `VITE_API_TARGET` (ví dụ `VITE_API_TARGET=http://localhost:8080 npm run dev`). Mặc định là lms-api `http://localhost:8085`. Cần BE thật chạy (repo BE: `scripts/dev-start.ps1`, hoặc `docker compose --profile apps up -d --build` rồi trỏ `VITE_API_TARGET` tới nginx 8080). Dev account: `admin` / `Admin@12345`.
-- E2E chạy trên bản **build tĩnh** của `apps/web` (`vite preview` + proxy `/api` -> mock, qua `VITE_API_TARGET`), BE được thay bằng `e2e/mock-gateway.mjs` (user `admin` (admin=true), `staff` (có khóa), `member`, `newbie`/`newbie2` (phải đổi mật khẩu), `librarian`, `reader`, `multi`/`multi2` (2 đơn vị)), không cần docker. Chỉ 2 server: web ở `E2E_PORT_BASE` (mặc định 4200) và mock ở base+1; không đụng 3000/3100/8085-8090. Chạy song song nhiều bộ thì đặt `E2E_PORT_BASE` khác nhau (4200, 4300...). Sửa code `apps/web` thì phải build lại (`test:e2e` đã tự build). Helper và cách đăng nhập nhanh (`loginAs`: ghi `lms_rt`) xem `e2e/README-e2e.md`.
+- E2E chạy trên bản **build tĩnh** của app (`vite preview` + proxy `/api` -> mock, qua `VITE_API_TARGET`), BE được thay bằng `e2e/mock-gateway.mjs` (user `admin` (admin=true), `staff` (có khóa), `member`, `newbie`/`newbie2` (phải đổi mật khẩu), `librarian`, `reader`, `multi`/`multi2` (2 đơn vị)), không cần docker. Chỉ 2 server: web ở `E2E_PORT_BASE` (mặc định 4200) và mock ở base+1; không đụng 3000/3100/8085-8090. Chạy song song nhiều bộ thì đặt `E2E_PORT_BASE` khác nhau (4200, 4300...). Sửa code `apps/web` thì phải build lại (`test:e2e` đã tự build). Helper và cách đăng nhập nhanh (`loginAs`: ghi `lms_rt`) xem `e2e/README-e2e.md`.
 - `workers: 2` là chủ ý (mỗi worker một Chromium). Test form login phải mở trang bằng `openLogin` (đợi sẵn sàng). Cả bộ e2e (26 file spec, 266 test, gồm catalog/circulation/admin) đã chạy được trên app Vite; `platform.spec.ts` "mô tả và đoạn đọc thử" từng fail một lần khi chạy song song (hai test cùng ghi mô tả của một sách trong mock), chạy lại đơn lẻ thì pass.
 
 ## Kiến trúc
 
-Mọi thứ ở `apps/web`; trình duyệt chỉ cầm SPA tĩnh và gọi `/api/**` cùng origin (dev qua proxy Vite, production qua nginx). Mọi link là route client, không còn khái niệm zone hay `basePath`.
+Mã nguồn app nằm ở gốc repo (`src/`, `index.html`, `vite.config.ts`); trình duyệt chỉ cầm SPA tĩnh và gọi `/api/**` cùng origin (dev qua proxy Vite, production qua nginx). Mọi link là route client, không còn khái niệm zone hay `basePath`.
 
 ```
-apps/web/
+(gốc repo)
   index.html, vite.config.ts, tsconfig.json (alias @/ -> src)
   src/
     main.tsx          gốc: RootErrorBoundary > Providers > RouterProvider
@@ -82,7 +82,7 @@ Import trong trang: `@/ui` (UI), `@/api` (`apiFetch`, `useApi`, `useApiMutation`
 
 ### Deploy
 
-Build tĩnh `apps/web/dist/`, phục vụ bằng nginx, proxy `/api` tới lms-api (cùng origin nên không cần CORS). **Bắt buộc fallback SPA** (`try_files $uri /index.html`), nếu không F5 trên `/catalog/...` ra 404; `assets/` cache dài (tên file có hash), `index.html` không cache lâu. Mẫu cấu hình ở README.md (chưa tích hợp vào `docker-compose` của BE).
+Build tĩnh `dist/`, phục vụ bằng nginx, proxy `/api` tới lms-api (cùng origin nên không cần CORS). **Bắt buộc fallback SPA** (`try_files $uri /index.html`), nếu không F5 trên `/catalog/...` ra 404; `assets/` cache dài (tên file có hash), `index.html` không cache lâu. Mẫu cấu hình ở README.md (chưa tích hợp vào `docker-compose` của BE).
 
 ## Khu vực nghiệp vụ mới (SaaS, bán hàng)
 
@@ -95,18 +95,18 @@ Build tĩnh `apps/web/dist/`, phục vụ bằng nginx, proxy `/api` tới lms-a
 ## Chạy E2E an toàn khi nhiều agent làm chung
 
 - `E2E_PORT_BASE=4700 npx playwright test` (hoặc `npm run test:e2e:only` sau khi build): web ở base, mock ở base+1; mỗi agent một base cách nhau từ 2 trở lên.
-- Mọi bộ E2E dùng chung `apps/web/dist`. Nhiều agent chạy `npm run build -w @lms/web` cùng lúc sẽ ghi đè/xóa dist của nhau (test lỗi 404 asset hoặc trang trắng): build xong mới chạy test, build một lần rồi dùng `test:e2e:only`, và không build trong lúc bộ test khác đang chạy. Dừng đúng tiến trình `vite preview` do mình tạo, không dừng tiến trình của agent khác.
+- Mọi bộ E2E dùng chung `dist`. Nhiều agent chạy `npm run build` cùng lúc sẽ ghi đè/xóa dist của nhau (test lỗi 404 asset hoặc trang trắng): build xong mới chạy test, build một lần rồi dùng `test:e2e:only`, và không build trong lúc bộ test khác đang chạy. Dừng đúng tiến trình `vite preview` do mình tạo, không dừng tiến trình của agent khác.
 
 ## Phân quyền theo BE động (ADR-0003)
 
-- Khóa quyền là `TênController/tênMethod` của controller **nội bộ** xử lý endpoint (ví dụ `AccessControlController/listRoles`, `BorrowingController/borrow`), không phải mã cố định. Danh sách FE dùng nằm ở `apps/web/src/api/permissions.ts` (`PERMISSIONS`); BE đổi tên controller/method thì phải sửa ở đó (và literal trong `ui/nav-links.ts`). Quyền mới của role chỉ có hiệu lực ở lần đăng nhập/refresh kế tiếp.
+- Khóa quyền là `TênController/tênMethod` của controller **nội bộ** xử lý endpoint (ví dụ `AccessControlController/listRoles`, `BorrowingController/borrow`), không phải mã cố định. Danh sách FE dùng nằm ở `src/api/permissions.ts` (`PERMISSIONS`); BE đổi tên controller/method thì phải sửa ở đó (và literal trong `ui/nav-links.ts`). Quyền mới của role chỉ có hiệu lực ở lần đăng nhập/refresh kế tiếp.
 - `can(session, key)` đúng khi claim `admin=true` (quản trị viên, bỏ qua kiểm khóa, thường không có permission nào) hoặc `permissions` chứa khóa. Chỉ để ẩn/hiện UI; BE trả 403 mới là quyết định cuối.
 - `mustChangePassword`: token của tài khoản này không mang `admin`/`permissions`. `ProtectedRoute` chuyển sang `/change-password` (gọi `POST /api/auth/password`), đổi xong thì xoá phiên và bắt đăng nhập lại để lấy token đầy đủ.
 - API cho FE đi qua `lms-api`/nginx; nhiều API nghiệp vụ trong BE đã chuyển sang `/internal/**` (nginx trả 404), FE chỉ dùng `/api/**`. Phân hệ Sách (`/catalog`) dùng `/api/books`, `/api/book-copies`.
 
 ## Việc chuyển đổi
 
-Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/ui`, `@mfe/api`, `MFE_NAV_LINKS`, `basePath`) đã được thay hoàn toàn bằng `apps/web` và **đã xóa** khỏi repo (cùng `packages/*` và script `dev:legacy`); xem lại qua lịch sử git nếu cần đối chiếu. Mọi trang `catalog/`, `circulation/`, `admin/` đã port và có E2E. Chi tiết quyết định: `docs/design/2026-11-17-chuyen-vite-spa.md`. Comment kiểu "port từ apps/shell/..." trong code chỉ là dấu vết lịch sử.
+Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/ui`, `@mfe/api`, `MFE_NAV_LINKS`, `basePath`) đã được thay hoàn toàn bằng SPA này (từng nằm ở `apps/web`, đã gộp lên gốc repo) và **đã xóa** khỏi repo (cùng `packages/*` và script `dev:legacy`); xem lại qua lịch sử git nếu cần đối chiếu. Mọi trang `catalog/`, `circulation/`, `admin/` đã port và có E2E. Chi tiết quyết định: `docs/design/2026-11-17-chuyen-vite-spa.md`. Comment kiểu "port từ apps/shell/..." trong code chỉ là dấu vết lịch sử.
 
 ## Quy ước commit
 

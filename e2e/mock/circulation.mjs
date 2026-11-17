@@ -6,7 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { BOOKS, COPIES, DIRECTORY, KEYS, READER_PROFILES, USERS } from "./data.mjs";
 
-// Khóa quyền của nhóm mượn trả mà data.mjs chưa khai báo (khớp apps/web/src/api/permissions.ts).
+// Khóa quyền của nhóm mượn trả mà data.mjs chưa khai báo (khớp src/api/permissions.ts).
 const K = {
   BORROWING_SEARCH: "BorrowingController/search",
   BORROWING_GET_ANY: "BorrowingController/getAny",

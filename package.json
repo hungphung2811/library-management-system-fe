@@ -1,22 +1,40 @@
 {
   "name": "library-management-system-fe",
+  "version": "0.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*"
-  ],
+  "type": "module",
   "scripts": {
-    "dev": "npm run dev -w @lms/web",
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "test:e2e": "npm run build -w @lms/web && playwright test",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "npm run build && playwright test",
     "test:e2e:only": "playwright test",
     "typecheck:e2e": "tsc -p e2e"
   },
+  "dependencies": {
+    "@ant-design/cssinjs": "^2.1.2",
+    "@ant-design/icons": "^6.3.4",
+    "@fontsource-variable/inter": "^5.2.8",
+    "@tanstack/react-query": "^5.90.0",
+    "antd": "^6.7.0",
+    "dayjs": "^1.11.13",
+    "lucide-react": "^1.73.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^7.9.0"
+  },
   "devDependencies": {
-    "tailwindcss": "^4.3.5",
-    "@tailwindcss/postcss": "^4.3.5",
-    "postcss": "^8.5.0",
     "@playwright/test": "^1.56.0",
-    "@types/node": "^22.0.0"
+    "@tailwindcss/postcss": "^4.3.5",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
   }
 }

@@ -6,7 +6,7 @@ export const WEB = url(PORTS.web);
 /** Origin của mock gateway (thay lms-api). Test thường gọi API qua WEB (`/api/...`, proxy), chỉ dùng cái này khi cần chạm thẳng mock. */
 export const GATEWAY = url(PORTS.gateway);
 
-/** Khóa localStorage giữ refresh token của SPA (apps/web/src/api/token-store.ts). */
+/** Khóa localStorage giữ refresh token của SPA (src/api/token-store.ts). */
 export const REFRESH_KEY = "lms_rt";
 
 /** Đơn vị (tenant) của mock, khớp e2e/mock/data.mjs. */

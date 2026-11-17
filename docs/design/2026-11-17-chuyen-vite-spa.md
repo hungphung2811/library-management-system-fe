@@ -4,11 +4,11 @@ Trạng thái: pha 1 (nền tảng) xong; pha 2/3 chưa làm. `apps/shell`, `app
 
 ## Quyết định
 
-Bỏ Next.js multi-zone (shell + admin) và BFF, thay bằng **một SPA** `apps/web` (`@lms/web`): Vite 7, React 19, TypeScript, react-router v7 (`createBrowserRouter`, chế độ declarative/data router không SSR), antd 6, Tailwind v4 (`@tailwindcss/vite`), lucide-react, `@tanstack/react-query`.
+Bỏ Next.js multi-zone (shell + admin) và BFF, thay bằng **một SPA** (lúc đó là `apps/web` = `@lms/web`; về sau gộp lên gốc repo): Vite 7, React 19, TypeScript, react-router v7 (`createBrowserRouter`, chế độ declarative/data router không SSR), antd 6, Tailwind v4 (`@tailwindcss/vite`), lucide-react, `@tanstack/react-query`.
 
 Lý do: hai app build/deploy riêng, zone proxy, `basePath` và `<a>` thay `next/link` tốn công mà hệ thống này là công cụ nội bộ sau đăng nhập, không cần SSR/SEO. Một app thì mọi link là route client, không còn khái niệm zone, `basePath`, `assetPrefix`, `MFE_NAV_LINKS`.
 
-## Cấu trúc `apps/web`
+## Cấu trúc (đường dẫn dưới đây tính từ gốc repo FE; ban đầu nằm trong `apps/web/`)
 
 ```
 index.html, vite.config.ts, tsconfig.json (alias @/ -> src)
@@ -66,22 +66,22 @@ Giữ nguyên: `@layer theme, base, antd, components, utilities` ở đầu `ind
 
 ```bash
 npm install
-npm run dev                          # = npm run dev -w @lms/web, http://localhost:3000, proxy /api -> http://localhost:8085
-npm run dev -w @lms/web -- --port 3100   # cổng khác (khi 3000 đang bận)
-npm run typecheck -w @lms/web
-npm run build -w @lms/web            # tsc + vite build -> apps/web/dist/
-npm run preview -w @lms/web          # phục vụ dist/ với cùng proxy
+npm run dev                          # = npm run dev, http://localhost:3000, proxy /api -> http://localhost:8085
+npm run dev -- --port 3100   # cổng khác (khi 3000 đang bận)
+npm run typecheck
+npm run build            # tsc + vite build -> dist/
+npm run preview          # phục vụ dist/ với cùng proxy
 npm run dev:legacy                   # chạy hai app Next cũ (shell + admin)
 ```
 
 Đổi đích proxy: biến `VITE_API_TARGET` (ví dụ `VITE_API_TARGET=http://localhost:8080 npm run dev`). Cần BE chạy (lms-api 8085); dev account `admin` / `Admin@12345`.
 
-Production: build tĩnh `apps/web/dist/`, phục vụ bằng nginx, proxy `/api` tới lms-api (cùng origin nên không cần CORS). **Bắt buộc fallback SPA**, nếu không F5 trên `/catalog/...` ra 404:
+Production: build tĩnh `dist/`, phục vụ bằng nginx, proxy `/api` tới lms-api (cùng origin nên không cần CORS). **Bắt buộc fallback SPA**, nếu không F5 trên `/catalog/...` ra 404:
 
 ```nginx
 server {
   listen 8080;
-  root /usr/share/nginx/html;          # nội dung apps/web/dist
+  root /usr/share/nginx/html;          # nội dung dist
   location /api/ { proxy_pass http://lms-api:8085; }
   location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; try_files $uri =404; }
   location / { try_files $uri /index.html; }

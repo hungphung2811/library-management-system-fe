@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { gotoApp, loginAs, markSpa, readSpa, sidebar } from "./helpers";
 
-// Sidebar là nơi duy nhất chứa điều hướng giữa các màn hình (apps/web/src/ui/ShellFrame.tsx); mọi nhóm mở sẵn.
+// Sidebar là nơi duy nhất chứa điều hướng giữa các màn hình (src/ui/ShellFrame.tsx); mọi nhóm mở sẵn.
 test.describe("sidebar: mục con theo quyền và mục đang mở", () => {
   test("chỉ có MỘT thẻ <nav> trên trang", async ({ page }) => {
     await loginAs(page, "admin");

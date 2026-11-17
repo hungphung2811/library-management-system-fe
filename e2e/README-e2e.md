@@ -1,11 +1,11 @@
-# E2E Playwright cho apps/web (Vite SPA)
+# E2E Playwright cho SPA Vite
 
-Hai server do `playwright.config.ts` dựng: mock gateway (`e2e/mock-gateway.mjs`, cổng base+1) và `vite preview` phục vụ bản build `apps/web/dist` (cổng base), proxy `/api` về mock. Test chạy trên origin của web (`baseURL`), gọi API qua `/api/...` như SPA.
+Hai server do `playwright.config.ts` dựng: mock gateway (`e2e/mock-gateway.mjs`, cổng base+1) và `vite preview` phục vụ bản build `dist` (cổng base), proxy `/api` về mock. Test chạy trên origin của web (`baseURL`), gọi API qua `/api/...` như SPA.
 
 ## Chạy
 
 ```bash
-npm run build -w @lms/web                       # BẮT BUỘC sau mỗi lần sửa apps/web/src (test chạy trên bản build)
+npm run build                       # BẮT BUỘC sau mỗi lần sửa src (test chạy trên bản build)
 npx playwright test e2e/auth.spec.ts            # một file
 npx playwright test e2e/auth.spec.ts -g "next"  # một test theo tên
 npm run test:e2e                                # build + toàn bộ (catalog/circulation/admin chỉ chạy được sau khi viết lại)
@@ -13,7 +13,7 @@ npm run typecheck:e2e
 ```
 
 - Cổng: `E2E_PORT_BASE` (mặc định 4200) = web, base+1 = mock. Nhiều agent/phiên chạy cùng lúc thì mỗi bên một base cách nhau từ 2 trở lên, ví dụ 4200, 4300, 4400, 4500 (PowerShell: `$env:E2E_PORT_BASE=4300; npx playwright test ...`; bash: `E2E_PORT_BASE=4300 npx playwright test ...`). Kết quả/báo cáo ghi vào `test-results/<base>` và `playwright-report/<base>`, không đè nhau.
-- `reuseExistingServer: false`: cổng phải trống. Build `apps/web/dist` dùng chung, đừng build lúc người khác đang chạy test.
+- `reuseExistingServer: false`: cổng phải trống. Build `dist` dùng chung, đừng build lúc người khác đang chạy test.
 - Mock giữ trạng thái trong bộ nhớ, dùng chung cho 2 worker: không giả định số bản ghi, mỗi test dùng dữ liệu riêng (xem `e2e/fake.mjs`), và test đổi trạng thái chung (đổi đơn vị, đổi mật khẩu) phải trả lại hoặc dùng user riêng.
 
 ## Helper (`e2e/helpers.ts`)

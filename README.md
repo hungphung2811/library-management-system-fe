@@ -1,8 +1,8 @@
 # Library Management System - FE
 
-Một SPA React 19 + Vite 7 + TypeScript (npm workspaces, app duy nhất `apps/web` = `@lms/web`): react-router v7, antd 6 + Tailwind v4, `@tanstack/react-query`. Gọi BE qua `lms-api` (`library-management-system`), cùng origin qua proxy `/api`. Không SSR.
+Một SPA React 19 + Vite 7 + TypeScript (một package ở gốc repo, không còn npm workspaces): react-router v7, antd 6 + Tailwind v4, `@tanstack/react-query`. Gọi BE qua `lms-api` (`library-management-system`), cùng origin qua proxy `/api`. Không SSR.
 
-## Cấu trúc `apps/web`
+## Cấu trúc
 
 ```
 index.html, vite.config.ts, tsconfig.json (alias @/ -> src)
@@ -28,10 +28,10 @@ src/
 ```bash
 npm install
 npm run dev                              # http://localhost:3000, proxy /api -> http://localhost:8085
-npm run dev -w @lms/web -- --port 3100   # cổng khác khi 3000 bận
-npm run typecheck -w @lms/web
-npm run build -w @lms/web                # tsc + vite build -> apps/web/dist/
-npm run preview -w @lms/web              # phục vụ dist/ với cùng proxy
+npm run dev -- --port 3100   # cổng khác khi 3000 bận
+npm run typecheck
+npm run build                # tsc + vite build -> dist/
+npm run preview              # phục vụ dist/ với cùng proxy
 ```
 
 BE: `scripts/dev-start.ps1` ở repo `library-management-system` (chạy Maven/jar, kèm FE), hoặc `docker compose --profile apps up -d --build` rồi `VITE_API_TARGET=http://localhost:8080 npm run dev`. Tài khoản dev `admin` / `Admin@12345`.
@@ -51,7 +51,7 @@ BE: `scripts/dev-start.ps1` ở repo `library-management-system` (chạy Maven/j
 
 ## Thêm trang mới
 
-1. Tạo component trong `apps/web/src/pages/<nhóm>/`.
+1. Tạo component trong `src/pages/<nhóm>/`.
 2. Khai báo route (và `handle.title`) trong `routes/router.tsx`.
 3. Cần mục sidebar thì thêm vào `ui/nav-links.ts` (icon ở `ICONS` trong `ui/ShellFrame.tsx`).
 
@@ -63,12 +63,12 @@ BE: `scripts/dev-start.ps1` ở repo `library-management-system` (chạy Maven/j
 
 ## Deploy
 
-Build tĩnh `apps/web/dist/`, phục vụ bằng nginx và proxy `/api` tới lms-api (cùng origin nên không cần CORS). Bắt buộc fallback SPA, nếu không F5 trên `/catalog/...` ra 404:
+Build tĩnh `dist/`, phục vụ bằng nginx và proxy `/api` tới lms-api (cùng origin nên không cần CORS). Bắt buộc fallback SPA, nếu không F5 trên `/catalog/...` ra 404:
 
 ```nginx
 server {
   listen 8080;
-  root /usr/share/nginx/html;          # nội dung apps/web/dist
+  root /usr/share/nginx/html;          # nội dung dist
   location /api/ { proxy_pass http://lms-api:8085; }
   location /assets/ { expires 1y; add_header Cache-Control "public, immutable"; try_files $uri =404; }
   location / { try_files $uri /index.html; }
@@ -80,7 +80,7 @@ server {
 ## Test E2E (Playwright)
 
 ```bash
-npm run test:e2e          # build apps/web rồi chạy Playwright
+npm run test:e2e          # build rồi chạy Playwright
 npm run test:e2e:only     # dùng bản build sẵn
 ```
 
