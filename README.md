@@ -88,4 +88,4 @@ Chạy trên bản build tĩnh (`vite preview`) với mock gateway (`e2e/mock-ga
 
 ## Việc chuyển đổi
 
-Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/*`, `MFE_NAV_LINKS`, `basePath`) đã bỏ. Các thư mục `apps/shell`, `apps/admin`, `packages/*` còn trong repo chỉ để đối chiếu khi port trang và sẽ bị xóa sau khi người dùng duyệt (chưa duyệt, chưa xóa); `npm run dev:legacy` chạy bản cũ. Pha 1 (nền tảng) xong; trang `catalog/`, `circulation/`, `admin/` còn là stub chờ port. Xem `docs/design/2026-11-17-chuyen-vite-spa.md`.
+Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/*`, `MFE_NAV_LINKS`, `basePath`) đã bỏ và đã xóa khỏi repo (cùng `packages/*`); mọi trang đã port sang `apps/web`. Xem `docs/design/2026-11-17-chuyen-vite-spa.md`.

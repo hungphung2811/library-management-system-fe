@@ -106,7 +106,7 @@ Build tĩnh `apps/web/dist/`, phục vụ bằng nginx, proxy `/api` tới lms-a
 
 ## Việc chuyển đổi
 
-Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/ui`, `@mfe/api`, `MFE_NAV_LINKS`, `basePath`) **đã bỏ** và được thay bằng `apps/web`. Các thư mục `apps/shell`, `apps/admin`, `packages/*` hiện vẫn còn trong repo chỉ để đối chiếu khi port trang; chúng sẽ bị xóa sau khi người dùng duyệt (chưa duyệt, chưa xóa). Không phát triển thêm trong các thư mục đó; script `npm run dev:legacy` chỉ để chạy bản cũ. Tiến độ: pha 1 (nền tảng) xong; trang `catalog/`, `circulation/`, `admin/` còn là stub cần port (mỗi stub ghi đường dẫn nguồn cũ ở dòng đầu); e2e `catalog/circulation/admin.spec.ts` chưa viết lại. Chi tiết: `docs/design/2026-11-17-chuyen-vite-spa.md`.
+Kiến trúc cũ (hai app Next.js multi-zone `apps/shell` + `apps/admin`, BFF `/api/bff`, cookie `httpOnly`, `@mfe/ui`, `@mfe/api`, `MFE_NAV_LINKS`, `basePath`) đã được thay hoàn toàn bằng `apps/web` và **đã xóa** khỏi repo (cùng `packages/*` và script `dev:legacy`); xem lại qua lịch sử git nếu cần đối chiếu. Mọi trang `catalog/`, `circulation/`, `admin/` đã port và có E2E. Chi tiết quyết định: `docs/design/2026-11-17-chuyen-vite-spa.md`. Comment kiểu "port từ apps/shell/..." trong code chỉ là dấu vết lịch sử.
 
 ## Quy ước commit
 
