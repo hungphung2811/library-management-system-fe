@@ -17,8 +17,19 @@ const OLD = Array.from({ length: 22 }, (_, i) => ({
   createdAt: new Date(Date.UTC(2026, 9, 1, 8, 0, 0) - i * 3600_000).toISOString(),
   readAt: "2026-10-31T00:00:00Z",
 }));
-const NOTIFICATIONS_BY_USER = { staff: [], reader: [...NOTIFICATIONS, ...OLD] };
-const notificationsOf = (u) => NOTIFICATIONS_BY_USER[u] ?? NOTIFICATIONS;
+// librarian: 5 thông báo nhiều loại cho e2e/admin-2.spec.ts (đọc từng mục, đọc hết, lọc loại/ngày, phân trang).
+const LIB = [
+  ...Array.from({ length: 3 }, (_, i) => ({ id: `n2000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, type: "OVERDUE", message: `Phiếu quá hạn số ${i + 1}`, createdAt: `2026-11-1${i}T08:00:00Z`, readAt: null })),
+  { id: "n2000000-0000-4000-8000-000000000004", type: "RESERVATION", message: "Sách đặt trước đã về", createdAt: "2026-10-05T08:00:00Z", readAt: null },
+  { id: "n2000000-0000-4000-8000-000000000005", type: "RESERVATION", message: "Đặt trước hết hạn giữ", createdAt: "2026-10-01T08:00:00Z", readAt: "2026-10-02T00:00:00Z" },
+];
+const NOTIFICATIONS_BY_USER = { staff: [], reader: [...NOTIFICATIONS, ...OLD], librarian: LIB };
+// Trạng thái đã đọc theo từng người: bản sao riêng để đọc ở test này không đổi dữ liệu của test khác.
+const STATE = new Map();
+const notificationsOf = (u) => {
+  if (!STATE.has(u)) STATE.set(u, (NOTIFICATIONS_BY_USER[u] ?? NOTIFICATIONS).map((n) => ({ ...n })));
+  return STATE.get(u);
+};
 
 // Hồ sơ cá nhân. Chỉ `reader` có thẻ độc giả (người khác: 404, trang hồ sơ phải ẩn thẻ không báo lỗi).
 const PROFILES = {
@@ -30,6 +41,7 @@ const PROFILES = {
   librarian: { fullName: "Vũ Quang Huy", username: "huy.vu" },
   reader: { fullName: "Đỗ Thị Mai Anh", username: "maianh.do" },
   multi: { fullName: "Hồ Anh Tuấn", username: "tuan.ho" },
+  multi2: { fullName: "Hồ Anh Tuấn", username: "tuan.ho2" },
 };
 const READER_CARD = {
   userId: USERS.reader.id, cardNo: "TV26-000512", fullName: PROFILES.reader.fullName, email: `${PROFILES.reader.username}@outlook.com`,
@@ -51,6 +63,24 @@ const EXTERNAL = {
 export function handle({ method, url, body, caller, send, tokens }) {
   const p = url.pathname;
 
+  if (method === "GET" && p === "/api/notifications/me/unread-count") {
+    if (!caller) return send(401, { code: "UNAUTHENTICATED", message: "Chưa đăng nhập" }), true;
+    return send(200, { unread: notificationsOf(caller).filter((n) => n.readAt == null).length }), true;
+  }
+  if (method === "POST" && p === "/api/notifications/read-all") {
+    if (!caller) return send(401, { code: "UNAUTHENTICATED", message: "Chưa đăng nhập" }), true;
+    const list = notificationsOf(caller).filter((n) => n.readAt == null);
+    for (const n of list) n.readAt = new Date().toISOString();
+    return send(200, { updated: list.length }), true;
+  }
+  let nm;
+  if (method === "POST" && (nm = p.match(/^\/api\/notifications\/([^/]+)\/read$/))) {
+    if (!caller) return send(401, { code: "UNAUTHENTICATED", message: "Chưa đăng nhập" }), true;
+    const n = notificationsOf(caller).find((x) => x.id === nm[1]);
+    if (!n) return send(404, { code: "NOT_FOUND", message: "Không tìm thấy thông báo" }), true;
+    n.readAt ??= new Date().toISOString();
+    return send(200, n), true;
+  }
   if (method === "GET" && p === "/api/notifications/me") {
     if (!caller) return send(401, { code: "UNAUTHENTICATED", message: "Chưa đăng nhập" }), true;
     return send(200, notificationsOf(caller)), true;

@@ -19,6 +19,9 @@ const K = {
   USER_CREATE: "UserController/create",
   USER_UPDATE: "UserController/update",
   USER_STATUS: "UserController/changeStatus",
+  USER_RESET: "UserController/resetPassword",
+  ROLE_UPDATE: "AccessControlController/updateRole",
+  ROLE_DELETE: "AccessControlController/deleteRole",
   CREDENTIAL_CREATE: "AuthController/register",
   READER_ISSUE: "ReaderProfileController/issue",
   READER_RENEW: "ReaderProfileController/renew",
@@ -50,6 +53,8 @@ const PERMISSIONS = [
 
 /** userId -> Set<roleId> */
 const USER_ROLES = new Map();
+/** Lịch sử đặt lại mật khẩu (chỉ độ dài, không lưu mật khẩu) để test kiểm tra đã gọi. */
+const RESETS = [];
 /** userId -> username đã được tạo credential */
 const CREDENTIALS = new Map();
 
@@ -151,6 +156,18 @@ export function handle({ method, url, body, send, requireKey }) {
     return send(200, u), true;
   }
 
+  // ---- Đặt lại mật khẩu (204, không trả mật khẩu) ----
+  if ((m = p.match(/^\/api\/users\/([^/]+)\/password-reset$/)) && method === "POST") {
+    if (!requireKey(K.USER_RESET)) return true;
+    const u = DIRECTORY.find((x) => x.id === m[1]);
+    if (!u) return send(404, { code: "USER_NOT_FOUND", message: "Không tìm thấy người dùng" }), true;
+    const pw = String(body.temporaryPassword ?? "");
+    if (pw.length < 8 || pw.length > 128) return bad(["temporaryPassword: Từ 8 đến 128 ký tự"]);
+    if (String(u.username).startsWith("nocred")) return send(422, { code: "INVALID_USER", message: "Người dùng chưa có tài khoản đăng nhập" }), true;
+    RESETS.push({ userId: u.id, length: pw.length });
+    return send(204), true;
+  }
+
   // ---- Hồ sơ độc giả (ghi; GET do common) ----
   if ((m = p.match(/^\/api\/users\/([^/]+)\/reader-profile$/)) && method === "POST") {
     if (!requireKey(K.READER_ISSUE)) return true;
@@ -231,6 +248,27 @@ export function handle({ method, url, body, send, requireKey }) {
     if (!PERMISSIONS.some((x) => x.code === code)) return notFound("Không tìm thấy quyền");
     if (!r.permissions.includes(code)) r.permissions.push(code);
     return send(200, roleView(r)), true;
+  }
+  if ((m = p.match(/^\/api\/roles\/([^/]+)$/)) && method === "PUT") {
+    if (!requireKey(K.ROLE_UPDATE)) return true;
+    const r = ROLES.find((x) => x.id === m[1]);
+    if (!r) return notFound("Không tìm thấy vai trò");
+    const name = String(body.name ?? "").trim();
+    if (!name || !String(body.description ?? "").trim()) return bad(["name: Không được để trống"]);
+    if (!/^[A-Z0-9_]+$/.test(name)) return send(422, { code: "INVALID_ACCESS_CONTROL", message: "Tên vai trò sai quy tắc" }), true;
+    if (ROLES.some((x) => x.id !== r.id && x.name === name)) return conflict("DUPLICATE", "Tên vai trò đã tồn tại");
+    r.name = name;
+    r.description = String(body.description).trim();
+    return send(200, roleView(r)), true;
+  }
+  if ((m = p.match(/^\/api\/roles\/([^/]+)$/)) && method === "DELETE") {
+    if (!requireKey(K.ROLE_DELETE)) return true;
+    const r = ROLES.find((x) => x.id === m[1]);
+    if (!r) return notFound("Không tìm thấy vai trò");
+    if ([...USER_ROLES.values()].some((s) => s.has(r.id))) return conflict("ROLE_IN_USE", "Vai trò đang được gán");
+    if (r.isAdmin && ROLES.filter((x) => x.isAdmin).length <= 1) return conflict("LAST_ADMIN_ROLE", "Vai trò quản trị cuối cùng");
+    ROLES.splice(ROLES.indexOf(r), 1);
+    return send(204), true;
   }
   if ((m = p.match(/^\/api\/roles\/([^/]+)$/)) && method === "GET") {
     if (!requireKey(K.ROLE_VIEW)) return true;

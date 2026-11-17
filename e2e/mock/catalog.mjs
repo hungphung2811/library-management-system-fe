@@ -25,6 +25,9 @@ function recount(titleId) {
 
 // Dữ liệu riêng: sách có đủ trạng thái bản sao để test đổi trạng thái (mỗi test dùng bản sao khác nhau).
 export const SEED = {
+  editable: addBook("Sách để sửa thông tin", "Tác giả cũ", "9786041119001", 61000),
+  isbnA: addBook("Sách ISBN lọc A", "Tác giả lọc", "9786041118881", 45000),
+  dupIsbn: addBook("Sách giữ ISBN trùng", "Tác giả lọc", "9786041118882", 45000),
   states: addBook("Hoàng Lê nhất thống chí", "Ngô gia văn phái", "9786041110001", 99000),
   noCopies: addBook("Nhật ký trong tù", "Hồ Chí Minh", "9786041110018", 50000),
 };
@@ -72,6 +75,25 @@ export function handle({ method, url, body, send, requireKey }) {
     if (details.length) return send(400, { code: "VALIDATION", message: "Dữ liệu không hợp lệ", details }), true;
     const b = addBook(name, author, body.isbn ? String(body.isbn) : null, body.coverPrice);
     return send(201, b), true;
+  }
+
+  if (method === "PUT" && (m = p.match(/^\/api\/books\/([^/]+)$/))) {
+    if (!requireKey(KEYS.BOOK_UPDATE ?? "TitleController/update")) return true;
+    const b = BOOKS.find((x) => x.id === m[1]);
+    if (!b) return send(404, { code: "TITLE_NOT_FOUND", message: "Không tìm thấy sách" }), true;
+    const details = [];
+    const name = String(body.name ?? "").trim();
+    const author = String(body.author ?? "").trim();
+    if (!name) details.push("name: Tên sách không được để trống");
+    if (!author) details.push("author: Tác giả không được để trống");
+    if (typeof body.coverPrice !== "number" || body.coverPrice < 0) details.push("coverPrice: Giá bìa phải từ 0 trở lên");
+    if (details.length) return send(400, { code: "VALIDATION", message: "Dữ liệu không hợp lệ", details }), true;
+    const isbn = body.isbn ? String(body.isbn) : null;
+    if (isbn && BOOKS.some((x) => x.id !== b.id && x.isbn === isbn)) {
+      return send(409, { code: "DUPLICATE_ISBN", message: `ISBN ${isbn} đã tồn tại` }), true;
+    }
+    Object.assign(b, { name, author, isbn, coverPrice: body.coverPrice });
+    return send(200, b), true;
   }
 
   if (method === "GET" && p === "/api/book-copies") {

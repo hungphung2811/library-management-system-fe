@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { loginAs } from "./helpers";
+import { gotoApp, loginAs } from "./helpers";
 
-// Trang của shell: /profile, /notifications và lối tắt theo quyền ở trang chủ. Dữ liệu mock nằm ở e2e/mock/shell.mjs.
+// Trang nền của SPA: /profile, /notifications, trang chủ (lối tắt theo quyền), tiêu đề tab và 404. Dữ liệu mock: e2e/mock/shell.mjs.
 // Mỗi test tự dùng người dùng riêng; `librarian` chỉ dùng cho test hủy liên kết (mock không tự khôi phục, chạy một lần).
 
 test.describe("/profile", () => {
@@ -12,12 +12,12 @@ test.describe("/profile", () => {
 
   test("độc giả thấy tài khoản, thẻ thư viện và trạng thái liên kết; không có nút Liên kết", async ({ page }) => {
     await loginAs(page, "reader");
-    await page.goto("/profile");
+    await gotoApp(page, "/profile");
 
     await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
     const main = page.getByRole("main");
-    await expect(main.getByText("Đỗ Thị Mai Anh")).toBeVisible();
-    await expect(main.getByText("maianh.do@outlook.com")).toBeVisible();
+    await expect(main.getByText("Đỗ Thị Mai Anh").first()).toBeVisible();
+    await expect(main.getByText("maianh.do@outlook.com").first()).toBeVisible();
     await expect(main.getByText("READER", { exact: true })).toBeVisible();
     await expect(main.getByText("Muốn đổi thông tin, liên hệ quản trị viên.")).toBeVisible();
     await expect(main.getByRole("link", { name: "Đổi mật khẩu" })).toHaveAttribute("href", "/change-password");
@@ -31,16 +31,16 @@ test.describe("/profile", () => {
     await expect(google).toContainText("Đã liên kết");
     await expect(google).toContainText("maianh.do@gmail.com");
     await expect(page.getByTestId("external-microsoft")).toContainText("Chưa liên kết");
-    // Cố ý ẩn: luồng liên kết OIDC cần cookie mà BFF không chuyển tiếp.
+    // Cố ý ẩn: luồng liên kết OIDC cần cookie do BE đặt.
     await expect(main.getByRole("button", { name: /^Liên kết/ })).toHaveCount(0);
     await expect(main.getByRole("button", { name: /Hủy liên kết/ })).toHaveCount(1);
   });
 
   test("người không có hồ sơ độc giả: ẩn thẻ thư viện và không báo lỗi", async ({ page }) => {
     await loginAs(page, "member");
-    await page.goto("/profile");
+    await gotoApp(page, "/profile");
     const main = page.getByRole("main");
-    await expect(main.getByText("khoi.tran@outlook.com")).toBeVisible();
+    await expect(main.getByText("khoi.tran@outlook.com").first()).toBeVisible();
     await expect(main.getByText("Thẻ thư viện", { exact: true })).toHaveCount(0);
     await expect(page.locator(".ant-alert-error")).toHaveCount(0);
     await expect(page.getByTestId("external-google")).toContainText("Chưa liên kết");
@@ -48,8 +48,7 @@ test.describe("/profile", () => {
 
   test("hủy liên kết: xác nhận rồi cập nhật trạng thái và giữ nguyên sau khi tải lại", async ({ page }) => {
     await loginAs(page, "librarian");
-    await page.goto("/profile");
-    await page.waitForLoadState("networkidle");
+    await gotoApp(page, "/profile");
     const google = page.getByTestId("external-google");
     await expect(google).toContainText("Đã liên kết");
 
@@ -70,9 +69,9 @@ test.describe("/notifications", () => {
     await expect(page).toHaveURL(/\/login\?next=%2Fnotifications$/);
   });
 
-  test("liệt kê mới nhất trước, đếm chưa đọc, lọc, và ghi mốc đã xem để lần sau về 0", async ({ page }) => {
+  test("liệt kê mới nhất trước, đếm chưa đọc và lọc Chưa đọc", async ({ page }) => {
     await loginAs(page, "member");
-    await page.goto("/notifications");
+    await gotoApp(page, "/notifications");
     await expect(page.getByRole("heading", { name: "Thông báo" })).toBeVisible();
 
     const items = page.getByTestId("notification-item");
@@ -85,11 +84,26 @@ test.describe("/notifications", () => {
     await page.getByText("Chưa đọc (1)").click();
     await expect(items).toHaveCount(1);
     await expect(items.first()).toContainText("Sách bạn đặt trước đã sẵn sàng nhận.");
+    await expect(page).toHaveURL(/filter=unread/);
+  });
 
-    // Trang đã ghi mốc "đã xem lần cuối" (cùng khóa với chuông) nên lần tải sau không còn mục chưa đọc.
-    await page.reload();
+  test("Đánh dấu đã đọc gọi BE, số chưa đọc ở trang và chuông về 0 và giữ sau khi tải lại", async ({ page }) => {
+    // multi2: người dùng riêng cho việc đổi trạng thái đã đọc (mặc định 1 chưa đọc).
+    await loginAs(page, "multi2");
+    await gotoApp(page, "/notifications");
+    await expect(page.getByText("Chưa đọc (1)")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Thông báo, 1 chưa đọc" })).toBeVisible();
+
+    const read = page.waitForRequest((r) => r.method() === "POST" && /\/api\/notifications\/[^/]+\/read$/.test(r.url()));
+    await page.getByRole("button", { name: /^Đánh dấu đã đọc: Sách bạn đặt trước/ }).click();
+    await read;
     await expect(page.getByText("Chưa đọc (0)")).toBeVisible();
     await expect(page.getByText("Tất cả (2)")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Thông báo, 0 chưa đọc" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Đọc hết" })).toBeDisabled();
+
+    await page.reload();
+    await expect(page.getByText("Chưa đọc (0)")).toBeVisible();
     await page.getByText("Chưa đọc (0)").click();
     await expect(page.getByText("Không có thông báo chưa đọc.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Thông báo, 0 chưa đọc" })).toBeVisible();
@@ -97,26 +111,49 @@ test.describe("/notifications", () => {
 
   test("danh sách rỗng hiện thông báo trống", async ({ page }) => {
     await loginAs(page, "staff");
-    await page.goto("/notifications");
-    await expect(page.getByText("Bạn chưa có thông báo nào.")).toBeVisible();
+    await gotoApp(page, "/notifications");
+    await expect(page.getByText("Bạn chưa có thông báo nào.").first()).toBeVisible();
   });
 
   test("phân trang 20 mục mỗi trang", async ({ page }) => {
     await loginAs(page, "reader");
-    await page.goto("/notifications");
+    await gotoApp(page, "/notifications");
     const items = page.getByTestId("notification-item");
     await expect(items).toHaveCount(20);
     await page.locator(".ant-pagination-item-2").click();
     await expect(items).toHaveCount(4);
+  });
+
+  test("lỗi tải thông báo: chuông báo không tải được, trang vẫn hiện khung", async ({ page }) => {
+    await loginAs(page, "member");
+    // Chuông gọi /me/unread-count, trang chủ gọi /me: cùng trả 503.
+    await page.route(/\/api\/notifications\/me/, (r) =>
+      r.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: "UNAVAILABLE", message: "Dịch vụ không khả dụng" }) }),
+    );
+    await gotoApp(page, "/");
+    await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
+    await expect(page.getByTestId("recent-notification")).toHaveCount(0);
+    const bell = page.getByRole("button", { name: "Thông báo, 0 chưa đọc" });
+    await expect(bell).toBeVisible();
+    // Lỗi chỉ được xác định sau vài lần thử lại của truy vấn nên tooltip chưa có lúc đầu: rê chuột lại cho tới khi hiện.
+    await expect(async () => {
+      await page.mouse.move(0, 0);
+      await bell.hover();
+      await expect(page.locator(".ant-tooltip").getByText("Không tải được thông báo")).toBeVisible({ timeout: 1500 });
+    }).toPass({ timeout: 30_000 });
   });
 });
 
 test.describe("trang chủ: lối tắt theo quyền", () => {
   test("người không có khóa nghiệp vụ chỉ thấy lối tắt cá nhân và thông báo gần đây", async ({ page }) => {
     await loginAs(page, "member");
-    await page.goto("/");
+    await gotoApp(page, "/");
     const main = page.getByRole("main");
-    for (const href of ["/catalog", "/circulation", "/admin"]) {
+    // "Phiếu của tôi" (/circulation/mine) chỉ cần đăng nhập nên phân hệ Mượn trả hiện cho mọi người; Sách và Quản trị thì không.
+    for (const href of ["/catalog", "/admin"]) {
+      await expect(main.locator(`a[href="${href}"]`)).toHaveCount(0);
+    }
+    for (const href of ["/circulation/borrow", "/circulation/return", "/circulation/fines"]) {
       await expect(main.locator(`a[href="${href}"]`)).toHaveCount(0);
     }
     await expect(main.locator('a[href="/profile"]')).toBeVisible();
@@ -125,37 +162,56 @@ test.describe("trang chủ: lối tắt theo quyền", () => {
     await expect(main.getByRole("link", { name: "Xem tất cả thông báo" })).toHaveAttribute("href", "/notifications");
   });
 
-  test("thủ thư kiểu cũ thấy Mượn trả và Quản trị, không thấy Sách; quản trị viên thấy đủ", async ({ page }) => {
+  test("thủ thư kiểu cũ thấy Mượn trả và Quản trị, không thấy Sách", async ({ page }) => {
     await loginAs(page, "staff");
-    await page.goto("/");
+    await gotoApp(page, "/");
     const main = page.getByRole("main");
     await expect(main.locator('a[href="/circulation"]').first()).toBeVisible();
     await expect(main.locator('a[href="/admin"]')).toBeVisible();
     await expect(main.locator('a[href="/catalog"]')).toHaveCount(0);
+  });
 
+  test("quản trị viên thấy đủ lối tắt phân hệ", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/");
+    await gotoApp(page, "/");
+    const main = page.getByRole("main");
     for (const href of ["/catalog", "/circulation", "/admin"]) {
       await expect(main.locator(`a[href="${href}"]`).first()).toBeVisible();
     }
+    await expect(main.getByText("Quản trị viên (toàn quyền)")).toBeVisible();
   });
 });
 
-test.describe("route gộp trong shell: tiêu đề tab và 404 trong khung", () => {
-  test("tiêu đề tab lấy từ metadata của đoạn cộng template ở root layout", async ({ page }) => {
+test.describe("tiêu đề tab và 404 trong khung", () => {
+  test("tiêu đề tab lấy từ handle.title của route kèm hậu tố", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/circulation");
+    await gotoApp(page, "/circulation");
     await expect(page).toHaveTitle("Mượn trả - Quản lý thư viện");
     await page.goto("/catalog");
     await expect(page).toHaveTitle("Sách - Quản lý thư viện");
+    await page.goto("/");
+    await expect(page).toHaveTitle("Tổng quan - Quản lý thư viện");
   });
 
-  test("URL lạ dưới /circulation hiện trang 404 trong khung (có sidebar)", async ({ page }) => {
+  test("URL lạ ở cấp gốc hiện trang 404 trong khung (có sidebar)", async ({ page }) => {
     await loginAs(page, "admin");
-    // Không kiểm mã trạng thái: loading.tsx đã flush khung và skeleton (200) trước khi notFound() chạy,
-    // nên Next vẫn trả 200 kèm giao diện 404. Với app nội bộ sau đăng nhập, thứ cần đúng là nội dung và khung.
-    await page.goto("/circulation/xyz-khong-co");
+    await gotoApp(page, "/khong-co-trang-nay");
     await expect(page.getByText("Không tìm thấy trang")).toBeVisible();
     await expect(page.locator("aside")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Về trang chủ", exact: true })).toBeVisible();
+  });
+
+  test("URL lạ dưới /circulation và /admin hiện trang 404 trong khung", async ({ page }) => {
+    await loginAs(page, "admin");
+    for (const path of ["/circulation/xyz-khong-co", "/admin/xyz-khong-co"]) {
+      await gotoApp(page, path);
+      await expect(page.getByText("Không tìm thấy trang"), path).toBeVisible();
+      await expect(page.locator("aside"), path).toBeVisible();
+    }
+  });
+
+  test("URL lạ khi chưa đăng nhập thì về login (không lộ 404 của khung)", async ({ page }) => {
+    await page.goto("/khong-co-trang-nay");
+    await expect(page).toHaveURL(/\/login\?next=%2Fkhong-co-trang-nay$/);
   });
 });

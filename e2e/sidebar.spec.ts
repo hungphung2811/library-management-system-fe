@@ -1,228 +1,182 @@
-import { expect, test, type Locator } from "@playwright/test";
-import { SHELL_ZONE_DOWN, loginAs } from "./helpers";
+import { expect, test } from "@playwright/test";
+import { gotoApp, loginAs, markSpa, readSpa, sidebar } from "./helpers";
 
-/** Mở nhóm cha; bấm lại đến khi aria-expanded=true (nút bấm trước khi hydrate xong thì không có tác dụng). */
-async function openGroup(nav: Locator, name: string) {
-  const btn = nav.getByRole("button", { name });
-  await expect(async () => {
-    if ((await btn.getAttribute("aria-expanded")) !== "true") await btn.click();
-    await expect(btn).toHaveAttribute("aria-expanded", "true", { timeout: 1000 });
-  }).toPass();
-}
-
-// Sidebar là nơi duy nhất chứa điều hướng giữa các màn hình (packages/ui ShellFrame).
+// Sidebar là nơi duy nhất chứa điều hướng giữa các màn hình (apps/web/src/ui/ShellFrame.tsx); mọi nhóm mở sẵn.
 test.describe("sidebar: mục con theo quyền và mục đang mở", () => {
-  test("chỉ có MỘT thẻ <nav> trên trang zone", async ({ page }) => {
+  test("chỉ có MỘT thẻ <nav> trên trang", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/admin/users");
+    await gotoApp(page, "/admin/users");
     await expect(page.locator("nav")).toHaveCount(1);
   });
 
-  test("mục đang mở có aria-current, nhóm cha tự mở khi đang ở trong zone", async ({ page }) => {
+  test("mục đang mở có aria-current; mọi nhóm mở sẵn", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/admin/roles");
-    const nav = page.getByRole("navigation");
-    await expect(nav.getByRole("button", { name: "Quản trị" })).toHaveAttribute("aria-expanded", "true");
+    await gotoApp(page, "/admin/roles");
+    const nav = sidebar(page);
     await expect(nav.getByRole("link", { name: "Vai trò và quyền" })).toHaveAttribute("aria-current", "page");
     await expect(nav.getByRole("link", { name: "Người dùng" })).not.toHaveAttribute("aria-current", /.+/);
-    // Nhóm không phải zone hiện tại thì thu gọn
-    await expect(nav.getByRole("button", { name: "Sách" })).toHaveAttribute("aria-expanded", "false");
+    for (const g of ["Quản trị", "Sách", "Mượn trả"]) {
+      await expect(nav.getByRole("button", { name: g })).toHaveAttribute("aria-expanded", "true");
+    }
   });
 
   test("trang chi tiết (/admin/users/{id}) vẫn đánh dấu mục Người dùng", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/admin/users");
-    const first = page.getByRole("main").getByRole("link").first();
-    await first.click();
-    await page.waitForURL(/\/admin\/users\/[^/]+$/);
-    await expect(page.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: "Người dùng" })).toHaveAttribute("aria-current", "true");
+    await gotoApp(page, "/admin/users/a0000000-0000-4000-8000-000000000001");
+    await expect(sidebar(page).getByRole("link", { name: "Người dùng" })).toHaveAttribute("aria-current", "true");
   });
 
-  test("bấm mục con đi đúng URL (không /admin/admin/...) và xuyên zone", async ({ page }) => {
+  test("bấm mục con đi đúng URL (không /admin/admin/...) và xuyên nhóm", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/");
-    const nav = page.getByRole("navigation");
-    await openGroup(nav, "Quản trị");
+    await gotoApp(page, "/");
+    const nav = sidebar(page);
     await nav.getByRole("link", { name: "Phòng ban" }).click();
     await expect(page).toHaveURL(/\/admin\/departments$/);
     await expect(nav.getByRole("link", { name: "Phòng ban" })).toHaveAttribute("aria-current", "page");
 
-    await openGroup(nav, "Sách");
     await nav.getByRole("link", { name: "Tra mã vạch" }).click();
     await expect(page).toHaveURL(/\/catalog\/barcode$/);
     await expect(nav.getByRole("link", { name: "Tra mã vạch" })).toHaveAttribute("aria-current", "page");
     await expect(nav.getByRole("link", { name: "Danh sách sách" })).not.toHaveAttribute("aria-current", /.+/);
   });
 
-  test("nhóm mở/thu gọn bằng nút cha", async ({ page }) => {
+  test("trang gốc của nhóm (/circulation) không đánh dấu mục con nào nhưng nhóm vẫn mở", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/");
-    const nav = page.getByRole("navigation");
+    await gotoApp(page, "/circulation");
+    const nav = sidebar(page);
+    await expect(nav.getByRole("button", { name: "Mượn trả" })).toHaveAttribute("aria-expanded", "true");
+    await expect(nav.locator('[aria-current="page"]')).toHaveCount(0);
+  });
+
+  test("nút nhóm thu gọn rồi mở lại", async ({ page }) => {
+    await loginAs(page, "admin");
+    await gotoApp(page, "/");
+    const nav = sidebar(page);
     const group = nav.getByRole("button", { name: "Mượn trả" });
+    await expect(group).toHaveAttribute("aria-expanded", "true");
+    await expect(nav.getByRole("link", { name: "Nhận trả sách" })).toBeVisible();
+    await group.click();
     await expect(group).toHaveAttribute("aria-expanded", "false");
     await expect(nav.getByRole("link", { name: "Nhận trả sách" })).toBeHidden();
-    await openGroup(nav, "Mượn trả");
+    await group.click();
     await expect(nav.getByRole("link", { name: "Nhận trả sách" })).toBeVisible();
   });
 
   test("staff (listRoles + borrow): chỉ thấy mục con có quyền", async ({ page }) => {
     await loginAs(page, "staff");
-    await page.goto("/admin/roles");
-    const nav = page.getByRole("navigation");
+    await gotoApp(page, "/admin/roles");
+    const nav = sidebar(page);
     await expect(nav.getByRole("link", { name: "Vai trò và quyền" })).toBeVisible();
     for (const n of ["Người dùng", "Phòng ban", "Nhật ký hoạt động"]) {
       await expect(nav.getByRole("link", { name: n })).toHaveCount(0);
     }
-    await openGroup(nav, "Mượn trả");
     await expect(nav.getByRole("link", { name: "Lập phiếu mượn" })).toHaveCount(1);
+    await expect(nav.getByRole("link", { name: "Tra phiếu mượn" })).toHaveCount(1); // any-of: có khóa borrow
     await expect(nav.getByRole("link", { name: "Nhận trả sách" })).toHaveCount(0);
     await expect(nav.getByRole("button", { name: "Sách" })).toHaveCount(0);
   });
 
   test("reader: không thấy Quản trị, chỉ Danh sách sách và Đặt trước", async ({ page }) => {
     await loginAs(page, "reader");
-    await page.goto("/catalog");
-    const nav = page.getByRole("navigation");
+    await gotoApp(page, "/catalog");
+    const nav = sidebar(page);
     await expect(nav.getByRole("button", { name: "Quản trị" })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Danh sách sách" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Thêm sách" })).toHaveCount(0);
-    await openGroup(nav, "Mượn trả");
+    await expect(nav.getByRole("link", { name: "Tra mã vạch" })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: "Đặt trước" })).toHaveCount(1);
   });
 
-  test("member: không thấy nhóm Sách, Mượn trả, Quản trị", async ({ page }) => {
+  test("member: không thấy nhóm Sách, Quản trị; nhóm Mượn trả chỉ còn mục không cần khóa (Phiếu của tôi)", async ({ page }) => {
     await loginAs(page, "member");
-    await page.goto("/");
-    const nav = page.getByRole("navigation");
-    for (const n of ["Sách", "Mượn trả", "Quản trị"]) {
+    await gotoApp(page, "/");
+    const nav = sidebar(page);
+    for (const n of ["Sách", "Quản trị"]) {
       await expect(nav.getByRole("button", { name: n })).toHaveCount(0);
     }
+    // /api/borrowings/mine chỉ cần đăng nhập nên nhóm Mượn trả luôn hiện với mục "Phiếu của tôi" (nav-links.ts).
+    await expect(nav.getByRole("button", { name: "Mượn trả" })).toHaveCount(1);
+    await expect(nav.getByRole("link", { name: "Phiếu của tôi" })).toBeVisible();
+    for (const n of ["Lập phiếu mượn", "Nhận trả sách", "Tra phiếu mượn", "Đặt trước", "Phạt"]) {
+      await expect(nav.getByRole("link", { name: n, exact: true })).toHaveCount(0);
+    }
+    await expect(nav.getByRole("link", { name: "Trang chủ", exact: true })).toBeVisible();
+  });
+
+  test("platform admin không tenant: không thấy nhóm Mượn trả và Phiếu của tôi (tenantOnly)", async ({ page }) => {
+    await loginAs(page, "platform");
+    await gotoApp(page, "/");
+    const nav = sidebar(page);
+    await expect(nav.getByRole("button", { name: "Nền tảng SaaS" })).toHaveCount(1);
+    await expect(nav.getByRole("button", { name: "Mượn trả" })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Phiếu của tôi" })).toHaveCount(0);
   });
 
   test("nút thu gọn nằm trong sidebar cạnh logo; thu gọn rồi mở lại bằng nút trên thanh trên", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/");
-    await page.getByRole("navigation").getByRole("button", { name: "Thu gọn menu" }).click();
-    await expect(page.getByRole("navigation")).toBeHidden();
+    await gotoApp(page, "/");
+    await sidebar(page).getByRole("button", { name: "Thu gọn menu" }).click();
+    await expect(sidebar(page)).toBeHidden();
     await page.getByRole("button", { name: "Mở rộng menu" }).click();
-    await expect(page.getByRole("navigation")).toBeVisible();
-  });
-
-  test("trang 503 của zone admin vẫn có sidebar, nhóm Quản trị được mở", async ({ page }) => {
-    await loginAs(page, "admin", SHELL_ZONE_DOWN);
-    const res = await page.goto(`${SHELL_ZONE_DOWN}/admin`);
-    expect(res?.status()).toBe(503);
-    await expect(page.locator("nav")).toHaveCount(1);
-    await expect(page.getByRole("navigation").getByRole("button", { name: "Quản trị" })).toHaveAttribute("aria-expanded", "true");
+    await expect(sidebar(page)).toBeVisible();
   });
 });
 
-// Bước 5 (docs/design/2026-11-16-gom-zone.md): trong app gộp (/, /catalog, /circulation) link dùng next/link nên giữ sidebar,
-// còn sang zone admin vẫn là <a> (tải lại trang). `window.__spa` là dấu hiệu: mất đi nghĩa là trang đã tải lại.
-const spa = (page: import("@playwright/test").Page) =>
-  page.evaluate(() => (window as unknown as { __spa?: number }).__spa);
-const markSpa = (page: import("@playwright/test").Page) =>
-  page.evaluate(() => {
-    (window as unknown as { __spa?: number }).__spa = 1;
-  });
-
-test.describe("điều hướng phía client trong app gộp", () => {
+// Mọi link là route của cùng SPA: bấm link không tải lại trang. `window.__spa` là dấu hiệu: mất đi nghĩa là trang đã tải lại.
+test.describe("điều hướng phía client", () => {
   test("Sách -> Trang chủ bằng breadcrumb: không tải lại, sidebar vẫn thu gọn", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/catalog");
-    await page.getByRole("navigation").getByRole("button", { name: "Thu gọn menu" }).click();
-    await expect(page.getByRole("navigation")).toBeHidden();
+    await gotoApp(page, "/catalog");
+    await sidebar(page).getByRole("button", { name: "Thu gọn menu" }).click();
+    await expect(sidebar(page)).toBeHidden();
     await markSpa(page);
 
     await page.getByRole("link", { name: "Trang chủ" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
-    expect(await spa(page)).toBe(1);
-    await expect(page.getByRole("navigation")).toBeHidden();
+    expect(await readSpa(page)).toBe(1);
+    await expect(sidebar(page)).toBeHidden();
   });
 
-  test("Sách -> Mượn trả bằng sidebar: không tải lại, mục đang mở đổi theo", async ({ page }) => {
+  test("Sách -> Mượn trả -> Quản trị bằng sidebar: không tải lại, mục đang mở đổi theo", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/catalog");
-    const nav = page.getByRole("navigation");
+    await gotoApp(page, "/catalog");
+    const nav = sidebar(page);
     await markSpa(page);
 
-    await openGroup(nav, "Mượn trả");
     await nav.getByRole("link", { name: "Lập phiếu mượn" }).click();
     await expect(page).toHaveURL(/\/circulation\/borrow$/);
-    await expect(page.getByRole("heading", { name: "Lập phiếu mượn" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Lập phiếu mượn" })).toHaveAttribute("aria-current", "page");
-    expect(await spa(page)).toBe(1);
-  });
 
-  test("sang Quản trị vẫn tải lại trang (zone riêng) và vào được /admin", async ({ page }) => {
-    await loginAs(page, "admin");
-    await page.goto("/catalog");
-    const nav = page.getByRole("navigation");
-    await markSpa(page);
-
-    await openGroup(nav, "Quản trị");
     await nav.getByRole("link", { name: "Phòng ban" }).click();
     await expect(page).toHaveURL(/\/admin\/departments$/);
-    await expect(page.getByRole("heading", { name: "Phòng ban" })).toBeVisible();
-    expect(await spa(page)).toBeUndefined();
+    await expect(nav.getByRole("link", { name: "Phòng ban" })).toHaveAttribute("aria-current", "page");
+    expect(await readSpa(page)).toBe(1);
   });
 
-  test("access token hết hạn (còn refresh token): bấm link phía client vẫn về được trang đích", async ({ page }) => {
-    await loginAs(page, "admin");
-    await page.goto("/catalog");
-    const nav = page.getByRole("navigation");
-    await openGroup(nav, "Mượn trả");
-    await page.context().clearCookies({ name: "lms_at" });
-
-    await nav.getByRole("link", { name: "Nhận trả sách" }).click();
-    await expect(page).toHaveURL(/\/circulation\/return$/);
-    await expect(page.getByRole("heading", { name: "Nhận trả sách" })).toBeVisible();
-    expect((await page.context().cookies()).some((c) => c.name === "lms_at")).toBeTruthy();
-  });
-});
-
-test.describe("chuông thông báo và menu người dùng", () => {
   test("Xem tất cả thông báo: chuyển phía client, popover đóng lại, khung giữ nguyên", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/catalog");
+    await gotoApp(page, "/catalog");
     await markSpa(page);
 
     await page.getByRole("button", { name: /^Thông báo/ }).click();
     await page.locator(".ant-popover").getByRole("link", { name: "Xem tất cả" }).click();
     await expect(page).toHaveURL(/\/notifications$/);
     await expect(page.getByRole("heading", { name: "Thông báo" })).toBeVisible();
-    expect(await spa(page)).toBe(1);
+    expect(await readSpa(page)).toBe(1);
     await expect(page.locator(".ant-popover").getByRole("link", { name: "Xem tất cả" })).toBeHidden();
   });
 
-  test("Hồ sơ của tôi: chuyển phía client và menu đóng lại", async ({ page }) => {
+  test("Hồ sơ của tôi từ trang admin: chuyển phía client, đúng /profile (không thành /admin/profile)", async ({ page }) => {
     await loginAs(page, "admin");
-    await page.goto("/catalog");
+    await gotoApp(page, "/admin/users");
     await markSpa(page);
 
     await page.getByRole("button", { name: "Tài khoản của tôi" }).click();
     await page.getByRole("link", { name: "Hồ sơ của tôi" }).click();
     await expect(page).toHaveURL(/\/profile$/);
     await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
-    expect(await spa(page)).toBe(1);
-    await expect(page.getByRole("link", { name: "Hồ sơ của tôi" })).toBeHidden();
-  });
-
-  test("từ trang admin (có basePath) vẫn đi đúng /profile và /notifications, không thành /admin/...", async ({ page }) => {
-    await loginAs(page, "admin");
-    await page.goto("/admin/users");
-    await markSpa(page);
-
-    await page.getByRole("button", { name: "Tài khoản của tôi" }).click();
-    await page.getByRole("link", { name: "Hồ sơ của tôi" }).click();
-    await expect(page).toHaveURL(/\/profile$/);
-    await expect(page.getByRole("heading", { name: "Hồ sơ của tôi" })).toBeVisible();
-    expect(await spa(page)).toBeUndefined();
-
-    await page.goto("/admin/users");
-    await page.getByRole("button", { name: /^Thông báo/ }).click();
-    await page.locator(".ant-popover").getByRole("link", { name: "Xem tất cả" }).click();
-    await expect(page).toHaveURL(/\/notifications$/);
+    expect(await readSpa(page)).toBe(1);
+    await expect(page.getByRole("link", { name: "Hồ sơ của tôi", exact: true }).first()).toBeHidden(); // menu đã đóng
   });
 });

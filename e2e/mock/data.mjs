@@ -23,6 +23,8 @@ export const KEYS = {
   USER_SEARCH: "UserController/search",
   USER_VIEW: "UserController/get",
   READER_VIEW: "ReaderProfileController/get",
+  PREVIEW_VIEW: "TitleController/preview",
+  PREVIEW_UPDATE: "TitleController/updatePreview",
 };
 
 export const TENANTS = [
@@ -81,9 +83,28 @@ export const USERS = {
     password: "Reader@12345",
     tenantId: TENANT_A, tenants: [TENANT_A],
   },
+  // Platform admin: token KHÔNG có tenantId, claim platformAdmin=true (CMS và yêu cầu liên hệ của nền tảng SaaS).
+  platform: {
+    id: "platform-id", roles: ["PLATFORM_ADMIN"], permissions: [], platformAdmin: true, password: "Platform@12345",
+    tenantId: undefined, tenants: [],
+  },
+  // Nhập mô tả/preview đầu sách: xem chi tiết sách + xem và sửa preview. previewviewer chỉ xem.
+  previewer: {
+    id: "previewer-id", roles: ["CATALOGER"], permissions: [KEYS.BOOK_SEARCH, KEYS.BOOK_VIEW, KEYS.PREVIEW_VIEW, KEYS.PREVIEW_UPDATE],
+    password: "Previewer@12345", tenantId: TENANT_A, tenants: [TENANT_A],
+  },
+  previewviewer: {
+    id: "previewviewer-id", roles: ["CATALOGER"], permissions: [KEYS.BOOK_SEARCH, KEYS.BOOK_VIEW, KEYS.PREVIEW_VIEW],
+    password: "Previewviewer@12345", tenantId: TENANT_A, tenants: [TENANT_A],
+  },
   // Thuộc 2 đơn vị, dùng cho test chuyển đơn vị (switch-tenant đổi tenantId trong bộ nhớ).
   multi: {
     id: "multi-id", roles: ["READER"], permissions: [KEYS.BOOK_SEARCH, KEYS.BOOK_VIEW], password: "Multi@12345",
+    tenantId: TENANT_A, tenants: [TENANT_A, TENANT_B],
+  },
+  // Như multi nhưng dành riêng cho test chuyển đơn vị qua giao diện (shared.spec.ts); multi dành cho test API.
+  multi2: {
+    id: "multi2-id", roles: ["READER"], permissions: [KEYS.BOOK_SEARCH, KEYS.BOOK_VIEW], password: "Multi2@12345",
     tenantId: TENANT_A, tenants: [TENANT_A, TENANT_B],
   },
 };
@@ -100,9 +121,25 @@ export const COPIES = [
 ];
 
 export const DIRECTORY = [
-  { id: "u0000000-0000-4000-8000-000000000001", username: "hung.le", fullName: "Lê Văn Hùng", email: "hung.le@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
-  { id: "u0000000-0000-4000-8000-000000000002", username: "huong.pham", fullName: "Phạm Thị Hương", email: "huong.pham@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
+  { id: "a0000000-0000-4000-8000-000000000001", username: "hung.le", fullName: "Lê Văn Hùng", email: "hung.le@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
+  { id: "a0000000-0000-4000-8000-000000000002", username: "huong.pham", fullName: "Phạm Thị Hương", email: "huong.pham@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
 ];
+
+// 45 người dùng hàng loạt (username nguoidungNN) để test phân trang server; tìm bằng từ khóa "nguoidung". Chỉ đọc.
+export const BULK_USER_KEYWORD = "nguoidung";
+for (let i = 1; i <= 45; i++) {
+  const n = String(i).padStart(2, "0");
+  DIRECTORY.push({
+    id: `a1000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+    username: `nguoidung${n}`,
+    fullName: `Người dùng thử số ${i}`,
+    email: `nguoidung${i}@gmail.com`,
+    departmentId: null,
+    status: "ACTIVE",
+  });
+}
+// Người dùng đã bị vô hiệu (seed, chỉ đọc) để test lọc status=DISABLED.
+DIRECTORY.push({ id: "a2000000-0000-4000-8000-000000000001", username: "da.khoa", fullName: "Đỗ Văn Khóa", email: "da.khoa@gmail.com", departmentId: "dept-2", status: "DISABLED" });
 
 export const READER_PROFILES = [
   { userId: DIRECTORY[0].id, cardNo: "SV21-04817", fullName: DIRECTORY[0].fullName, email: DIRECTORY[0].email, readerType: "STUDENT", cardExpiryDate: "2030-12-31", status: "ACTIVE", cardValid: true },

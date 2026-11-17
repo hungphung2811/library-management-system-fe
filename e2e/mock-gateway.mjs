@@ -1,9 +1,9 @@
-// Mock của nginx + lms-api để chạy E2E mà không cần BE. Chỉ cài đủ các endpoint FE đang gọi.
+// Mock của lms-api (đứng sau `vite preview` proxy /api)  để chạy E2E mà không cần BE. Chỉ cài đủ các endpoint FE đang gọi.
 // Mô phỏng phân quyền động của BE (ADR-0003): khóa quyền là "Controller/method", quản trị viên là claim admin=true,
 // token của tài khoản phải đổi mật khẩu không mang admin/permissions.
 // File này giữ server, JWT và login/refresh/logout/password; endpoint nghiệp vụ nằm ở e2e/mock/*.mjs
 // (hợp đồng mỗi module: `export function handle(ctx): boolean`, xem mock/common.mjs).
-// Chạy: PORT=8090 node e2e/mock-gateway.mjs
+// Chạy: PORT=4201 node e2e/mock-gateway.mjs (playwright.config.ts tự chạy; cổng xem e2e/ports.ts)
 import http from "node:http";
 import { USERS } from "./mock/data.mjs";
 import * as common from "./mock/common.mjs";
@@ -11,12 +11,19 @@ import * as shell from "./mock/shell.mjs";
 import * as catalog from "./mock/catalog.mjs";
 import * as circulation from "./mock/circulation.mjs";
 import * as admin from "./mock/admin.mjs";
+import * as platform from "./mock/platform.mjs";
+import * as platformTenants from "./mock/platform-tenants.mjs";
+import * as platformContracts from "./mock/platform-contracts.mjs";
+import * as platformOrigins from "./mock/platform-origins.mjs";
+import * as sales from "./mock/sales.mjs";
 
-const PORT = Number(process.env.PORT ?? 8090);
+const PORT = Number(process.env.PORT ?? 4201);
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 
 // Thứ tự dispatch: common -> shell -> catalog -> circulation -> admin (nên /api/users/me rơi vào shell trước admin).
-const MODULES = [common, shell, catalog, circulation, admin];
+// platformTenants đứng đầu: chặn GET /api/users?tenantId= của platform admin trước khi common/admin kiểm khóa USER_SEARCH.
+// platformContracts đứng trước platformTenants (nó trả 404 cho mọi /api/platform/** lạ) và nhận cả /api/contracts của tenant admin.
+const MODULES = [platformOrigins, platformContracts, platformTenants, common, shell, catalog, circulation, admin, platform, sales];
 
 function claimsOf(username) {
   const u = USERS[username];
@@ -27,8 +34,10 @@ function claimsOf(username) {
     roles: u.roles,
     departmentId: "dept-1",
     tenantId: u.tenantId,
+    ...(u.modules ? { modules: u.modules } : {}),
     // Token của tài khoản phải đổi mật khẩu không mang admin/permissions.
     permissions: must ? [] : u.permissions,
+    ...(u.platformAdmin ? { platformAdmin: true } : {}),
     ...(must ? { mustChangePassword: true } : u.admin ? { admin: true } : {}),
   };
 }
@@ -64,6 +73,8 @@ http
       }
       const caller = userFromToken(req.headers.authorization);
       const url = new URL(req.url, "http://mock");
+
+      if (req.method === "GET" && url.pathname === "/__health") return send(200, { ok: true });
 
       if (req.method === "POST" && url.pathname === "/api/auth/login") {
         const u = USERS[body.username];

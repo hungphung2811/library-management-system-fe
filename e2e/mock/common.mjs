@@ -32,9 +32,19 @@ export function handle({ method, url, send, requireKey }) {
   }
   if (p === "/api/users") {
     if (!requireKey(KEYS.USER_SEARCH)) return true;
-    const kw = (url.searchParams.get("keyword") ?? "").toLowerCase();
-    const items = DIRECTORY.filter((u) => !kw || `${u.fullName} ${u.username} ${u.email}`.toLowerCase().includes(kw));
-    return send(200, { items, total: items.length, page: 0, size: 10 }), true;
+    const sp = url.searchParams;
+    const kw = (sp.get("keyword") ?? sp.get("q") ?? "").trim().toLowerCase();
+    const status = sp.get("status");
+    const dept = sp.get("departmentId");
+    const page = Math.max(0, Number(sp.get("page") ?? 0) || 0);
+    const size = Math.max(1, Number(sp.get("size") ?? 20) || 20);
+    const all = DIRECTORY.filter(
+      (u) =>
+        (!kw || `${u.fullName} ${u.username} ${u.email}`.toLowerCase().includes(kw)) &&
+        (!status || u.status === status) &&
+        (!dept || u.departmentId === dept),
+    );
+    return send(200, { items: all.slice(page * size, page * size + size), total: all.length, page, size }), true;
   }
   if ((m = p.match(/^\/api\/users\/([^/]+)\/reader-profile$/))) {
     if (m[1] === "me") return false; // thuộc module shell
