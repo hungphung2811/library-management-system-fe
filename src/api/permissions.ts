@@ -175,6 +175,14 @@ export const PERMISSIONS = {
   POS_ORDER_CREATE: "PosOrderController/create",
   /** POST /api/sales/pos-orders/discounted (bán tại quầy có giảm giá) */
   POS_ORDER_CREATE_DISCOUNTED: "PosOrderController/createWithDiscount",
+  /** GET /api/sales/payments/intents/{id} (thăm dò trạng thái thanh toán QR) */
+  PAYMENT_INTENT_VIEW: "PaymentIntentController/get",
+  /** POST /api/sales/payments/intents/{id}/cancel */
+  PAYMENT_INTENT_CANCEL: "PaymentIntentController/cancel",
+  /** POST /api/sales/payments/intents/{id}/confirm (xác nhận đã thu tiền mặt/thẻ/chuyển khoản) */
+  PAYMENT_INTENT_CONFIRM: "PaymentIntentController/confirm",
+  /** POST /api/sales/payments/intents/{id}/simulate-paid (sandbox) */
+  PAYMENT_INTENT_SIMULATE_PAID: "PaymentIntentController/simulatePaid",
   /** GET /api/sales/orders */
   SALES_ORDER_SEARCH: "SalesOrderController/search",
   /** GET /api/sales/orders/{id} */

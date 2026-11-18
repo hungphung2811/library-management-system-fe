@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, apiFetch, can, toErrorInfo, useInvalidateApi, useSession, type ErrorInfo } from "@/api";
 import {
@@ -8,17 +8,19 @@ import {
   DeleteOutlined,
   Input,
   InputNumber,
-  RemoteSelect,
   ScanInput,
   Segmented,
   describeError,
   formatMoney,
 } from "@/ui";
 import { MoneyInput } from "./_components/MoneyInput";
+import { PosCatalog, TitleSearchList } from "./_components/PosCatalog";
+import { ManualPaymentModal } from "./_components/ManualPaymentModal";
+import { QrPaymentModal } from "./_components/QrPaymentModal";
 import { ReceiptPanel } from "./_components/ReceiptPanel";
 import { SalesGate } from "./_components/SalesGate";
 import {
-  PAYMENT_METHODS,
+  POS_PAYMENT_METHODS,
   estimateDiscount,
   newRequestId,
   normIsbn,
@@ -42,6 +44,25 @@ type CartLine = {
 };
 
 type Cand = { id: string; name: string; isbn?: string | null };
+
+// Đơn QR đang chờ được nhớ trong sessionStorage để F5 hoặc rời trang rồi quay lại vẫn mở lại được mã QR (BE tự hủy khi hết hạn).
+const QR_KEY = "lms_pos_qr_order";
+const loadQr = (): SalesOrder | null => {
+  try {
+    const o = JSON.parse(sessionStorage.getItem(QR_KEY) ?? "null") as SalesOrder | null;
+    return o?.paymentIntent ? o : null;
+  } catch {
+    return null;
+  }
+};
+const saveQr = (o: SalesOrder | null) => {
+  try {
+    if (o) sessionStorage.setItem(QR_KEY, JSON.stringify(o));
+    else sessionStorage.removeItem(QR_KEY);
+  } catch {
+    /* bỏ qua: không có storage thì chỉ mất khả năng khôi phục */
+  }
+};
 
 /** Giảm giá theo số tiền (đồng) hoặc phần trăm (nhập %, gửi BE dưới dạng điểm cơ bản: 10% = 1000). */
 function DiscountInput({ value, onChange, label }: { value?: Discount; onChange: (d: Discount | undefined) => void; label: string }) {
@@ -86,21 +107,30 @@ export default function PosPage() {
   const canDiscount = can(s, PERMISSIONS.POS_ORDER_CREATE_DISCOUNTED);
   const canSell = canDiscount || can(s, PERMISSIONS.POS_ORDER_CREATE);
   const canBookSearch = can(s, PERMISSIONS.BOOK_SEARCH);
+  // Danh sách chọn sách có bộ lọc cần khóa liệt kê mặt hàng; thiếu khóa thì chỉ còn ô quét và ô tìm theo tên.
+  const canStockList = can(s, PERMISSIONS.STOCK_SEARCH);
   // Đổi hàng: mở từ phiếu trả (?exchangeOfReturnId=<id>); đơn mới gắn với phiếu trả, chênh lệch tiền xử lý ngoài hệ thống.
   const [sp, setSp] = useSearchParams();
   const exchangeOfReturnId = sp.get("exchangeOfReturnId") ?? "";
 
   const [cart, setCart] = useState<CartLine[]>([]);
   const [orderDiscount, setOrderDiscount] = useState<Discount | undefined>();
-  const [payment, setPayment] = useState<keyof typeof PAYMENT_METHODS>("CASH");
+  const [payment, setPayment] = useState<keyof typeof POS_PAYMENT_METHODS>("CASH");
   const [walkName, setWalkName] = useState("");
   const [walkPhone, setWalkPhone] = useState("");
+  const [customerNote, setCustomerNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [done, setDone] = useState<SalesOrder | null>(null);
   const [added, setAdded] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const busy = useRef(false);
+  const [qrOrder, setQrOrder] = useState<SalesOrder | null>(loadQr);
+  const [qrOpen, setQrOpen] = useState(true);
+  const canQr = can(s, PERMISSIONS.PAYMENT_INTENT_VIEW);
+  useEffect(() => saveQr(qrOrder), [qrOrder]);
+  // "Tạo mã QR mới" sau khi lệnh hết hạn/hủy: đợi qrOrder được bỏ rồi mới gọi checkout (closure mới nhất).
+  const [retryTick, setRetryTick] = useState(0);
   // clientRequestId gắn với nội dung đơn: gửi lại đúng đơn đó (sau lỗi mạng) thì dùng lại id, đổi nội dung thì sinh id mới.
   const req = useRef<{ sig: string; id: string } | null>(null);
 
@@ -140,8 +170,17 @@ export default function PosPage() {
   const orderDisc = estimateDiscount(gross - lineDisc, canDiscount ? orderDiscount : undefined);
   const estimate = gross - lineDisc - orderDisc;
 
+  const resetAfterSale = () => {
+    setCart([]);
+    setOrderDiscount(undefined);
+    setWalkName("");
+    setWalkPhone("");
+    setCustomerNote("");
+    req.current = null;
+  };
+
   const checkout = async () => {
-    if (busy.current || cart.length === 0) return;
+    if (busy.current || cart.length === 0 || qrOrder) return;
     const body: Record<string, unknown> = {
       lines: cart.map((l) => ({
         titleId: l.titleId,
@@ -150,6 +189,7 @@ export default function PosPage() {
       })),
       paymentMethod: payment,
       ...(walkName.trim() || walkPhone.trim() ? { walkIn: { name: walkName.trim() || null, phone: walkPhone.trim() || null } } : {}),
+      ...(customerNote.trim() ? { customerNote: customerNote.trim() } : {}),
       ...(canDiscount && orderDiscount ? { orderDiscount } : {}),
       ...(exchangeOfReturnId ? { exchangeOfReturnId } : {}),
     };
@@ -163,14 +203,16 @@ export default function PosPage() {
         method: "POST",
         json: { ...body, clientRequestId: req.current.id },
       });
-      setDone(o);
-      setCart([]);
-      setOrderDiscount(undefined);
-      setWalkName("");
-      setWalkPhone("");
-      req.current = null;
-      if (exchangeOfReturnId) setSp(new URLSearchParams(), { replace: true });
       void invalidate("/api/sales/stock-items", "/api/sales/orders");
+      if (o.paymentIntent && o.status === "AWAITING_PAYMENT") {
+        // Đơn QR chưa thu: giữ giỏ và clientRequestId (bấm lại cùng nội dung trả đúng đơn này), mở khung QR.
+        setQrOrder(o);
+        setQrOpen(true);
+        return;
+      }
+      setDone(o);
+      resetAfterSale();
+      if (exchangeOfReturnId) setSp(new URLSearchParams(), { replace: true });
     } catch (e) {
       const info = toErrorInfo(e);
       setError(info);
@@ -185,6 +227,11 @@ export default function PosPage() {
       setSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (retryTick > 0) void checkout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retryTick]);
 
   const errorNode = (() => {
     if (!error) return null;
@@ -237,7 +284,7 @@ export default function PosPage() {
         </div>
       ) : (
         canSell && (
-          <div className="flex max-w-[1200px] flex-col gap-4">
+          <div className="flex flex-col gap-4">
             {exchangeOfReturnId && (
               <Alert
                 type="info"
@@ -263,23 +310,35 @@ export default function PosPage() {
                   onScan={scan}
                   status={added}
                 />
-                <div>
-                  <label htmlFor="pos-search" className="mb-1 block text-sm font-medium text-ink">
-                    Tìm theo tên sách
-                  </label>
-                  <RemoteSelect
-                    id="pos-search"
-                    placeholder="Gõ tên sách"
-                    onChange={(o) => {
-                      if (!o) return;
+                {canStockList ? (
+                  <PosCatalog
+                    onPick={async (it) => {
                       setPickError(null);
-                      addTitle({ id: o.value, name: o.label.replace(/ \(\S+\)$/, "") }).catch((e) => setPickError(describeError(toErrorInfo(e)).text));
+                      try {
+                        await addTitle({ id: it.titleId, name: it.titleName ?? it.titleId });
+                      } catch (e) {
+                        setPickError(describeError(toErrorInfo(e)).text);
+                      }
                     }}
-                    fetcher={async (q) => (await findTitles(q)).slice(0, 20).map((b) => ({ value: b.id, label: b.isbn ? `${b.name} (${b.isbn})` : b.name }))}
-                    notFoundText="Không tìm thấy sách"
                   />
-                  {pickError && <div className="mt-1 text-sm text-red-600" role="alert">{pickError}</div>}
-                </div>
+                ) : (
+                  <TitleSearchList
+                    find={findTitles}
+                    onPick={async (c) => {
+                      setPickError(null);
+                      try {
+                        await addTitle(c);
+                      } catch (e) {
+                        setPickError(describeError(toErrorInfo(e)).text);
+                      }
+                    }}
+                  />
+                )}
+                {pickError && (
+                  <div className="text-sm text-red-600" role="alert">
+                    {pickError}
+                  </div>
+                )}
               </div>
             </Card>
             <Card title="Giỏ hàng">
@@ -330,8 +389,10 @@ export default function PosPage() {
                   <Segmented
                     aria-label="Hình thức thanh toán"
                     value={payment}
-                    onChange={(v) => setPayment(v as keyof typeof PAYMENT_METHODS)}
-                    options={Object.entries(PAYMENT_METHODS).map(([value, label]) => ({ value, label }))}
+                    onChange={(v) => setPayment(v as keyof typeof POS_PAYMENT_METHODS)}
+                    options={Object.entries(POS_PAYMENT_METHODS)
+                      .filter(([value]) => (value !== "QR" && value !== "MOMO") || (canQr && !exchangeOfReturnId))
+                      .map(([value, label]) => ({ value, label }))}
                   />
                 </div>
 
@@ -348,6 +409,12 @@ export default function PosPage() {
                     </label>
                     <Input id="walk-phone" autoComplete="off" maxLength={30} value={walkPhone} onChange={(e) => setWalkPhone(e.target.value)} />
                   </div>
+                </div>
+                <div>
+                  <label htmlFor="customer-note" className="mb-1 block text-sm text-muted">
+                    Ghi chú của khách (tùy chọn)
+                  </label>
+                  <Input.TextArea id="customer-note" rows={2} maxLength={500} showCount value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} />
                 </div>
 
                 <dl className="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-line pt-2">
@@ -367,8 +434,25 @@ export default function PosPage() {
                 <p className="m-0 text-xs text-muted">Số tiền cuối cùng (thuế, giảm giá) do hệ thống tính khi thanh toán.</p>
 
                 {errorNode}
-                <Button type="primary" size="large" loading={submitting} disabled={cart.length === 0} onClick={() => void checkout()}>
-                  Thanh toán
+                {qrOrder && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    data-testid="qr-pending"
+                    title={
+                      <span>
+                        Đơn <span className="font-mono">{qrOrder.orderNo}</span> {qrOrder.paymentIntent?.provider === "MANUAL" ? "đang chờ xác nhận đã thu." : qrOrder.paymentIntent?.provider === "MOMO" ? "đang chờ thanh toán MoMo." : "đang chờ thanh toán QR."}
+                      </span>
+                    }
+                    action={
+                      <Button size="small" onClick={() => setQrOpen(true)}>
+                        {qrOrder.paymentIntent?.provider === "MANUAL" ? "Mở khung thu tiền" : "Mở mã QR"}
+                      </Button>
+                    }
+                  />
+                )}
+                <Button type="primary" size="large" loading={submitting} disabled={cart.length === 0 || !!qrOrder} onClick={() => void checkout()}>
+                  {payment === "QR" || payment === "MOMO" ? "Tạo mã QR" : "Thanh toán"}
                 </Button>
               </div>
             </Card>
@@ -376,6 +460,30 @@ export default function PosPage() {
           </div>
         )
       )}
+      {qrOrder &&
+        (() => {
+          const Modal = qrOrder.paymentIntent?.provider === "MANUAL" ? ManualPaymentModal : QrPaymentModal;
+          return (
+            <Modal
+              key={qrOrder.id}
+              order={qrOrder}
+              open={qrOpen}
+              onClose={() => setQrOpen(false)}
+              onPaid={(o) => {
+                setQrOrder(null);
+                setDone(o);
+                resetAfterSale();
+                if (exchangeOfReturnId) setSp(new URLSearchParams(), { replace: true });
+              }}
+              onAbandon={(retry) => {
+                // Đơn cũ đã bị hủy: bỏ clientRequestId để lần tạo mới ra đơn mới thay vì trả lại đơn cũ.
+                req.current = null;
+                setQrOrder(null);
+                if (retry) setRetryTick((n) => n + 1);
+              }}
+            />
+          );
+        })()}
     </SalesGate>
   );
 }

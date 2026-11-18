@@ -28,6 +28,9 @@ export type StockItem = {
   lowStock: boolean;
   active: boolean;
   lowStockThreshold: number | null;
+  sku?: string | null;
+  supplier?: string | null;
+  binLocation?: string | null;
 };
 
 export type LedgerEntry = {
@@ -114,6 +117,28 @@ export type SalesOrder = {
   exchangeOfReturnId?: string | null;
   version: number;
   lines: OrderLine[];
+  /** Chỉ đơn POS thanh toán QR (status AWAITING_PAYMENT lúc mới tạo). */
+  paymentIntent?: PaymentIntent | null;
+};
+
+/** Lệnh thanh toán QR của cổng giả lập (sandbox). */
+export type PaymentIntent = {
+  id: string;
+  orderId: string;
+  reference: string;
+  amount: number;
+  status: "PENDING" | "PAID" | "EXPIRED" | "CANCELLED" | string;
+  provider: string;
+  /** Chỉ intent SIMULATED (QR); intent MANUAL không có. */
+  qrPayload: string | null;
+  expiresAt: string;
+  paidAt: string | null;
+  createdAt: string;
+  /** Chỉ sau khi xác nhận tiền mặt. */
+  tenderedAmount?: number | null;
+  changeDue?: number | null;
+  /** Chỉ sau khi xác nhận thẻ/chuyển khoản. */
+  transactionRef?: string | null;
 };
 
 export type ReturnLine = { id: string; orderLineId: string; titleId: string; quantity: number; disposition: string; refundAmount: number };
@@ -189,10 +214,12 @@ export type PrintReceipt = {
 
 export type Discount = { type: "AMOUNT" | "PERCENT"; value: number };
 
-/** Hình thức thanh toán tại quầy (POS): không có COD. */
+/** Hình thức thu tay ở quầy và khi đánh dấu đã thu/hoàn: không có COD, không có QR (QR đi qua cổng thanh toán). */
 export const PAYMENT_METHODS: Record<string, string> = { CASH: "Tiền mặt", BANK_TRANSFER: "Chuyển khoản", CARD: "Thẻ" };
-/** Mọi hình thức (đơn online có thêm COD), dùng để hiển thị và khi đánh dấu đã thu/hoàn. */
-export const ALL_PAYMENT_METHODS: Record<string, string> = { ...PAYMENT_METHODS, COD: "Thu khi giao (COD)" };
+/** Hình thức chọn ở POS: thêm QR (cổng giả lập, cần khóa PaymentIntentController/*). */
+export const POS_PAYMENT_METHODS: Record<string, string> = { ...PAYMENT_METHODS, QR: "QR", MOMO: "MoMo (sandbox)" };
+/** Mọi hình thức để hiển thị (đơn online có thêm COD, đơn POS có thêm QR). */
+export const ALL_PAYMENT_METHODS: Record<string, string> = { ...POS_PAYMENT_METHODS, COD: "Thu khi giao (COD)" };
 export const FULFILMENTS: Record<string, string> = { COUNTER: "Tại quầy", PICKUP: "Nhận tại cửa hàng", DELIVERY: "Giao tận nơi" };
 export const DISPOSITIONS: Record<string, string> = { RESTOCK: "Nhập lại tồn", WRITE_OFF: "Hao hụt (xuất hủy)" };
 export const REFUND_STATUS: Record<string, string> = { PENDING: "Chờ hoàn", REFUNDED: "Đã hoàn" };
@@ -224,6 +251,7 @@ export const AUDIT_ACTIONS: Record<string, string> = {
 };
 
 export const ORDER_STATUS: Record<string, string> = {
+  AWAITING_PAYMENT: "Chờ thanh toán",
   PENDING_CONFIRMATION: "Chờ xác nhận",
   CONFIRMED: "Đã xác nhận",
   READY_FOR_PICKUP: "Sẵn sàng nhận",
@@ -232,6 +260,7 @@ export const ORDER_STATUS: Record<string, string> = {
   CANCELLED: "Đã hủy",
 };
 export const ORDER_STATUS_COLOR: Record<string, string> = {
+  AWAITING_PAYMENT: "orange",
   PENDING_CONFIRMATION: "gold",
   CONFIRMED: "blue",
   READY_FOR_PICKUP: "blue",
