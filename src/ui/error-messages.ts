@@ -142,6 +142,22 @@ export const ERROR_MESSAGES: Record<string, string> = {
   ORIGIN_LIMIT_EXCEEDED: "Đơn vị đã đạt số origin tối đa. Hãy xóa bớt một origin trước khi thêm.",
   STOREFRONT_ORIGIN_NOT_FOUND: "Không tìm thấy origin này (có thể đã bị xóa). Hãy tải lại danh sách.",
   PAYMENT_NOT_REVERSIBLE: "Dòng đảo không đảo lại được. Muốn sửa hãy ghi một khoản thanh toán mới.",
+  // Application, scope, credential (Developer Portal, docs/api/applications.md)
+  APPLICATION_NOT_FOUND: "Không tìm thấy ứng dụng này (có thể đã bị thu hồi). Hãy tải lại danh sách.",
+  CREDENTIAL_NOT_FOUND: "Không tìm thấy credential này. Hãy tải lại trang.",
+  APPLICATION_DOMAIN_NOT_FOUND: "Không tìm thấy domain này (có thể đã bị xóa). Hãy tải lại danh sách.",
+  INVALID_APPLICATION: "Thông tin ứng dụng chưa hợp lệ (tên 1-100 ký tự, giới hạn tốc độ từ 1 đến 1.000.000 yêu cầu/phút).",
+  INVALID_SCOPE: "Có scope không nằm trong danh mục hỗ trợ. Hãy tải lại trang rồi chọn lại.",
+  SCOPE_NOT_GRANTABLE: "Scope này chưa mở cấp. Hiện chỉ cấp được các scope đọc: books:read, inventory:read, orders:read.",
+  CONTRACT_REQUIRED: "Đơn vị chưa có hợp đồng thuê đang hiệu lực nên chưa tạo được ứng dụng tích hợp (INTEGRATION). Hãy liên hệ nhà cung cấp dịch vụ.",
+  KIND_MISMATCH: "Thao tác này không áp dụng cho loại ứng dụng đang chọn.",
+  APPLICATION_NAME_DUPLICATED: "Đã có ứng dụng trùng tên này trong đơn vị (không phân biệt hoa thường).",
+  APPLICATION_LIMIT_EXCEEDED: "Đơn vị đã đạt số ứng dụng tối đa. Hãy thu hồi bớt một ứng dụng trước khi tạo mới.",
+  CREDENTIAL_LIMIT_EXCEEDED: "Ứng dụng đã có 2 credential đang dùng được. Hãy thu hồi credential cũ trước khi tạo hoặc xoay vòng.",
+  CREDENTIAL_NOT_ACTIVE: "Credential này không còn hoạt động nên không thu hồi được nữa.",
+  APPLICATION_NOT_ACTIVE: "Ứng dụng không ở trạng thái hoạt động (có thể đang bị tạm ngưng) nên không thực hiện được thao tác này.",
+  APPLICATION_NOT_SUSPENDED: "Ứng dụng không ở trạng thái tạm ngưng.",
+  USAGE_UNAVAILABLE: "Chưa lấy được thống kê sử dụng lúc này. Vui lòng thử lại sau.",
 };
 
 export const FORBIDDEN_TEXT =

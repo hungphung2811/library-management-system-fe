@@ -57,6 +57,12 @@ export const USERS = {
   copyviewer: { username: "copyviewer", password: "Copyviewer@12345" },
   /** Quản trị của đơn vị chưa có hợp đồng nào (e2e/mock/platform-contracts.mjs). */
   nocontract: { username: "nocontract", password: "Nocontract@12345" },
+  /** Developer Portal: chỉ có khóa xem (list, get, history, listDomains), không tạo/sửa/thu hồi (e2e/mock/applications.mjs). */
+  appviewer: { username: "appviewer", password: "Appviewer@12345" },
+  /** Developer Portal: không có khóa ApplicationController nào. */
+  appnone: { username: "appnone", password: "Appnone@12345" },
+  /** Developer Portal: đủ 13 khóa ApplicationController nhưng không phải admin. */
+  appdev: { username: "appdev", password: "Appdev@12345" },
   /** Không có khóa nào; quyền đổi qua POST /__test/user của mock (e2e/permission-refresh.spec.ts). */
   permuser: { username: "permuser", password: "Permuser@12345" },
 } as const;

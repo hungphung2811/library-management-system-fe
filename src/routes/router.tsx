@@ -43,6 +43,8 @@ const AuditLogs = lazy(() => import("@/pages/admin/AuditLogs"));
 const Menus = lazy(() => import("@/pages/admin/Menus"));
 const MyContract = lazy(() => import("@/pages/admin/MyContract"));
 const StorefrontOrigins = lazy(() => import("@/pages/admin/StorefrontOrigins"));
+const Applications = lazy(() => import("@/pages/admin/Applications"));
+const ApplicationDetail = lazy(() => import("@/pages/admin/ApplicationDetail"));
 
 // Bán hàng (module SALES): mỗi trang tự kiểm module và khóa quyền (SalesGate), BE là nơi quyết định cuối.
 const SalesHome = lazy(() => import("@/pages/sales/SalesHome"));
@@ -193,6 +195,12 @@ export const router = createBrowserRouter([
                       { path: "menus", element: <Menus />, handle: { title: "Menu" } },
                       { path: "contract", element: <MyContract />, handle: { title: "Hợp đồng dịch vụ" } },
                       { path: "storefront-origins", element: <StorefrontOrigins />, handle: { title: "Website" } },
+                      { path: "applications", element: <Applications />, handle: { title: "Developer Portal" } },
+                      {
+                        path: "applications/:id",
+                        element: <DetailModalRoute list={<Applications />} backTo="/admin/applications"><ApplicationDetail /></DetailModalRoute>,
+                        handle: { title: "Chi tiết ứng dụng" },
+                      },
                       { path: "*", element: <NotFound /> },
                     ],
                   },

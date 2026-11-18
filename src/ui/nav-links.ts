@@ -125,6 +125,7 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
       { href: "/admin/menus", label: "Menu", permission: PERMISSIONS.MENU_LIST },
       { href: "/admin/contract", label: "Hợp đồng", permission: [PERMISSIONS.CONTRACT_LIST, PERMISSIONS.CONTRACT_CURRENT], tenantOnly: true },
       { href: "/admin/storefront-origins", label: "Website", permission: PERMISSIONS.STOREFRONT_ORIGIN_LIST, tenantOnly: true, module: "SALES" },
+      { href: "/admin/applications", label: "Developer Portal", permission: PERMISSIONS.APPLICATION_LIST, tenantOnly: true },
     ],
   },
   {

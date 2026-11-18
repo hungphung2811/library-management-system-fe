@@ -18,6 +18,7 @@ import * as platformOrigins from "./mock/platform-origins.mjs";
 import * as sales from "./mock/sales.mjs";
 import * as salesContacts from "./mock/sales-contacts.mjs";
 import * as catalogReference from "./mock/catalog-reference.mjs";
+import * as applications from "./mock/applications.mjs";
 
 const PORT = Number(process.env.PORT ?? 4201);
 
@@ -76,6 +77,8 @@ http
       const send = (status, body) => {
         res.statusCode = status;
         res.setHeader("Content-Type", "application/json");
+        // Developer Portal: BE luôn trả no-store (phản hồi tạo credential chứa secret).
+        if (req.url.startsWith("/api/applications")) res.setHeader("Cache-Control", "no-store");
         res.end(body === undefined ? "" : JSON.stringify(body));
       };
       let body = {};

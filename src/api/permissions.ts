@@ -317,4 +317,32 @@ export const PERMISSIONS = {
   SHELF_LOCATION_SET_STATUS: "ShelfLocationController/setStatus",
   /** PUT /api/book-copies/{id}/shelf-location (đổi/gỡ vị trí kệ của bản sao) */
   COPY_MOVE_SHELF_LOCATION: "BookCopyController/moveShelfLocation",
+  /** GET /api/applications */
+  APPLICATION_LIST: "ApplicationController/list",
+  /** GET /api/applications/{id} */
+  APPLICATION_VIEW: "ApplicationController/get",
+  /** POST /api/applications */
+  APPLICATION_CREATE: "ApplicationController/create",
+  /** PUT /api/applications/{id} */
+  APPLICATION_UPDATE: "ApplicationController/update",
+  /** DELETE /api/applications/{id} (thu hồi Application) */
+  APPLICATION_DELETE: "ApplicationController/delete",
+  /** PUT /api/applications/{id}/scopes */
+  APPLICATION_REPLACE_SCOPES: "ApplicationController/replaceScopes",
+  /** POST /api/applications/{id}/credentials (tạo, xoay vòng) */
+  APPLICATION_CREATE_CREDENTIAL: "ApplicationController/createCredential",
+  /** POST /api/applications/{id}/credentials/{credentialId}/revocation */
+  APPLICATION_REVOKE_CREDENTIAL: "ApplicationController/revokeCredential",
+  /** POST /api/applications/{id}/site-key/rotation */
+  APPLICATION_ROTATE_SITE_KEY: "ApplicationController/rotateSiteKey",
+  /** GET /api/applications/{id}/domains */
+  APPLICATION_LIST_DOMAINS: "ApplicationController/listDomains",
+  /** POST /api/applications/{id}/domains */
+  APPLICATION_ADD_DOMAIN: "ApplicationController/addDomain",
+  /** DELETE /api/applications/{id}/domains/{domainId} */
+  APPLICATION_REMOVE_DOMAIN: "ApplicationController/removeDomain",
+  /** GET /api/applications/{id}/history */
+  APPLICATION_HISTORY: "ApplicationController/history",
+  /** GET /api/applications/{id}/usage?from&to (thống kê yêu cầu theo ngày; FE chưa có màn) */
+  APPLICATION_USAGE: "ApplicationController/usage",
 } as const;
