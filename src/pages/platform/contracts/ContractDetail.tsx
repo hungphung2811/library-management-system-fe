@@ -21,10 +21,14 @@ import {
   Result,
   Statistic,
   Tag,
+  Undo2,
+  actionsColumn,
   dayjs,
   formatDate,
   formatDateTime,
   formatMoney,
+  useDetailModal,
+  useFormModal,
 } from "@/ui";
 import type { Dayjs } from "dayjs";
 import { PlatformGate } from "../_components/PlatformGate";
@@ -54,8 +58,9 @@ function Detail() {
   const { message } = App.useApp();
   const invalidate = useInvalidateApi();
   const nav = useNavigate();
+  const modal = useDetailModal();
+  const inModal = !!modal;
   const [form, setForm] = useState<"edit" | "renew" | null>(null);
-  const [dialog, setDialog] = useState<"extend" | "cancel" | "payment" | null>(null);
 
   const q = useApi<ContractDetail>(`/api/platform/contracts/${cEnc}`);
   const history = useApi<ContractHistoryEntry[]>(`/api/platform/contracts/${cEnc}/history`);
@@ -74,6 +79,37 @@ function Detail() {
     }
   };
 
+  const extendForm = useFormModal<{ endDate: Dayjs }, unknown, ContractDetail>({
+    title: "Kéo dài ngày kết thúc",
+    okText: "Kéo dài",
+    successMessage: "Đã kéo dài hợp đồng",
+    request: async (v, target) => {
+      await call(`/api/platform/contracts/${cEnc}/extend`, { endDate: v.endDate.format("YYYY-MM-DD"), version: target?.version });
+    },
+  });
+  const cancelForm = useFormModal<{ reason: string }>({
+    title: "Hủy hợp đồng",
+    okText: "Xác nhận hủy",
+    successMessage: "Đã hủy hợp đồng",
+    request: async (v) => {
+      await call(`/api/platform/contracts/${cEnc}/cancel`, { reason: v.reason.trim() });
+    },
+  });
+  const paymentForm = useFormModal<{ paidOn: Dayjs; amount: number; reference?: string; note?: string }>({
+    title: "Ghi thanh toán",
+    okText: "Ghi thanh toán",
+    successMessage: "Đã ghi thanh toán",
+    initialValues: { paidOn: dayjs() },
+    request: async (v) => {
+      await call(`/api/platform/contracts/${cEnc}/payments`, {
+        paidOn: v.paidOn.format("YYYY-MM-DD"),
+        amount: v.amount,
+        reference: v.reference?.trim() || null,
+        note: v.note?.trim() || null,
+      });
+    },
+  });
+
   if (q.isPending) return <PageSkeleton variant="form" />;
   if (q.isError) {
     const info = toErrorInfo(q.error);
@@ -82,9 +118,13 @@ function Detail() {
         status="404"
         title="Không tìm thấy hợp đồng"
         extra={
-          <Link to={`/platform/tenants/${tenantEnc}?tab=contracts`}>
-            <Button>Về danh sách hợp đồng</Button>
-          </Link>
+          modal ? (
+            <Button onClick={modal.close}>Đóng</Button>
+          ) : (
+            <Link to={`/platform/tenants/${tenantEnc}?tab=contracts`}>
+              <Button>Về danh sách hợp đồng</Button>
+            </Link>
+          )
         }
       />
     ) : (
@@ -104,14 +144,22 @@ function Detail() {
   const uncovered = draft ? enabled.filter((m) => !c.modules.includes(m)) : [];
 
   return (
-    <div className="flex max-w-[1200px] flex-col gap-4">
-      <Breadcrumb
-        items={[
-          { title: <Link to="/platform/tenants">Đơn vị</Link> },
-          { title: <Link to={`/platform/tenants/${tenantEnc}?tab=contracts`}>Hợp đồng</Link> },
-          { title: c.name },
-        ]}
-      />
+    <div className="flex flex-col gap-4">
+      {inModal ? (
+        <div>
+          <Link to={`/platform/tenants/${tenantEnc}?tab=contracts`}>
+            <Button size="small">Về đơn vị</Button>
+          </Link>
+        </div>
+      ) : (
+        <Breadcrumb
+          items={[
+            { title: <Link to="/platform/tenants">Đơn vị</Link> },
+            { title: <Link to={`/platform/tenants/${tenantEnc}?tab=contracts`}>Hợp đồng</Link> },
+            { title: c.name },
+          ]}
+        />
+      )}
       <PageHeader
         title={c.name}
         description={
@@ -142,11 +190,11 @@ function Detail() {
                 <Button type="primary">Kích hoạt</Button>
               </ConfirmAction>
             )}
-            {canExtend && <Button onClick={() => setDialog("extend")}>Kéo dài</Button>}
+            {canExtend && <Button onClick={() => extendForm.openModal(c)}>Kéo dài</Button>}
             {canRenew && <Button onClick={() => setForm("renew")}>Gia hạn</Button>}
-            {canPay && <Button onClick={() => setDialog("payment")}>Ghi thanh toán</Button>}
+            {canPay && <Button onClick={() => paymentForm.openModal()}>Ghi thanh toán</Button>}
             {canCancel && (
-              <Button danger onClick={() => setDialog("cancel")}>
+              <Button danger onClick={() => cancelForm.openModal()}>
                 Hủy hợp đồng
               </Button>
             )}
@@ -238,24 +286,30 @@ function Detail() {
                 const p = row as unknown as ContractPayment;
                 if (p.reversesPaymentId) return <Tag>Dòng đảo</Tag>;
                 if (p.reversedByPaymentId) return <Tag color="warning">Đã đảo</Tag>;
-                return (
-                  <ConfirmAction
-                    title="Đảo toàn phần khoản thanh toán này?"
-                    description="Tạo một dòng đảo số tiền âm; chỉ đảo được một lần và không hoàn tác."
-                    okText="Đảo"
-                    danger
-                    onConfirm={async () => {
-                      await call(`/api/platform/contracts/${cEnc}/payments/${encodeURIComponent(p.id)}/reverse`, {});
-                      message.success("Đã đảo khoản thanh toán");
-                    }}
-                  >
-                    <Button size="small" danger>
-                      Đảo
-                    </Button>
-                  </ConfirmAction>
-                );
+                return <span className="text-muted">—</span>;
               },
             },
+            actionsColumn((row) => {
+              const p = row as unknown as ContractPayment;
+              return [
+                {
+                  key: "reverse",
+                  label: "Đảo",
+                  icon: <Undo2 size={16} />,
+                  danger: true,
+                  hidden: !!p.reversesPaymentId || !!p.reversedByPaymentId,
+                  confirm: {
+                    title: "Đảo toàn phần khoản thanh toán này?",
+                    description: "Tạo một dòng đảo số tiền âm; chỉ đảo được một lần và không hoàn tác.",
+                    okText: "Đảo",
+                  },
+                  onClick: async () => {
+                    await call(`/api/platform/contracts/${cEnc}/payments/${encodeURIComponent(p.id)}/reverse`, {});
+                    message.success("Đã đảo khoản thanh toán");
+                  },
+                },
+              ];
+            }, 1),
           ]}
           empty={{ title: draft ? "Hợp đồng nháp chưa ghi thanh toán được." : "Chưa có khoản thanh toán nào." }}
         />
@@ -296,16 +350,7 @@ function Detail() {
         />
       )}
 
-      <FormModal<{ endDate: Dayjs }>
-        open={dialog === "extend"}
-        title="Kéo dài ngày kết thúc"
-        okText="Kéo dài"
-        onCancel={() => setDialog(null)}
-        successMessage="Đã kéo dài hợp đồng"
-        onSubmit={async (v) => {
-          await call(`/api/platform/contracts/${cEnc}/extend`, { endDate: v.endDate.format("YYYY-MM-DD"), version: c.version });
-        }}
-      >
+      <FormModal<{ endDate: Dayjs }> {...extendForm.modalProps}>
         <Form.Item
           name="endDate"
           label="Ngày kết thúc mới"
@@ -316,16 +361,7 @@ function Detail() {
         </Form.Item>
       </FormModal>
 
-      <FormModal<{ reason: string }>
-        open={dialog === "cancel"}
-        title="Hủy hợp đồng"
-        okText="Xác nhận hủy"
-        onCancel={() => setDialog(null)}
-        successMessage="Đã hủy hợp đồng"
-        onSubmit={async (v) => {
-          await call(`/api/platform/contracts/${cEnc}/cancel`, { reason: v.reason.trim() });
-        }}
-      >
+      <FormModal<{ reason: string }> {...cancelForm.modalProps}>
         <Alert
           type="warning"
           showIcon
@@ -341,22 +377,7 @@ function Detail() {
         </Form.Item>
       </FormModal>
 
-      <FormModal<{ paidOn: Dayjs; amount: number; reference?: string; note?: string }>
-        open={dialog === "payment"}
-        title="Ghi thanh toán"
-        okText="Ghi thanh toán"
-        onCancel={() => setDialog(null)}
-        successMessage="Đã ghi thanh toán"
-        initialValues={{ paidOn: dayjs() }}
-        onSubmit={async (v) => {
-          await call(`/api/platform/contracts/${cEnc}/payments`, {
-            paidOn: v.paidOn.format("YYYY-MM-DD"),
-            amount: v.amount,
-            reference: v.reference?.trim() || null,
-            note: v.note?.trim() || null,
-          });
-        }}
-      >
+      <FormModal<{ paidOn: Dayjs; amount: number; reference?: string; note?: string }> {...paymentForm.modalProps}>
         <Form.Item name="paidOn" label="Ngày thanh toán" rules={[{ required: true, message: "Chọn ngày thanh toán" }]}>
           <DatePicker format="DD/MM/YYYY" className="w-full" />
         </Form.Item>

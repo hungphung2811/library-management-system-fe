@@ -1,10 +1,10 @@
+import { usePageSize } from "@/ui";
 import { Link, useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
 import { DataTable, DatePicker, QueryBoundary, Select, dayjs, type DataColumn } from "@/ui";
 import { SalesGate } from "./_components/SalesGate";
 import { AUDIT_ACTIONS, label, pageParams, type AuditEntry, type Page } from "./_lib/sales";
 
-const SIZE = 20;
 const AGGREGATES: Record<string, string> = {
   ORDER: "Đơn hàng",
   RETURN: "Phiếu trả",
@@ -28,6 +28,7 @@ function summarize(data: Record<string, unknown> | null): string {
 export default function AuditPage() {
   const s = useSession();
   const [sp, setSp] = useSearchParams();
+  const SIZE = usePageSize();
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const action = sp.get("action") ?? "";
   const aggregateType = sp.get("aggregateType") ?? "";
@@ -78,7 +79,7 @@ export default function AuditPage() {
       description="Các thao tác nghiệp vụ bán hàng, mới nhất trước. Nhật ký không chứa dữ liệu cá nhân của khách."
       permission={PERMISSIONS.SALES_AUDIT_SEARCH}
     >
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Select
             aria-label="Hành động"

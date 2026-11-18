@@ -53,6 +53,8 @@ export const PERMISSIONS = {
   COPY_BY_BARCODE: "BookCopyController/getByBarcode",
   /** PUT /api/book-copies/{id}/status */
   COPY_CHANGE_STATUS: "BookCopyController/changeStatus",
+  /** PUT /api/book-copies/{id}/acquisition (thay toàn bộ 6 field nhập kho) */
+  COPY_UPDATE_ACQUISITION: "BookCopyController/updateAcquisition",
   /** POST /api/reservations */
   RESERVE: "ReservationController/reserve",
   /** GET /api/reservations */
@@ -87,6 +89,8 @@ export const PERMISSIONS = {
   READER_VIEW: "ReaderProfileController/get",
   /** POST /api/users/{id}/reader-profile */
   READER_ISSUE: "ReaderProfileController/issue",
+  /** PUT /api/users/{id}/reader-profile */
+  READER_UPDATE: "ReaderProfileController/update",
   /** PUT /api/users/{id}/reader-profile/card-expiry */
   READER_RENEW: "ReaderProfileController/renew",
   /** PUT /api/users/{id}/reader-profile/status */
@@ -147,6 +151,10 @@ export const PERMISSIONS = {
   STOCK_SEARCH: "StockItemController/search",
   /** GET /api/sales/stock-items/{titleId} */
   STOCK_VIEW: "StockItemController/get",
+  /** GET /api/sales/stock-items/{titleId}/details (có giá nhập và ghi chú nội bộ) */
+  STOCK_DETAILS_VIEW: "StockItemController/getDetails",
+  /** PUT /api/sales/stock-items/{titleId}/details (thay toàn bộ 7 field) */
+  STOCK_DETAILS_UPDATE: "StockItemController/updateDetails",
   /** PUT /api/sales/stock-items/{titleId}/price */
   STOCK_UPDATE_PRICE: "StockItemController/updatePrice",
   /** GET /api/sales/stock-items/{titleId}/ledger */
@@ -189,6 +197,10 @@ export const PERMISSIONS = {
   SALES_ORDER_VIEW: "SalesOrderController/get",
   /** GET /api/sales/orders/{id}/contact (liên hệ khách đầy đủ) */
   SALES_ORDER_CONTACT: "SalesOrderController/getContact",
+  /** GET /api/sales/orders/{id}/notes (ghi chú nội bộ, ngày giao dự kiến) */
+  SALES_ORDER_NOTES_VIEW: "SalesOrderController/getNotes",
+  /** PUT /api/sales/orders/{id}/notes */
+  SALES_ORDER_NOTES_UPDATE: "SalesOrderController/updateNotes",
   /** GET /api/sales/orders/{id}/receipt */
   SALES_ORDER_RECEIPT: "SalesOrderController/receipt",
   /** POST /api/sales/orders/{id}/confirmation (xác nhận đơn online, kèm phí ship) */

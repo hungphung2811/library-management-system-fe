@@ -9,7 +9,7 @@ import { isEmptyValue, rangeParams, type DateRangeValue, type FilterField, type 
  * FilterBar: thanh lọc dùng chung, đồng bộ URL qua hook `useFilterParams` (xem chú thích ở file đó về quy ước URL).
  * Mọi nhãn mặc định bằng tiếng Việt. Gồm: các ô lọc theo schema (text có debounce, select, multiselect, switch,
  * dateRange yyyy-MM-dd, remote chỉ lưu id), chip cho từng lọc đang áp dụng (bấm x để bỏ), nút "Xóa bộ lọc",
- * "N kết quả" (khi có `total`), chọn kích thước trang (khi có `pageSizes`, lưu `size`), phím "/" focus ô text đầu.
+ * "N kết quả" (khi có `total`), phím "/" focus ô text đầu.
  * Đổi bất kỳ lọc nào đều xóa `page`. Control cao 32px, flex-wrap nên điện thoại 390px không tràn.
  *
  * Ví dụ (Users):
@@ -24,8 +24,8 @@ import { isEmptyValue, rangeParams, type DateRangeValue, type FilterField, type 
  *     const f = useFilterParams(SCHEMA, { defaultSize: 20 });
  *     const q = useApi<Page>(`/api/users?${f.params}&page=${f.page - 1}&size=${f.size}`);
  *     return (<>
- *       <FilterBar filters={f} total={q.data?.total} pageSizes={[10, 20, 50]} />
- *       <DataTable ... pagination={{ mode: "server", page: f.page, pageSize: f.size, total, pageSizes: [10, 20, 50], onSizeChange: f.setSize }} />
+ *       <FilterBar filters={f} total={q.data?.total} />
+ *       <DataTable ... pagination={{ mode: "server", page: f.page, pageSize: f.size, total, onSizeChange: f.setSize }} />
  *     </>);
  *   }
  * Khi dùng FilterBar thì không đặt thêm SearchBar trên cùng trang (cùng bắt phím "/").
@@ -35,11 +35,14 @@ export type FilterBarProps = {
   /** Có thì hiện "N kết quả". */
   total?: number;
   /** Ví dụ [10, 20, 50]: hiện ô chọn kích thước trang, lưu `size` trên URL. */
+  /** Không còn tác dụng: ô đổi cỡ trang nằm cạnh phân trang trong DataTable. Giữ để trang cũ biên dịch được, sẽ bỏ. */
   pageSizes?: number[];
   /** Từ "kết quả" ở phần đếm, ví dụ "người dùng" -> "12 người dùng". */
   unit?: string;
   /** Chỗ đặt nút/ô khác cùng hàng với các ô lọc. */
   extra?: ReactNode;
+  /** Hàng dưới cùng, đứng trước phần đếm kết quả (ví dụ tab trạng thái) để đếm nằm cùng hàng, đỡ tốn chỗ. */
+  bottom?: ReactNode;
   className?: string;
 };
 
@@ -126,8 +129,8 @@ function chipText(field: FilterField, v: FilterValue, labels: Record<string, str
   }
 }
 
-export function FilterBar({ filters, total, pageSizes, unit = "kết quả", extra, className = "" }: FilterBarProps) {
-  const { schema, values, set, clear, hasFilter, size, setSize } = filters;
+export function FilterBar({ filters, total, unit = "kết quả", extra, bottom, className = "" }: FilterBarProps) {
+  const { schema, values, set, clear, hasFilter } = filters;
   // Nhãn của giá trị remote (URL chỉ có id): nhớ khi người dùng chọn, tra bằng resolveLabel khi tải lại.
   const [labels, setLabels] = useState<Record<string, string>>({});
   const asked = useRef(new Set<string>());
@@ -146,9 +149,7 @@ export function FilterBar({ filters, total, pageSizes, unit = "kết quả", ext
 
   const firstText = schema.find((f) => f.type === "text")?.name;
   const chips = schema.filter((f) => !isEmptyValue(values[f.name]));
-  const hasSizes = !!pageSizes && pageSizes.length > 0;
-  const sizeOptions = hasSizes ? Array.from(new Set([...pageSizes!, size])).sort((a, b) => a - b) : [];
-  const showMeta = total !== undefined || chips.length > 0 || hasSizes;
+  const showMeta = total !== undefined || chips.length > 0 || bottom !== undefined;
 
   const render = (f: FilterField): ReactNode => {
     switch (f.type) {
@@ -237,37 +238,16 @@ export function FilterBar({ filters, total, pageSizes, unit = "kết quả", ext
 
       {showMeta && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-body">
+          {bottom}
           {total !== undefined && (
             <span role="status" aria-live="polite" className="text-muted">
               <b className="font-semibold text-ink">{total.toLocaleString("vi-VN")}</b> {unit}
             </span>
           )}
-          {chips.map((f) => (
-            <button
-              key={f.name}
-              type="button"
-              onClick={() => set(f.name, null)}
-              aria-label={`Bỏ bộ lọc ${f.label}`}
-              className="inline-flex h-6 max-w-full cursor-pointer items-center gap-1 rounded-full border border-primary-border bg-primary-soft px-2 text-xs text-primary hover:bg-primary-soft/70"
-            >
-              <span className="truncate">{chipText(f, values[f.name], labels)}</span>
-              <X size={12} aria-hidden />
-            </button>
-          ))}
           {hasFilter && (
             <Button type="link" size="small" className="!px-0" onClick={clear}>
               Xóa bộ lọc
             </Button>
-          )}
-          {hasSizes && (
-            <Select
-              size="small"
-              aria-label="Số dòng mỗi trang"
-              className="ml-auto w-28"
-              value={size}
-              options={sizeOptions.map((n) => ({ value: n, label: `${n} / trang` }))}
-              onChange={(n) => setSize(n)}
-            />
           )}
         </div>
       )}

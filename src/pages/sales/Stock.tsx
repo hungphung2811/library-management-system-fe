@@ -1,6 +1,7 @@
+import { usePageSize } from "@/ui";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { PERMISSIONS, apiFetch, can, useApi, useInvalidateApi, useSession } from "@/api";
+import { PERMISSIONS, apiFetch, can, useApi, useSession } from "@/api";
 import {
   Button,
   Checkbox,
@@ -10,50 +11,58 @@ import {
   FormModal,
   Input,
   InputNumber,
+  BookOpenText,
+  ClipboardCheck,
+  Pencil,
+  SlidersHorizontal,
   PlusOutlined,
   QueryBoundary,
   RemoteSelect,
   Tag,
+  actionsColumn,
+  formatDate,
   formatMoney,
+  Eye,
   type DataColumn,
   type Opt,
+  useFormModal,
 } from "@/ui";
 import { MoneyInput } from "./_components/MoneyInput";
+import { StockDetailFields, detailsBody, type StockDetailValues } from "./_components/StockDetailFields";
+import { StockDetailsModal } from "./_components/StockDetailsModal";
 import { SalesGate } from "./_components/SalesGate";
 import { LEDGER_TYPES, bookLabel, label, pageParams, searchBooks, type LedgerEntry, type Page, type StockItem } from "./_lib/sales";
 
-const SIZE = 20;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const asRows = <T,>(items: T[]) => items as unknown as Record<string, unknown>[];
 
 function RegisterButton() {
   const s = useSession();
-  const invalidate = useInvalidateApi();
-  const [open, setOpen] = useState(false);
   const canSearch = can(s, PERMISSIONS.BOOK_SEARCH);
+  const canDetails = can(s, PERMISSIONS.STOCK_DETAILS_VIEW);
+  type RegisterValues = StockDetailValues & { title?: Opt; titleId?: string; sellingPrice?: number | null; lowStockThreshold?: number | null };
+  const form = useFormModal<RegisterValues>({
+    title: "Đăng ký đầu sách để bán",
+    okText: "Đăng ký",
+    successMessage: "Đã đăng ký mặt hàng.",
+    invalidate: ["/api/sales/stock-items"],
+    request: (v) =>
+      apiFetch("/api/sales/stock-items", {
+        method: "POST",
+        json: {
+          titleId: v.title?.value ?? v.titleId?.trim(),
+          sellingPrice: v.sellingPrice ?? null,
+          lowStockThreshold: v.lowStockThreshold ?? null,
+          ...detailsBody(v, canDetails),
+        },
+      }),
+  });
   return (
     <>
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => form.openModal()}>
         Đăng ký mặt hàng
       </Button>
-      <FormModal<{ title?: Opt; titleId?: string; sellingPrice?: number | null; lowStockThreshold?: number | null }>
-        open={open}
-        title="Đăng ký đầu sách để bán"
-        okText="Đăng ký"
-        successMessage="Đã đăng ký mặt hàng."
-        onCancel={() => setOpen(false)}
-        onSubmit={async (v) => {
-          await apiFetch("/api/sales/stock-items", {
-            method: "POST",
-            json: {
-              titleId: v.title?.value ?? v.titleId?.trim(),
-              sellingPrice: v.sellingPrice ?? null,
-              lowStockThreshold: v.lowStockThreshold ?? null,
-            },
-          });
-          await invalidate("/api/sales/stock-items");
-        }}
-      >
+      <FormModal<RegisterValues> {...form.modalProps}>
         {canSearch ? (
           <Form.Item name="title" label="Đầu sách" rules={[{ required: true, message: "Chọn đầu sách" }]}>
             <RemoteSelect
@@ -77,90 +86,9 @@ function RegisterButton() {
         <Form.Item name="lowStockThreshold" label="Ngưỡng sắp hết hàng" extra="Để trống thì dùng ngưỡng chung trong cấu hình.">
           <InputNumber className="w-full" min={0} max={100000} precision={0} />
         </Form.Item>
+        <StockDetailFields showSensitive={canDetails} />
       </FormModal>
     </>
-  );
-}
-
-function PriceModal({ item, onClose }: { item: StockItem | null; onClose: () => void }) {
-  const invalidate = useInvalidateApi();
-  return (
-    <FormModal<{ sellingPrice?: number | null }>
-      open={!!item}
-      title={`Sửa giá bán: ${item?.titleName ?? ""}`}
-      successMessage="Đã cập nhật giá bán."
-      onCancel={onClose}
-      initialValues={{ sellingPrice: item?.sellingPrice ?? null }}
-      onSubmit={async (v) => {
-        await apiFetch(`/api/sales/stock-items/${encodeURIComponent(item!.titleId)}/price`, {
-          method: "PUT",
-          json: { sellingPrice: v.sellingPrice ?? null },
-        });
-        await invalidate("/api/sales/stock-items");
-      }}
-    >
-      <Form.Item name="sellingPrice" label="Giá bán" extra="Để trống để quay về giá bìa.">
-        <MoneyInput />
-      </Form.Item>
-    </FormModal>
-  );
-}
-
-function AdjustModal({ item, mode, onClose }: { item: StockItem | null; mode: "adjust" | "stocktake"; onClose: () => void }) {
-  const invalidate = useInvalidateApi();
-  const adjust = mode === "adjust";
-  return (
-    <FormModal<{ delta?: number; counted?: number; reason: string }>
-      open={!!item}
-      title={`${adjust ? "Điều chỉnh tồn kho" : "Kiểm kho"}: ${item?.titleName ?? ""}`}
-      okText={adjust ? "Điều chỉnh" : "Ghi kết quả kiểm kho"}
-      successMessage={adjust ? "Đã điều chỉnh tồn kho." : "Đã ghi kết quả kiểm kho."}
-      onCancel={onClose}
-      onSubmit={async (v) => {
-        const titleId = item!.titleId;
-        if (adjust) {
-          await apiFetch("/api/sales/stock-adjustments", { method: "POST", json: { titleId, delta: v.delta, reason: v.reason.trim() } });
-        } else {
-          await apiFetch("/api/sales/stocktakes", { method: "POST", json: { titleId, countedOnHand: v.counted, reason: v.reason.trim() } });
-        }
-        await invalidate("/api/sales/stock-items");
-      }}
-    >
-      <p className="mt-0 text-sm text-muted">
-        Hiện có {item?.onHand ?? 0} (đang giữ {item?.reserved ?? 0}, khả dụng {item?.available ?? 0}).
-      </p>
-      {adjust ? (
-        <Form.Item
-          name="delta"
-          label="Số lượng thay đổi (âm để giảm)"
-          rules={[
-            { required: true, message: "Nhập số lượng thay đổi" },
-            { validator: async (_, v) => (v === 0 ? Promise.reject(new Error("Số lượng thay đổi phải khác 0")) : undefined) },
-          ]}
-        >
-          <InputNumber className="w-full" precision={0} />
-        </Form.Item>
-      ) : (
-        <Form.Item
-          name="counted"
-          label="Số lượng đếm được"
-          rules={[
-            { required: true, message: "Nhập số lượng đếm được" },
-            {
-              validator: async (_, v) =>
-                typeof v === "number" && item && v < item.reserved
-                  ? Promise.reject(new Error(`Không thể nhỏ hơn số đang giữ (${item.reserved})`))
-                  : undefined,
-            },
-          ]}
-        >
-          <InputNumber className="w-full" min={0} precision={0} />
-        </Form.Item>
-      )}
-      <Form.Item name="reason" label="Lý do" rules={[{ required: true, whitespace: true, message: "Nhập lý do" }]}>
-        <Input.TextArea rows={2} maxLength={500} showCount />
-      </Form.Item>
-    </FormModal>
   );
 }
 
@@ -212,13 +140,36 @@ function LedgerDrawer({ item, onClose }: { item: StockItem | null; onClose: () =
 export default function StockPage() {
   const s = useSession();
   const [sp, setSp] = useSearchParams();
+  const SIZE = usePageSize();
   const low = sp.get("low") === "1";
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const allowed = can(s, PERMISSIONS.STOCK_SEARCH);
   const q = useApi<Page<StockItem>>(allowed ? `/api/sales/stock-items?${pageParams(sp, SIZE, { lowStockOnly: low ? "true" : undefined })}` : null);
-  const [price, setPrice] = useState<StockItem | null>(null);
-  const [adj, setAdj] = useState<{ item: StockItem; mode: "adjust" | "stocktake" } | null>(null);
+  const priceForm = useFormModal<{ sellingPrice?: number | null }, unknown, StockItem>({
+    title: (it) => `Sửa giá bán: ${it?.titleName ?? ""}`,
+    successMessage: "Đã cập nhật giá bán.",
+    initialValues: (it) => ({ sellingPrice: it?.sellingPrice ?? null }),
+    invalidate: ["/api/sales/stock-items"],
+    request: (v, it) =>
+      apiFetch(`/api/sales/stock-items/${encodeURIComponent(it!.titleId)}/price`, {
+        method: "PUT",
+        json: { sellingPrice: v.sellingPrice ?? null },
+      }),
+  });
+  const adjustForm = useFormModal<{ delta?: number; counted?: number; reason: string }, unknown, { item: StockItem; mode: "adjust" | "stocktake" }>({
+    title: (t) => `${t?.mode === "stocktake" ? "Kiểm kho" : "Điều chỉnh tồn kho"}: ${t?.item.titleName ?? ""}`,
+    okText: (t) => (t?.mode === "stocktake" ? "Ghi kết quả kiểm kho" : "Điều chỉnh"),
+    invalidate: ["/api/sales/stock-items"],
+    request: (v, t) => {
+      const titleId = t!.item.titleId;
+      return t!.mode === "adjust"
+        ? apiFetch("/api/sales/stock-adjustments", { method: "POST", json: { titleId, delta: v.delta, reason: v.reason.trim() } })
+        : apiFetch("/api/sales/stocktakes", { method: "POST", json: { titleId, countedOnHand: v.counted, reason: v.reason.trim() } });
+    },
+  });
+  const adjustMode = adjustForm.target?.mode ?? "adjust";
   const [ledger, setLedger] = useState<StockItem | null>(null);
+  const [details, setDetails] = useState<StockItem | null>(null);
   const canPrice = can(s, PERMISSIONS.STOCK_UPDATE_PRICE);
   const canAdjust = can(s, PERMISSIONS.STOCK_ADJUST);
   const canTake = can(s, PERMISSIONS.STOCK_STOCKTAKE);
@@ -236,8 +187,20 @@ export default function StockPage() {
       render: (v, r) => (
         <span>
           {String(v)} {r.lowStock ? <Tag color="orange">Sắp hết</Tag> : null}
+          {r.reorderQuantity != null && Number(r.onHand) <= Number(r.reorderQuantity) ? (
+            <span data-testid="reorder-flag"><Tag color="red">Cần đặt lại</Tag></span>
+          ) : null}
         </span>
       ),
+    },
+    { key: "sku", title: "SKU", dataIndex: "sku", kind: "mono", render: (v) => (v as string) || "—" },
+    { key: "supplier", title: "Nhà cung cấp", dataIndex: "supplier", render: (v) => (v as string) || "—" },
+    { key: "bin", title: "Vị trí kho", dataIndex: "binLocation", render: (v) => (v as string) || "—" },
+    {
+      key: "restocked",
+      title: "Nhập gần nhất",
+      dataIndex: "lastRestockedAt",
+      render: (v) => (v ? formatDate(v as string) : "—"),
     },
     {
       key: "price",
@@ -254,38 +217,19 @@ export default function StockPage() {
           </span>
         ),
     },
-    {
-      key: "act",
-      title: "",
-      dataIndex: "titleId",
-      render: (_, r) => {
+    actionsColumn(
+      (r) => {
         const it = r as unknown as StockItem;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {canPrice && (
-              <Button size="small" onClick={() => setPrice(it)}>
-                Sửa giá
-              </Button>
-            )}
-            {canAdjust && (
-              <Button size="small" onClick={() => setAdj({ item: it, mode: "adjust" })}>
-                Điều chỉnh
-              </Button>
-            )}
-            {canTake && (
-              <Button size="small" onClick={() => setAdj({ item: it, mode: "stocktake" })}>
-                Kiểm kho
-              </Button>
-            )}
-            {canLedger && (
-              <Button size="small" onClick={() => setLedger(it)}>
-                Sổ cái
-              </Button>
-            )}
-          </div>
-        );
+        return [
+          { key: "details", label: "Chi tiết", icon: <Eye size={16} />, onClick: () => setDetails(it) },
+          { key: "price", label: "Sửa giá", icon: <Pencil size={16} />, hidden: !canPrice, onClick: () => priceForm.openModal(it) },
+          { key: "adjust", label: "Điều chỉnh", icon: <SlidersHorizontal size={16} />, hidden: !canAdjust, onClick: () => adjustForm.openModal({ item: it, mode: "adjust" }) },
+          { key: "take", label: "Kiểm kho", icon: <ClipboardCheck size={16} />, hidden: !canTake, onClick: () => adjustForm.openModal({ item: it, mode: "stocktake" }) },
+          { key: "ledger", label: "Sổ cái", icon: <BookOpenText size={16} />, hidden: !canLedger, onClick: () => setLedger(it) },
+        ];
       },
-    },
+      5,
+    ),
   ];
 
   return (
@@ -295,7 +239,7 @@ export default function StockPage() {
       permission={PERMISSIONS.STOCK_SEARCH}
       actions={can(s, PERMISSIONS.STOCK_REGISTER) ? <RegisterButton /> : undefined}
     >
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <Checkbox
           checked={low}
           onChange={(e) => {
@@ -321,8 +265,51 @@ export default function StockPage() {
           )}
         </QueryBoundary>
       </div>
-      <PriceModal item={price} onClose={() => setPrice(null)} />
-      <AdjustModal item={adj?.item ?? null} mode={adj?.mode ?? "adjust"} onClose={() => setAdj(null)} />
+      <FormModal<{ sellingPrice?: number | null }> {...priceForm.modalProps}>
+        <Form.Item name="sellingPrice" label="Giá bán" extra="Để trống để quay về giá bìa.">
+          <MoneyInput />
+        </Form.Item>
+      </FormModal>
+      <FormModal<{ delta?: number; counted?: number; reason: string }>
+        {...adjustForm.modalProps}
+        successMessage={adjustMode === "adjust" ? "Đã điều chỉnh tồn kho." : "Đã ghi kết quả kiểm kho."}
+      >
+      <p className="mt-0 text-sm text-muted">
+        Hiện có {adjustForm.target?.item.onHand ?? 0} (đang giữ {adjustForm.target?.item.reserved ?? 0}, khả dụng {adjustForm.target?.item.available ?? 0}).
+      </p>
+      {adjustMode === "adjust" ? (
+        <Form.Item
+          name="delta"
+          label="Số lượng thay đổi (âm để giảm)"
+          rules={[
+            { required: true, message: "Nhập số lượng thay đổi" },
+            { validator: async (_, v) => (v === 0 ? Promise.reject(new Error("Số lượng thay đổi phải khác 0")) : undefined) },
+          ]}
+        >
+          <InputNumber className="w-full" precision={0} />
+        </Form.Item>
+      ) : (
+        <Form.Item
+          name="counted"
+          label="Số lượng đếm được"
+          rules={[
+            { required: true, message: "Nhập số lượng đếm được" },
+            {
+              validator: async (_, v) =>
+                typeof v === "number" && adjustForm.target && v < adjustForm.target.item.reserved
+                  ? Promise.reject(new Error(`Không thể nhỏ hơn số đang giữ (${adjustForm.target?.item.reserved})`))
+                  : undefined,
+            },
+          ]}
+        >
+          <InputNumber className="w-full" min={0} precision={0} />
+        </Form.Item>
+      )}
+      <Form.Item name="reason" label="Lý do" rules={[{ required: true, whitespace: true, message: "Nhập lý do" }]}>
+        <Input.TextArea rows={2} maxLength={500} showCount />
+      </Form.Item>
+      </FormModal>
+      <StockDetailsModal item={details} onClose={() => setDetails(null)} />
       <LedgerDrawer item={ledger} onClose={() => setLedger(null)} />
     </SalesGate>
   );

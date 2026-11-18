@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
 import { apiFetch, useApiMutation } from "@/api";
-import { App, Button, ConfirmAction, DeleteOutlined, EditOutlined, Form, FormModal, Input, Text } from "@/ui";
+import { App, Button, ConfirmAction, DeleteOutlined, EditOutlined, Form, FormModal, Input, Text, useFormModal } from "@/ui";
 import type { RoleView } from "../_lib/types";
 
 type Values = { name: string; description: string };
@@ -23,14 +22,18 @@ export function RoleActions({
   canUpdate: boolean;
   canDelete: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
   const navigate = useNavigate();
   const { message } = App.useApp();
   const url = `/api/roles/${encodeURIComponent(role.id)}` as const;
   const locked = isAdminRole && !sessionAdmin;
 
-  const update = useApiMutation((v: Values) => apiFetch<RoleView>(url, { method: "PUT", json: v }), {
+  const edit = useFormModal<Values>({
+    title: "Sửa vai trò",
+    okText: "Lưu",
+    successMessage: "Đã cập nhật vai trò.",
     invalidate: ["/api/roles", "/api/access"],
+    initialValues: { name: role.name, description: role.description ?? "" },
+    request: (v) => apiFetch<RoleView>(url, { method: "PUT", json: { name: v.name.trim(), description: v.description.trim() } }),
   });
   const remove = useApiMutation(() => apiFetch(url, { method: "DELETE" }), { invalidate: ["/api/roles", "/api/access"] });
 
@@ -40,7 +43,7 @@ export function RoleActions({
     <>
       <div className="flex flex-wrap items-center gap-2">
         {canUpdate && (
-          <Button icon={<EditOutlined />} disabled={locked} onClick={() => setEditing(true)}>
+          <Button icon={<EditOutlined />} disabled={locked} onClick={() => edit.openModal()}>
             Sửa
           </Button>
         )}
@@ -65,17 +68,7 @@ export function RoleActions({
         )}
         {locked && <Text type="secondary">Chỉ quản trị viên được sửa hoặc xóa vai trò quản trị.</Text>}
       </div>
-      <FormModal<Values>
-        open={editing}
-        title="Sửa vai trò"
-        okText="Lưu"
-        successMessage="Đã cập nhật vai trò."
-        onCancel={() => setEditing(false)}
-        initialValues={{ name: role.name, description: role.description ?? "" }}
-        onSubmit={async (v) => {
-          await update.mutateAsync({ name: v.name.trim(), description: v.description.trim() });
-        }}
-      >
+      <FormModal<Values> {...edit.modalProps}>
         <Form.Item name="name" label="Tên vai trò" rules={[{ required: true, whitespace: true, message: "Nhập tên vai trò" }]}>
           <Input autoComplete="off" />
         </Form.Item>

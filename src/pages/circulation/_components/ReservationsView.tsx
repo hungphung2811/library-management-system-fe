@@ -15,8 +15,11 @@ import {
   PlusOutlined,
   Tabs,
   Text,
+  X,
+  actionsColumn,
   formatDate,
   useFilterParams,
+  useFormModal,
   type FilterField,
 } from "@/ui";
 import { UUID_RE, shortId, type ReservationView } from "../_lib/circulation";
@@ -31,6 +34,8 @@ export type ReservationRow = {
   copyId: string | null;
   holdUntil: string | null;
 };
+
+type CreateValues = { titleId: Opt | string };
 
 const ACTIVE = new Set(["WAITING", "READY"]);
 
@@ -52,7 +57,18 @@ export function ReservationsView({
 }) {
   const invalidate = useInvalidateApi();
   const { message } = App.useApp();
-  const [creating, setCreating] = useState(false);
+  const createForm = useFormModal<CreateValues, ReservationView>({
+    title: "Đặt trước sách",
+    okText: "Đặt trước",
+    invalidate: ["/api/reservations"],
+    request: (v) => {
+      const titleId = typeof v.titleId === "string" ? v.titleId.trim() : v.titleId.value;
+      return apiFetch<ReservationView>("/api/reservations", { method: "POST", json: { titleId } });
+    },
+    onSuccess: (r) => {
+      message.success(r?.queuePosition ? `Đã đặt trước. Bạn đứng thứ ${r.queuePosition} trong hàng đợi.` : "Đã đặt trước.");
+    },
+  });
   const [cancelling, setCancelling] = useState<string | null>(null);
 
   // Lọc phía client (BE chỉ trả đặt trước của tôi, không có tham số): tên sách và trạng thái (chọn nhiều), nằm trên URL.
@@ -149,29 +165,18 @@ export function ReservationsView({
     { key: "reservedAt", title: "Ngày đặt", dataIndex: "reservedAt", kind: "date" as const },
   ];
 
-  const actionColumn = {
-    key: "action",
-    title: "Thao tác",
-    dataIndex: "id",
-    render: (_: unknown, row: Record<string, unknown>) =>
-      ACTIVE.has(String(row.status)) ? (
-        <ConfirmAction
-          danger
-          title={`Hủy đặt trước «${String(row.titleName)}»?`}
-          okText="Hủy đặt trước"
-          onConfirm={() => cancel(row as unknown as ReservationRow)}
-        >
-          <Button
-            size="small"
-            danger
-            loading={cancelling === row.id}
-            aria-label={`Hủy đặt trước «${String(row.titleName)}»`}
-          >
-            Hủy
-          </Button>
-        </ConfirmAction>
-      ) : null,
-  };
+  const actionColumn = actionsColumn((row) => [
+    {
+      key: "cancel",
+      label: `Hủy đặt trước «${String(row.titleName)}»`,
+      icon: <X size={16} />,
+      danger: true,
+      hidden: !ACTIVE.has(String(row.status)),
+      loading: cancelling === row.id,
+      confirm: { title: `Hủy đặt trước «${String(row.titleName)}»?`, okText: "Hủy đặt trước" },
+      onClick: () => cancel(row as unknown as ReservationRow),
+    },
+  ], 1);
 
   const activeColumns = canCancel ? [...baseColumns, actionColumn] : baseColumns;
 
@@ -191,14 +196,14 @@ export function ReservationsView({
             </ConfirmAction>
           )}
           {canReserve && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => createForm.openModal()}>
               Đặt trước sách
             </Button>
           )}
         </div>
       </div>
 
-      <div className="max-w-[1200px]">
+      <div className="">
         <FilterBar filters={f} total={shown.length} unit="đặt trước" className="mb-3" />
         <Tabs
           items={[
@@ -240,20 +245,7 @@ export function ReservationsView({
         />
       </div>
 
-      <FormModal<{ titleId: Opt | string }>
-        open={creating}
-        title="Đặt trước sách"
-        okText="Đặt trước"
-        onCancel={() => setCreating(false)}
-        onSubmit={async (v) => {
-          const titleId = typeof v.titleId === "string" ? v.titleId.trim() : v.titleId.value;
-          const r = await apiFetch<ReservationView>("/api/reservations", { method: "POST", json: { titleId } });
-          message.success(
-            r?.queuePosition ? `Đã đặt trước. Bạn đứng thứ ${r.queuePosition} trong hàng đợi.` : "Đã đặt trước.",
-          );
-          await invalidate("/api/reservations");
-        }}
-      >
+      <FormModal<CreateValues> {...createForm.modalProps}>
         {canSearchBooks ? (
           <Form.Item name="titleId" label="Đầu sách" rules={[{ required: true, message: "Chọn đầu sách cần đặt trước" }]}>
             <RemoteSelect fetcher={searchBooks} placeholder="Gõ tên sách để tìm" />

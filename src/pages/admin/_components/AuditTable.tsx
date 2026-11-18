@@ -18,6 +18,7 @@ export function AuditTable({
   rows,
   page,
   pageSize,
+  sizes = [10, 20, 50, 100],
   total,
   filtered,
   loading,
@@ -26,6 +27,8 @@ export function AuditTable({
   rows: Row[];
   page: number;
   pageSize: number;
+  /** Các cỡ trang của ô "/ trang" cạnh phân trang (ghi `size` lên URL, bỏ `page`). */
+  sizes?: number[];
   total: number;
   filtered: boolean;
   loading?: boolean;
@@ -34,9 +37,13 @@ export function AuditTable({
 }) {
   const [sp, setSp] = useSearchParams();
 
-  const go = (p: number) => {
+  const go = (p: number, s: number) => {
     const q = new URLSearchParams(sp);
-    if (p <= 1) q.delete("page");
+    if (s !== pageSize) {
+      if (s === 20) q.delete("size");
+      else q.set("size", String(s));
+      q.delete("page");
+    } else if (p <= 1) q.delete("page");
     else q.set("page", String(p));
     setSp(q);
   };
@@ -119,13 +126,15 @@ export function AuditTable({
         }}
       />
       </div>
-      {total > pageSize && (
+      {total > Math.min(pageSize, ...sizes) && (
         <div className="mt-3 flex justify-end">
           <Pagination
             current={page}
             pageSize={pageSize}
             total={total}
-            showSizeChanger={false}
+            showSizeChanger
+            pageSizeOptions={Array.from(new Set([...sizes, pageSize])).sort((a, b) => a - b)}
+            locale={{ items_per_page: "/ trang", page_size: "Số dòng mỗi trang" }}
             showTotal={(t, [a, b]) => `Hiển thị ${a}–${b} trên tổng ${t}`}
             onChange={go}
           />

@@ -16,6 +16,7 @@ import {
   Skeleton,
   Text,
   describeError,
+  useFormModal,
 } from "@/ui";
 import type { PermissionView } from "../_lib/types";
 
@@ -54,16 +55,18 @@ export function RolePermissions({
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
-  const [creating, setCreating] = useState(false);
 
   const revokePermission = useApiMutation((code: string) => apiFetch(permPath(roleId, code), { method: "DELETE" }), {
     invalidate: ["/api/roles"],
   });
-  const createPermission = useApiMutation(
-    (v: { code: string; description?: string }) =>
+  const create = useFormModal<{ code: string; description?: string }>({
+    title: "Thêm khóa quyền thủ công",
+    okText: "Thêm",
+    successMessage: "Đã thêm khóa quyền.",
+    invalidate: ["/api/permissions"],
+    request: (v) =>
       apiFetch("/api/permissions", { method: "POST", json: { code: v.code.trim(), description: v.description?.trim() || undefined } }),
-    { invalidate: ["/api/permissions"] },
-  );
+  });
 
   const descByCode = useMemo(() => new Map((catalog ?? []).map((p) => [p.code, p])), [catalog]);
   const grantedSet = useMemo(() => new Set(granted), [granted]);
@@ -201,7 +204,7 @@ export function RolePermissions({
             title="Danh mục quyền"
             extra={
               canCreatePermission ? (
-                <Button size="small" onClick={() => setCreating(true)}>
+                <Button size="small" onClick={() => create.openModal()}>
                   Thêm khóa quyền thủ công
                 </Button>
               ) : undefined
@@ -285,16 +288,7 @@ export function RolePermissions({
         )}
       </div>
 
-      <FormModal<{ code: string; description?: string }>
-        open={creating}
-        title="Thêm khóa quyền thủ công"
-        okText="Thêm"
-        successMessage="Đã thêm khóa quyền."
-        onCancel={() => setCreating(false)}
-        onSubmit={async (v) => {
-          await createPermission.mutateAsync(v);
-        }}
-      >
+      <FormModal<{ code: string; description?: string }> {...create.modalProps}>
         <Form.Item
           name="code"
           label="Khóa quyền"

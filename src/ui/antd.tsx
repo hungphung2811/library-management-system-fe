@@ -4,6 +4,7 @@ export { Tag, type TagProps } from "./Tag";
 export {
   Alert,
   App,
+  Avatar,
   Badge,
   Breadcrumb,
   Button,

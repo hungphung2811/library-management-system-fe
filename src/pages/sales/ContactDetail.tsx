@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { PERMISSIONS, apiFetch, can, toErrorInfo, useApi, useApiMutation, useSession } from "@/api";
-import { Alert, App, Button, Card, ConfirmAction, QueryBoundary, Tag, describeError, formatDateTime } from "@/ui";
+import { Alert, App, Button, Card, ConfirmAction, QueryBoundary, Tag, describeError, formatDateTime, useDetailModal } from "@/ui";
 import { SalesGate } from "./_components/SalesGate";
 import {
   CONTACT_NEXT,
@@ -27,6 +27,7 @@ export default function ContactDetailPage() {
 
 function View({ c, reload }: { c: ContactDetail; reload: () => void }) {
   const s = useSession();
+  const inModal = !!useDetailModal();
   const { message } = App.useApp();
   const base = `/api/sales/contact-requests/${encodeURIComponent(c.id)}` as const;
   const inv = { invalidate: ["/api/sales/contact-requests"] };
@@ -77,8 +78,8 @@ function View({ c, reload }: { c: ContactDetail; reload: () => void }) {
   const phone = fullShown ? full.phone : c.contact?.phone;
 
   return (
-    <div className="flex max-w-[900px] flex-col gap-4">
-      <Link to="/sales/contacts">Quay lại danh sách</Link>
+    <div className={inModal ? "flex flex-col gap-4" : "flex max-w-[900px] flex-col gap-4"}>
+      {!inModal && <Link to="/sales/contacts">Quay lại danh sách</Link>}
       {notice && <Alert type={notice.type} showIcon title={notice.text} closable={{ onClose: () => setNotice(null) }} />}
       {anonymized && (
         <Alert type="info" showIcon data-testid="contact-anonymized" title={`Đã ẩn danh lúc ${formatDateTime(c.piiAnonymizedAt)}. Thông tin cá nhân và nội dung không còn.`} />

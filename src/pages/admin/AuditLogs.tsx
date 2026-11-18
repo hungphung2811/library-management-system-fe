@@ -130,7 +130,7 @@ export default function AuditLogsPage() {
   return (
     <>
       <PageHeader title="Nhật ký hoạt động" description="Các sự kiện nghiệp vụ được ghi lại trong hệ thống." />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
           <label className="flex min-w-64 flex-1 basis-64 flex-col gap-1 text-sm sm:max-w-sm">
             Mã đối tượng
@@ -155,16 +155,6 @@ export default function AuditLogsPage() {
               format="DD/MM/YYYY"
               value={from && to ? [dayjs(from), dayjs(to)] : null}
               onChange={(v) => patch({ from: v?.[0]?.format("YYYY-MM-DD"), to: v?.[1]?.format("YYYY-MM-DD") }, true)}
-            />
-          </div>
-          <div className="flex flex-col gap-1 text-sm">
-            Số dòng
-            <Select
-              aria-label="Số dòng mỗi trang"
-              className="min-w-28"
-              value={pageSize}
-              options={SIZES.map((n) => ({ value: n, label: `${n} / trang` }))}
-              onChange={(v) => patch({ size: v === 20 ? undefined : String(v) })}
             />
           </div>
           {platform && (
@@ -195,7 +185,7 @@ export default function AuditLogsPage() {
         {logs.isError ? (
           <ErrorBlock query={logs} />
         ) : (
-          <AuditTable rows={rows} page={page} pageSize={pageSize} total={total} filtered={hasFilter} loading={logs.isPlaceholderData} showTenant={platform} />
+          <AuditTable rows={rows} page={page} pageSize={pageSize} sizes={SIZES} total={total} filtered={hasFilter} loading={logs.isPlaceholderData} showTenant={platform} />
         )}
       </div>
     </>

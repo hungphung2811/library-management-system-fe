@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useParams } from "react-router";
 import { PERMISSIONS, can, toErrorInfo, useApi, useSession } from "@/api";
-import { ErrorPanel, LinkButton, NoPermission, PageHeader, PageSkeleton, Result } from "@/ui";
+import { Button, ErrorPanel, LinkButton, NoPermission, PageHeader, PageSkeleton, Result, useDetailModal } from "@/ui";
 import { BorrowingPanel } from "./_components/BorrowingPanel";
 import { useCopyInfos } from "./_lib/hooks";
 import { UUID_RE, shortId, type BorrowingView } from "./_lib/circulation";
@@ -9,6 +9,7 @@ import { UUID_RE, shortId, type BorrowingView } from "./_lib/circulation";
 export default function BorrowingDetailPage() {
   const { id = "" } = useParams();
   const s = useSession();
+  const modal = useDetailModal();
   const validId = UUID_RE.test(id);
   // Nhân viên (khóa getAny) xem phiếu bất kỳ qua /detail; người khác chỉ xem được phiếu của chính mình qua /{id}.
   const staff = can(s, PERMISSIONS.BORROWING_GET_ANY);
@@ -30,7 +31,7 @@ export default function BorrowingDetailPage() {
     <Result
       status="404"
       title="Không tìm thấy phiếu mượn"
-      extra={<LinkButton to="/circulation/borrowings">Về trang phiếu mượn</LinkButton>}
+      extra={modal ? <Button onClick={modal.close}>Đóng</Button> : <LinkButton to="/circulation/borrowings">Về trang phiếu mượn</LinkButton>}
     />,
   );
 
@@ -49,7 +50,7 @@ export default function BorrowingDetailPage() {
   return (
     <>
       <PageHeader title="Phiếu mượn" description={<span className="font-mono">{shortId(b.id)}…</span>} />
-      <div className="max-w-[960px]">
+      <div className={modal ? undefined : "max-w-[960px]"}>
         <BorrowingPanel
           key={b.id}
           initial={b}

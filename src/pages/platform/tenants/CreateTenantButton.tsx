@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
-import { apiFetch, useApiMutation } from "@/api";
-import { Button, Checkbox, Form, FormModal, Input, PlusOutlined, Radio, Select } from "@/ui";
+import { apiFetch } from "@/api";
+import { Button, Checkbox, Form, FormModal, Input, PlusOutlined, Radio, Select, useFormModal } from "@/ui";
 import { MODULE_OPTIONS, withTenantErrors } from "../_lib/tenant-format";
 import type { TenantSummary } from "../_lib/tenant-types";
 
@@ -22,10 +21,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Nút + hộp thoại tạo đơn vị: mã, tên, tổ chức, module bật ban đầu, quản trị viên đầu tiên (tài khoản mới hoặc có sẵn). */
 export function CreateTenantButton({ organizations }: { organizations: { value: string; label: string }[] }) {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const create = useApiMutation(
-    (v: Values) =>
+  const create = useFormModal<Values, TenantSummary>({
+    title: "Tạo đơn vị",
+    okText: "Tạo",
+    successMessage: "Đã tạo đơn vị",
+    initialValues: { modules: ["LENDING"], adminMode: "new" },
+    invalidate: ["/api/platform/tenants"],
+    onSuccess: (t) => {
+      void navigate(`/platform/tenants/${t.id}`);
+    },
+    request: (v) =>
       withTenantErrors(
         () =>
           apiFetch<TenantSummary>("/api/platform/tenants", {
@@ -48,26 +54,14 @@ export function CreateTenantButton({ organizations }: { organizations: { value: 
             },
           }),
       ),
-    { invalidate: ["/api/platform/tenants"] },
-  );
+  });
 
   return (
     <>
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => create.openModal()}>
         Tạo đơn vị
       </Button>
-      <FormModal<Values>
-        open={open}
-        title="Tạo đơn vị"
-        okText="Tạo"
-        onCancel={() => setOpen(false)}
-        successMessage="Đã tạo đơn vị"
-        initialValues={{ modules: ["LENDING"], adminMode: "new" }}
-        onSubmit={async (v) => {
-          const t = await create.mutateAsync(v);
-          void navigate(`/platform/tenants/${t.id}`);
-        }}
-      >
+      <FormModal<Values> {...create.modalProps}>
         <Form.Item
           name="code"
           label="Mã đơn vị"

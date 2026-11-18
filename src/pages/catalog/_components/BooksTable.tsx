@@ -1,4 +1,4 @@
-import { DataTable, Tag, type DataTableProps } from "@/ui";
+import { DataTable, Tag, type DataTableProps, Eye, actionsColumn } from "@/ui";
 import type { TitleView } from "./types";
 
 /** Bảng sách. Danh sách đã lọc/sắp xếp; trang và cỡ trang đến từ URL (link `?page=n`), cắt dòng ở đây. */
@@ -26,6 +26,7 @@ export function BooksTable({
         { key: "name", title: "Tên sách", dataIndex: "name", kind: "link", href: "/catalog/books/{id}" },
         { key: "author", title: "Tác giả", dataIndex: "author" },
         { key: "isbn", title: "ISBN", dataIndex: "isbn", kind: "mono" },
+        { key: "publicationYear", title: "Năm XB", dataIndex: "publicationYear" },
         { key: "coverPrice", title: "Giá bìa", dataIndex: "coverPrice", kind: "money", align: "right" },
         {
           key: "availableCopies",
@@ -33,7 +34,8 @@ export function BooksTable({
           dataIndex: "availableCopies",
           render: (v) => (Number(v) > 0 ? <Tag color="success">{String(v)} bản</Tag> : <Tag>Hết bản</Tag>),
         },
-      ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/catalog/books/${encodeURIComponent(String(row.id))}` }], 1),
+]}
     />
   );
 }

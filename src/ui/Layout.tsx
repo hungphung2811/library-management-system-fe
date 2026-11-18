@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Title } from "./antd";
+import { useDetailModal } from "./DetailModal";
 import { Logo } from "./Logo";
 
 /** Khung các trang chưa vào hệ thống (đăng nhập, đổi mật khẩu), bám Metronic: logo và thẻ form căn giữa trên nền nhạt. */
@@ -24,10 +25,12 @@ export function PageHeader({
   description?: ReactNode;
   actions?: ReactNode;
 }) {
+  // Trong modal chi tiết: tiêu đề nhỏ hơn, tránh hai tiêu đề cấp 1 trên cùng trang (trang danh sách ở nền đã có).
+  const inModal = !!useDetailModal();
   return (
     <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <Title level={1} className="mb-0! text-title! leading-snug! font-semibold!">
+        <Title level={inModal ? 2 : 1} className="mb-0! text-title! leading-snug! font-semibold!">
           {title}
         </Title>
         {description && <p className="mt-0.5 mb-0 text-body text-muted">{description}</p>}

@@ -1,21 +1,14 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ApiCallError, apiFetch, useApiMutation } from "@/api";
-import { App, Button, Form, FormModal, Input, PlusOutlined, Switch, Text } from "@/ui";
+import { ApiCallError, apiFetch } from "@/api";
+import { App, Button, Form, FormModal, Input, PlusOutlined, Switch, Text, useFormModal } from "@/ui";
 import type { RoleView } from "../_lib/types";
 
 type Values = { name: string; description: string; isAdmin?: boolean };
 
 /** Nút + hộp thoại "Thêm vai trò". Công tắc vai trò quản trị viên chỉ hiện với quản trị viên và đòi xác nhận lần hai. */
 export function CreateRoleButton({ sessionAdmin }: { sessionAdmin: boolean }) {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { modal } = App.useApp();
-  const create = useApiMutation(
-    (body: { name: string; description: string; isAdmin: boolean }) =>
-      apiFetch<RoleView>("/api/roles", { method: "POST", json: body }),
-    { invalidate: ["/api/roles"] },
-  );
 
   const confirmAdmin = () =>
     new Promise<void>((resolve, reject) =>
@@ -30,24 +23,27 @@ export function CreateRoleButton({ sessionAdmin }: { sessionAdmin: boolean }) {
       }),
     );
 
+  const form = useFormModal<Values, RoleView>({
+    title: "Thêm vai trò",
+    okText: "Tạo",
+    successMessage: "Đã tạo vai trò.",
+    invalidate: ["/api/roles"],
+    request: async (v) => {
+      const isAdmin = sessionAdmin && v.isAdmin === true;
+      if (isAdmin) await confirmAdmin();
+      return apiFetch<RoleView>("/api/roles", { method: "POST", json: { name: v.name.trim(), description: v.description.trim(), isAdmin } });
+    },
+    onSuccess: (created) => {
+      if (created?.id) void navigate(`/admin/roles/${encodeURIComponent(created.id)}`);
+    },
+  });
+
   return (
     <>
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => form.openModal()}>
         Thêm vai trò
       </Button>
-      <FormModal<Values>
-        open={open}
-        title="Thêm vai trò"
-        okText="Tạo"
-        successMessage="Đã tạo vai trò."
-        onCancel={() => setOpen(false)}
-        onSubmit={async (v) => {
-          const isAdmin = sessionAdmin && v.isAdmin === true;
-          if (isAdmin) await confirmAdmin();
-          const created = await create.mutateAsync({ name: v.name.trim(), description: v.description.trim(), isAdmin });
-          if (created?.id) void navigate(`/admin/roles/${encodeURIComponent(created.id)}`);
-        }}
-      >
+      <FormModal<Values> {...form.modalProps}>
         <Form.Item name="name" label="Tên vai trò" rules={[{ required: true, whitespace: true, message: "Nhập tên vai trò" }]}>
           <Input autoComplete="off" />
         </Form.Item>

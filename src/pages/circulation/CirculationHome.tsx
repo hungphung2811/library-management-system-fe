@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { PERMISSIONS, can, useSession } from "@/api";
-import { Card, PageHeader, Tag, Text } from "@/ui";
+import { Card, DataTable, PageHeader, Tag, Text } from "@/ui";
 
 export default function CirculationHomePage() {
   const s = useSession();
@@ -8,18 +9,21 @@ export default function CirculationHomePage() {
   return (
     <>
       <PageHeader title="Mượn trả" description="Lập phiếu, nhận trả, gia hạn và đặt trước sách." />
-      <div className="flex max-w-[1200px] flex-col gap-5">
+      <div className="flex flex-col gap-5">
         <Card title="Quyền nghiệp vụ của bạn">
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            <li className="flex items-center justify-between gap-3">
-              <span>Mượn sách</span>
-              {perm(PERMISSIONS.BORROW_BOOK)}
-            </li>
-            <li className="flex items-center justify-between gap-3">
-              <span>Trả sách</span>
-              {perm(PERMISSIONS.RETURN_BOOK)}
-            </li>
-          </ul>
+          <DataTable
+            embedded
+            rowKey="id"
+            empty={{ title: "Chưa có nghiệp vụ nào" }}
+            columns={[
+              { key: "action", title: "Nghiệp vụ", dataIndex: "action" },
+              { key: "allowed", title: "Quyền", dataIndex: "allowed", width: 160, render: (v) => v as ReactNode },
+            ]}
+            rows={[
+              { id: "borrow", action: "Mượn sách", allowed: perm(PERMISSIONS.BORROW_BOOK) },
+              { id: "return", action: "Trả sách", allowed: perm(PERMISSIONS.RETURN_BOOK) },
+            ]}
+          />
         </Card>
 
         <Text type="secondary">

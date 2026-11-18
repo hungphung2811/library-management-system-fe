@@ -4,7 +4,6 @@ import { apiFetch } from "@/api";
 import { Button, FilterBar, Input, Segmented, useFilterParams, type FilterField, type FilterParams } from "@/ui";
 import { UUID_RE, shortId, userLabel, type BorrowingFilter, type UserBrief } from "../_lib/circulation";
 
-export const BORROWING_PAGE_SIZES = [10, 20, 50];
 
 const STATUS_OPTIONS: { label: string; value: BorrowingFilter | "" }[] = [
   { label: "Tất cả", value: "" },
@@ -119,22 +118,20 @@ export function BorrowingFilters({
   setStatus: (v: string) => void;
   total?: number;
 }) {
+  // Form lọc ở trên, tab trạng thái ngay phía dưới (sát bảng).
   return (
     <FilterBar
       filters={filters}
       total={total}
       unit="phiếu"
-      pageSizes={BORROWING_PAGE_SIZES}
-      extra={
-        <>
-          <Segmented
-            aria-label="Lọc theo trạng thái phiếu mượn"
-            options={STATUS_OPTIONS}
-            value={status}
-            onChange={(v) => setStatus(String(v))}
-          />
-          <CodeLookup />
-        </>
+      extra={<CodeLookup />}
+      bottom={
+        <Segmented
+          aria-label="Lọc theo trạng thái phiếu mượn"
+          options={STATUS_OPTIONS}
+          value={status}
+          onChange={(v) => setStatus(String(v))}
+        />
       }
     />
   );

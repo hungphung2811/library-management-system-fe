@@ -1,23 +1,36 @@
-import { useState } from "react";
+import { usePageSize } from "@/ui";
 import { Link, useSearchParams } from "react-router";
-import { PERMISSIONS, apiFetch, can, useApi, useInvalidateApi, useSession } from "@/api";
-import { Button, DataTable, Form, FormModal, Input, QueryBoundary, Select, Tag, formatDateTime, formatMoney, type DataColumn } from "@/ui";
+import { PERMISSIONS, apiFetch, can, useApi, useSession } from "@/api";
+import { DataTable, Form, FormModal, Input, QueryBoundary, Select, Tag, Banknote, actionsColumn, formatDateTime, formatMoney, type DataColumn, useFormModal } from "@/ui";
 import { SalesGate } from "./_components/SalesGate";
 import { ALL_PAYMENT_METHODS, REFUND_SOURCE, REFUND_STATUS, label, pageParams, type Page, type Refund } from "./_lib/sales";
 
-const SIZE = 20;
 
 export default function RefundsPage() {
   const s = useSession();
-  const invalidate = useInvalidateApi();
   const [sp, setSp] = useSearchParams();
+  const SIZE = usePageSize();
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const status = sp.get("status") ?? "";
   const allowed = can(s, PERMISSIONS.REFUND_SEARCH);
   const canMark = can(s, PERMISSIONS.REFUND_MARK_REFUNDED);
   const canOrder = can(s, PERMISSIONS.SALES_ORDER_VIEW);
   const q = useApi<Page<Refund>>(allowed ? `/api/sales/refunds?${pageParams(sp, SIZE, { status })}` : null);
-  const [target, setTarget] = useState<Refund | null>(null);
+  const form = useFormModal<{ method: string; reference?: string }, unknown, Refund>({
+    title: "Đánh dấu đã hoàn tiền",
+    okText: "Đánh dấu đã hoàn",
+    successMessage: "Đã ghi nhận hoàn tiền.",
+    initialValues: (t) => ({ method: t?.source === "CANCELLATION" ? "BANK_TRANSFER" : "CASH" }),
+    invalidate: ["/api/sales/refunds", "/api/sales/orders"],
+    request: async (v, t) => {
+      if (!t) return;
+      await apiFetch(`/api/sales/refunds/${encodeURIComponent(t.id)}/completion`, {
+        method: "POST",
+        json: { method: v.method, ...(v.reference?.trim() ? { reference: v.reference.trim() } : {}), version: t.version },
+      });
+    },
+  });
+  const target = form.target;
 
   const columns: DataColumn[] = [
     { key: "at", title: "Tạo lúc", dataIndex: "createdAt", kind: "datetime" },
@@ -48,17 +61,18 @@ export default function RefundsPage() {
       dataIndex: "refundedAt",
       render: (v, r) => (v ? `${formatDateTime(v as string)} · ${label(ALL_PAYMENT_METHODS, r.method as string)}${r.reference ? ` · ${String(r.reference)}` : ""}` : "—"),
     },
-    {
-      key: "act",
-      title: "",
-      dataIndex: "id",
-      render: (_v, r) =>
-        canMark && r.status === "PENDING" ? (
-          <Button size="small" type="primary" onClick={() => setTarget(r as unknown as Refund)}>
-            Đánh dấu đã hoàn
-          </Button>
-        ) : null,
-    },
+    actionsColumn(
+      (r) => [
+        {
+          key: "mark",
+          label: "Đánh dấu đã hoàn",
+          icon: <Banknote size={16} />,
+          hidden: !(canMark && r.status === "PENDING"),
+          onClick: () => form.openModal(r as unknown as Refund),
+        },
+      ],
+      1,
+    ),
   ];
 
   return (
@@ -67,7 +81,7 @@ export default function RefundsPage() {
       description="Khoản hoàn sinh ra khi hủy đơn đã thu hoặc khi trả hàng. Hoàn tiền cho khách ngoài hệ thống rồi đánh dấu đã hoàn."
       permission={PERMISSIONS.REFUND_SEARCH}
     >
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <label htmlFor="refund-status" className="text-sm font-medium text-ink">
             Trạng thái
@@ -98,22 +112,7 @@ export default function RefundsPage() {
           )}
         </QueryBoundary>
       </div>
-      <FormModal<{ method: string; reference?: string }>
-        open={target !== null}
-        title="Đánh dấu đã hoàn tiền"
-        okText="Đánh dấu đã hoàn"
-        successMessage="Đã ghi nhận hoàn tiền."
-        initialValues={{ method: target?.source === "CANCELLATION" ? "BANK_TRANSFER" : "CASH" }}
-        onCancel={() => setTarget(null)}
-        onSubmit={async (v) => {
-          if (!target) return;
-          await apiFetch(`/api/sales/refunds/${encodeURIComponent(target.id)}/completion`, {
-            method: "POST",
-            json: { method: v.method, ...(v.reference?.trim() ? { reference: v.reference.trim() } : {}), version: target.version },
-          });
-          await invalidate("/api/sales/refunds", "/api/sales/orders");
-        }}
-      >
+      <FormModal<{ method: string; reference?: string }> {...form.modalProps}>
         {target && (
           <dl className="m-0 mb-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1" data-testid="refund-confirm">
             <dt className="text-muted">Nguồn</dt>

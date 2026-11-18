@@ -1,21 +1,26 @@
+import { usePageSize } from "@/ui";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, apiFetch, can, hasModule, useApi, useApiMutation, useSession } from "@/api";
 import {
   Button,
-  ConfirmAction,
   DataTable,
   Form,
   FormModal,
   Input,
+  InputNumber,
   NoPermission,
   PageHeader,
+  Pencil,
+  Play,
   PlusOutlined,
+  Power,
   QueryBoundary,
   SearchBar,
   Select,
-  Space,
   Tag,
+  UserAvatar,
+  actionsColumn,
   type DataColumn,
 } from "@/ui";
 
@@ -29,12 +34,172 @@ type Row = {
   parentId?: string | null;
   parentName?: string | null;
   active: boolean;
+  // Tác giả (vắng trong JSON = chưa nhập)
+  birthYear?: number | null;
+  deathYear?: number | null;
+  nationality?: string | null;
+  photoUrl?: string | null;
+  // Nhà xuất bản
+  country?: string | null;
+  foundedYear?: number | null;
+  address?: string | null;
+  // Tác giả và nhà xuất bản
+  website?: string | null;
+  // Vị trí kệ (null khi chưa nhập)
+  floor?: string | null;
+  zone?: string | null;
+  capacity?: number | null;
 };
 type Page = { items: Row[]; total: number; page: number; size: number };
 type Option = { id: string; name?: string; parentId?: string | null };
-type FormValues = { label: string; description?: string; parentId?: string };
+type FormValues = {
+  label: string;
+  description?: string;
+  parentId?: string;
+  birthYear?: number | null;
+  deathYear?: number | null;
+  nationality?: string;
+  photoUrl?: string;
+  website?: string;
+  country?: string;
+  foundedYear?: number | null;
+  address?: string;
+  floor?: string;
+  zone?: string;
+  capacity?: number | null;
+};
 
-const SIZE = 20;
+const THIS_YEAR = new Date().getFullYear();
+const URL_RULE = { pattern: /^https?:\/\/\S+$/i, message: "Phải là địa chỉ http:// hoặc https://" };
+/** PUT thay toàn bộ phần bổ sung: chuỗi rỗng/vắng gửi null để xóa. */
+const str = (v?: string | null) => (v && v.trim() ? v.trim() : null);
+const num = (v?: number | null) => (v == null ? null : v);
+
+/** Các field bổ sung theo loại danh mục (tên trùng khóa JSON của BE để lỗi 400 "field: msg" gắn đúng ô). */
+function extraPayload(kind: ReferenceKind, v: FormValues): Record<string, unknown> {
+  switch (kind) {
+    case "authors":
+      return {
+        birthYear: num(v.birthYear),
+        deathYear: num(v.deathYear),
+        nationality: str(v.nationality),
+        photoUrl: str(v.photoUrl),
+        website: str(v.website),
+      };
+    case "publishers":
+      return { country: str(v.country), foundedYear: num(v.foundedYear), website: str(v.website), address: str(v.address) };
+    case "shelf-locations":
+      return { floor: str(v.floor), zone: str(v.zone), capacity: num(v.capacity) };
+    default:
+      return {};
+  }
+}
+
+function extraInitial(kind: ReferenceKind, r: Row): Partial<FormValues> {
+  switch (kind) {
+    case "authors":
+      return {
+        birthYear: r.birthYear ?? undefined,
+        deathYear: r.deathYear ?? undefined,
+        nationality: r.nationality ?? undefined,
+        photoUrl: r.photoUrl ?? undefined,
+        website: r.website ?? undefined,
+      };
+    case "publishers":
+      return { country: r.country ?? undefined, foundedYear: r.foundedYear ?? undefined, website: r.website ?? undefined, address: r.address ?? undefined };
+    case "shelf-locations":
+      return { floor: r.floor ?? undefined, zone: r.zone ?? undefined, capacity: r.capacity ?? undefined };
+    default:
+      return {};
+  }
+}
+
+function ExtraFields({ kind }: { kind: ReferenceKind }) {
+  if (kind === "authors") {
+    return (
+      <>
+        <Form.Item name="birthYear" label="Năm sinh" rules={[{ type: "number", min: 1, max: THIS_YEAR, message: `Từ 1 đến ${THIS_YEAR}` }]}>
+          <InputNumber className="w-full" min={1} max={THIS_YEAR} precision={0} />
+        </Form.Item>
+        <Form.Item
+          name="deathYear"
+          label="Năm mất"
+          dependencies={["birthYear"]}
+          rules={[
+            { type: "number", max: THIS_YEAR, message: `Tối đa ${THIS_YEAR}` },
+            ({ getFieldValue }) => ({
+              validator: (_, value?: number | null) => {
+                const born = getFieldValue("birthYear") as number | null | undefined;
+                if (value != null && born != null && value < born) return Promise.reject(new Error("Năm mất không được nhỏ hơn năm sinh"));
+                return Promise.resolve();
+              },
+            }),
+          ]}
+        >
+          <InputNumber className="w-full" min={1} max={THIS_YEAR} precision={0} />
+        </Form.Item>
+        <Form.Item name="nationality" label="Quốc tịch" rules={[{ max: 100, message: "Tối đa 100 ký tự" }]}>
+          <Input autoComplete="off" maxLength={100} />
+        </Form.Item>
+        <Form.Item name="photoUrl" label="Ảnh (URL)" rules={[{ max: 500, message: "Tối đa 500 ký tự" }, URL_RULE]}>
+          <Input autoComplete="off" placeholder="https://..." />
+        </Form.Item>
+        <Form.Item name="website" label="Website" rules={[{ max: 500, message: "Tối đa 500 ký tự" }, URL_RULE]}>
+          <Input autoComplete="off" placeholder="https://..." />
+        </Form.Item>
+      </>
+    );
+  }
+  if (kind === "publishers") {
+    return (
+      <>
+        <Form.Item name="country" label="Quốc gia" rules={[{ max: 100, message: "Tối đa 100 ký tự" }]}>
+          <Input autoComplete="off" maxLength={100} />
+        </Form.Item>
+        <Form.Item name="foundedYear" label="Năm thành lập" rules={[{ type: "number", min: 1400, max: THIS_YEAR, message: `Từ 1400 đến ${THIS_YEAR}` }]}>
+          <InputNumber className="w-full" min={1400} max={THIS_YEAR} precision={0} />
+        </Form.Item>
+        <Form.Item name="website" label="Website" rules={[{ max: 500, message: "Tối đa 500 ký tự" }, URL_RULE]}>
+          <Input autoComplete="off" placeholder="https://..." />
+        </Form.Item>
+        <Form.Item name="address" label="Địa chỉ" rules={[{ max: 500, message: "Tối đa 500 ký tự" }]}>
+          <Input.TextArea rows={2} maxLength={500} />
+        </Form.Item>
+      </>
+    );
+  }
+  if (kind === "shelf-locations") {
+    return (
+      <>
+        <Form.Item name="floor" label="Tầng" rules={[{ max: 20, message: "Tối đa 20 ký tự" }]}>
+          <Input autoComplete="off" maxLength={20} placeholder="Tầng 2" />
+        </Form.Item>
+        <Form.Item name="zone" label="Khu vực" rules={[{ max: 50, message: "Tối đa 50 ký tự" }]}>
+          <Input autoComplete="off" maxLength={50} placeholder="Khu Văn học" />
+        </Form.Item>
+        <Form.Item
+          name="capacity"
+          label="Sức chứa (số bản sao)"
+          extra="Chỉ để hiển thị, hệ thống chưa chặn gán vượt sức chứa."
+          rules={[{ type: "number", min: 1, max: 100000, message: "Từ 1 đến 100.000" }]}
+        >
+          <InputNumber className="w-full" min={1} max={100000} precision={0} />
+        </Form.Item>
+      </>
+    );
+  }
+  return null;
+}
+
+const siteLink = (v: unknown) =>
+  v ? (
+    <a href={String(v)} target="_blank" rel="noopener noreferrer">
+      {String(v).replace(/^https?:\/\//i, "").replace(/\/$/, "")}
+    </a>
+  ) : (
+    "—"
+  );
+
 
 const CONFIG = {
   authors: {
@@ -125,6 +290,7 @@ function ReferenceForm({
         [cfg.field]: v.label.trim(),
         description: v.description?.trim() || null,
         ...(isCategory ? { parentId: v.parentId ?? null } : {}),
+        ...extraPayload(kind, v),
       };
       return row
         ? apiFetch(`${cfg.path}/${encodeURIComponent(row.id)}`, { method: "PUT", json })
@@ -142,7 +308,7 @@ function ReferenceForm({
       onCancel={onClose}
       initialValues={
         row
-          ? { label: String(row[cfg.field] ?? ""), description: row.description ?? "", parentId: row.parentId ?? undefined }
+          ? { label: String(row[cfg.field] ?? ""), description: row.description ?? "", parentId: row.parentId ?? undefined, ...extraInitial(kind, row) }
           : {}
       }
       onSubmit={async (v) => {
@@ -182,6 +348,7 @@ function ReferenceForm({
       <Form.Item name="description" label="Mô tả" rules={[{ max: 500, message: "Tối đa 500 ký tự" }]}>
         <Input.TextArea rows={3} maxLength={500} />
       </Form.Item>
+      <ExtraFields kind={kind} />
     </FormModal>
   );
 }
@@ -192,6 +359,7 @@ export function ReferenceCatalog({ kind }: { kind: ReferenceKind }) {
   const s = useSession();
   const [sp, setSp] = useSearchParams();
   const page = Math.max(1, Number(sp.get("page")) || 1);
+  const SIZE = usePageSize();
   const kw = (sp.get("q") ?? "").trim();
   const activeParam = sp.get("active") === "true" || sp.get("active") === "false" ? sp.get("active")! : "";
   const moduleOk = kind !== "shelf-locations" || hasModule(s, "LENDING");
@@ -224,8 +392,51 @@ export function ReferenceCatalog({ kind }: { kind: ReferenceKind }) {
   }
 
   const columns: DataColumn[] = [
-    { key: cfg.field, title: cfg.field === "code" ? "Mã" : "Tên", dataIndex: cfg.field },
+    kind === "authors"
+      ? {
+          key: cfg.field,
+          title: "Tên",
+          dataIndex: cfg.field,
+          render: (v, r) => (
+            <span className="flex items-center gap-2">
+              <UserAvatar name={String(v ?? "")} src={(r as unknown as Row).photoUrl} size={28} />
+              {String(v ?? "")}
+            </span>
+          ),
+        }
+      : { key: cfg.field, title: cfg.field === "code" ? "Mã" : "Tên", dataIndex: cfg.field },
     ...(kind === "categories" ? [{ key: "parentName", title: "Thể loại cha", dataIndex: "parentName" }] : []),
+    ...(kind === "authors"
+      ? [
+          {
+            key: "years",
+            title: "Năm sinh - mất",
+            dataIndex: "birthYear",
+            render: (_: unknown, r: Record<string, unknown>) => {
+              const a = r as unknown as Row;
+              if (a.birthYear == null && a.deathYear == null) return "—";
+              return `${a.birthYear ?? "?"} - ${a.deathYear ?? ""}`.trim();
+            },
+          },
+          { key: "nationality", title: "Quốc tịch", dataIndex: "nationality", render: (v: unknown) => (v ? String(v) : "—") },
+          { key: "website", title: "Website", dataIndex: "website", render: siteLink },
+        ]
+      : []),
+    ...(kind === "publishers"
+      ? [
+          { key: "country", title: "Quốc gia", dataIndex: "country", render: (v: unknown) => (v ? String(v) : "—") },
+          { key: "foundedYear", title: "Năm thành lập", dataIndex: "foundedYear", render: (v: unknown) => (v == null ? "—" : String(v)) },
+          { key: "website", title: "Website", dataIndex: "website", render: siteLink },
+          { key: "address", title: "Địa chỉ", dataIndex: "address", render: (v: unknown) => (v ? String(v) : "—") },
+        ]
+      : []),
+    ...(kind === "shelf-locations"
+      ? [
+          { key: "floor", title: "Tầng", dataIndex: "floor", render: (v: unknown) => (v ? String(v) : "—") },
+          { key: "zone", title: "Khu vực", dataIndex: "zone", render: (v: unknown) => (v ? String(v) : "—") },
+          { key: "capacity", title: "Sức chứa", dataIndex: "capacity", align: "right" as const, render: (v: unknown) => (v == null ? "—" : String(v)) },
+        ]
+      : []),
     { key: "description", title: "Mô tả", dataIndex: "description" },
     {
       key: "active",
@@ -235,39 +446,35 @@ export function ReferenceCatalog({ kind }: { kind: ReferenceKind }) {
     },
     ...(canUpdate || canStatus
       ? [
-          {
-            key: "act",
-            title: "",
-            dataIndex: "id",
-            render: (_: unknown, r: Record<string, unknown>) => {
-              const row = r as unknown as Row;
-              const label = String(row[cfg.field] ?? "");
-              return (
-                <Space>
-                  {canUpdate && (
-                    <Button size="small" onClick={() => setEditing(row)} aria-label={`Sửa ${label}`}>
-                      Sửa
-                    </Button>
-                  )}
-                  {canStatus && (
-                    <ConfirmAction
-                      title={row.active ? `Ngừng dùng «${label}»?` : `Dùng lại «${label}»?`}
-                      description={row.active ? "Mục này sẽ không còn xuất hiện trong ô chọn; giá trị đã gán vẫn giữ nguyên." : undefined}
-                      okText={row.active ? "Ngừng dùng" : "Dùng lại"}
-                      danger={row.active}
-                      onConfirm={async () => {
-                        await setStatus.mutateAsync({ id: row.id, active: !row.active });
-                      }}
-                    >
-                      <Button size="small" danger={row.active} aria-label={`${row.active ? "Ngừng dùng" : "Dùng lại"} ${label}`}>
-                        {row.active ? "Ngừng dùng" : "Dùng lại"}
-                      </Button>
-                    </ConfirmAction>
-                  )}
-                </Space>
-              );
-            },
-          },
+          actionsColumn((r) => {
+            const row = r as unknown as Row;
+            const label = String(row[cfg.field] ?? "");
+            const verb = row.active ? "Ngừng dùng" : "Dùng lại";
+            return [
+              {
+                key: "edit",
+                label: `Sửa ${label}`,
+                icon: <Pencil size={16} />,
+                hidden: !canUpdate,
+                onClick: () => setEditing(row),
+              },
+              {
+                key: "status",
+                label: `${verb} ${label}`,
+                icon: row.active ? <Power size={16} /> : <Play size={16} />,
+                danger: row.active,
+                hidden: !canStatus,
+                confirm: {
+                  title: row.active ? `Ngừng dùng «${label}»?` : `Dùng lại «${label}»?`,
+                  description: row.active ? "Mục này sẽ không còn xuất hiện trong ô chọn; giá trị đã gán vẫn giữ nguyên." : undefined,
+                  okText: verb,
+                },
+                onClick: async () => {
+                  await setStatus.mutateAsync({ id: row.id, active: !row.active });
+                },
+              },
+            ];
+          }, 2),
         ]
       : []),
   ];
@@ -293,7 +500,7 @@ export function ReferenceCatalog({ kind }: { kind: ReferenceKind }) {
           ) : undefined
         }
       />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <SearchBar
           placeholder={cfg.field === "code" ? "Tìm theo mã vị trí kệ" : `Tìm theo tên ${cfg.noun}`}
           extra={

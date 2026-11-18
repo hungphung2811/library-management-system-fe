@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useParams } from "react-router";
 import { PERMISSIONS, apiFetch, can, toErrorInfo, useApi, useSession, type ErrorInfo } from "@/api";
-import { Alert, Button, Card, DataTable, LinkButton, QueryBoundary, Tag, describeError, formatDateTime, formatMoney, type DataColumn } from "@/ui";
+import { Alert, Button, Card, DataTable, LinkButton, QueryBoundary, Tag, describeError, formatDate, formatDateTime, formatMoney, useDetailModal, type DataColumn } from "@/ui";
+import { OrderNotesCard } from "./_components/OrderNotesCard";
 import { OrderActions } from "./_components/OrderActions";
 import { ReceiptPanel } from "./_components/ReceiptPanel";
 import { ReturnsPanel } from "./_components/ReturnsPanel";
@@ -81,6 +82,7 @@ function ContactBlock({ order, canFull }: { order: SalesOrder; canFull: boolean 
 
 export default function OrderDetailPage() {
   const s = useSession();
+  const inModal = !!useDetailModal();
   const { id = "" } = useParams();
   const allowed = can(s, PERMISSIONS.SALES_ORDER_VIEW);
   const q = useApi<SalesOrder>(allowed ? `/api/sales/orders/${encodeURIComponent(id)}` : null);
@@ -88,11 +90,11 @@ export default function OrderDetailPage() {
     <SalesGate
       title="Chi tiết đơn hàng"
       permission={PERMISSIONS.SALES_ORDER_VIEW}
-      actions={<LinkButton to="/sales/orders">Về danh sách</LinkButton>}
+      actions={inModal ? undefined : <LinkButton to="/sales/orders">Về danh sách</LinkButton>}
     >
       <QueryBoundary query={q}>
         {(o) => (
-          <div className="flex max-w-[1000px] flex-col gap-4">
+          <div className={inModal ? "flex flex-col gap-4" : "flex max-w-[1000px] flex-col gap-4"}>
             <div className="print:hidden flex flex-col gap-4">
               <Card
                 title={
@@ -140,6 +142,18 @@ export default function OrderDetailPage() {
                       <dd className="m-0" data-testid="order-cancel-reason">{o.cancelReason || "—"}</dd>
                     </>
                   )}
+                  {o.expectedDeliveryDate && (
+                    <>
+                      <dt className="text-muted">Ngày giao dự kiến</dt>
+                      <dd className="m-0" data-testid="order-expected-date">{formatDate(o.expectedDeliveryDate)}</dd>
+                    </>
+                  )}
+                  {o.customerNote && (
+                    <>
+                      <dt className="text-muted">Ghi chú của khách</dt>
+                      <dd className="m-0 whitespace-pre-wrap" data-testid="order-customer-note">{o.customerNote}</dd>
+                    </>
+                  )}
                   {o.exchangeOfReturnId && (
                     <>
                       <dt className="text-muted">Đổi hàng</dt>
@@ -150,6 +164,7 @@ export default function OrderDetailPage() {
               </Card>
               <OrderActions order={o} onReload={() => void q.refetch()} />
               <ContactBlock order={o} canFull={can(s, PERMISSIONS.SALES_ORDER_CONTACT)} />
+              {can(s, PERMISSIONS.SALES_ORDER_NOTES_VIEW) && <OrderNotesCard key={`${o.id}:${o.version}`} order={o} />}
               <Card title="Các dòng hàng">
                 <DataTable columns={columns} rows={o.lines as unknown as Record<string, unknown>[]} rowKey="id" embedded empty={{ title: "Đơn không có dòng nào." }} />
                 <dl className="mt-3 mb-0 ml-auto grid max-w-[360px] grid-cols-[1fr_auto] gap-x-4 gap-y-1">

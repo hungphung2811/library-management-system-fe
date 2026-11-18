@@ -36,6 +36,32 @@ test.describe("/profile", () => {
     await expect(main.getByRole("button", { name: /Hủy liên kết/ })).toHaveCount(1);
   });
 
+  test("hiện thông tin cá nhân (SĐT, ngày sinh dd/MM/yyyy, giới tính, địa chỉ) và khoa/lớp/mã SV của độc giả", async ({ page }) => {
+    await loginAs(page, "reader");
+    await gotoApp(page, "/profile");
+    const main = page.getByRole("main");
+    await expect(main.getByText("0987 654 321")).toBeVisible();
+    await expect(main.getByText("03/11/2002")).toBeVisible();
+    await expect(main.getByText("Nữ", { exact: true })).toBeVisible();
+    await expect(main.getByText("45 Lê Lợi, Quận 1, TP.HCM")).toBeVisible();
+    await expect(main.getByText("Khoa Ngữ văn")).toBeVisible();
+    await expect(main.getByText("K20-NV1")).toBeVisible();
+    await expect(main.getByText("SV20-01234")).toBeVisible();
+    await expect(main.getByText("01/09/2020")).toBeVisible();
+    // Avatar chữ cái đầu của họ tên (Đỗ Thị Mai Anh) khi chưa có ảnh.
+    await expect(main.locator(".ant-avatar", { hasText: "Đ" })).toBeVisible();
+  });
+
+  test("người không có thông tin cá nhân: không hiện dòng SĐT, ngày sinh, giới tính", async ({ page }) => {
+    await loginAs(page, "member");
+    await gotoApp(page, "/profile");
+    const main = page.getByRole("main");
+    await expect(main.getByText("khoi.tran@outlook.com").first()).toBeVisible();
+    for (const label of ["Số điện thoại", "Ngày sinh", "Giới tính", "Địa chỉ"]) {
+      await expect(main.getByText(label, { exact: true })).toHaveCount(0);
+    }
+  });
+
   test("người không có hồ sơ độc giả: ẩn thẻ thư viện và không báo lỗi", async ({ page }) => {
     await loginAs(page, "member");
     await gotoApp(page, "/profile");

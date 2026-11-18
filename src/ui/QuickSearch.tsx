@@ -3,22 +3,31 @@ import { useNavigate } from "react-router";
 import { Search, CornerDownLeft } from "lucide-react";
 import { Input, Modal } from "./antd";
 import type { VisibleNavLink } from "./nav-links";
+import { fold, searchText } from "./search-keywords";
 
-type Entry = { href: string; label: string; section?: string };
-
-/** Bỏ dấu tiếng Việt và chữ hoa để so khớp "tra phieu" với "Tra phiếu mượn". */
-const fold = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase();
+type Entry = { href: string; label: string; section?: string; sectionHref?: string };
 
 /** Danh sách phẳng các trang đích: mục lá của sidebar (đã lọc theo quyền), nhóm không có con thì chính nó. */
 function flatten(items: VisibleNavLink[]): Entry[] {
   return items.flatMap((l): Entry[] =>
-    l.children ? l.children.map((c) => ({ href: c.href, label: c.label, section: l.label })) : [{ href: l.href, label: l.label }],
+    l.children
+      ? l.children.map((c) => ({ href: c.href, label: c.label, section: l.label, sectionHref: l.href }))
+      : [{ href: l.href, label: l.label }],
   );
+}
+
+/** Mỗi từ trong ô tìm phải khớp (không cần đúng thứ tự); nhãn tiếng Việt khớp được xếp trước các mục chỉ khớp theo từ khóa. */
+function search(entries: Entry[], q: string): Entry[] {
+  const tokens = fold(q.trim()).split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return entries;
+  const scored: { e: Entry; rank: number; i: number }[] = [];
+  entries.forEach((e, i) => {
+    const byLabel = fold(`${e.label} ${e.section ?? ""}`);
+    const extra = `${searchText(e.href)} ${e.sectionHref ? searchText(e.sectionHref) : ""}`;
+    if (!tokens.every((t) => byLabel.includes(t) || extra.includes(t))) return;
+    scored.push({ e, rank: tokens.every((t) => byLabel.includes(t)) ? 0 : 1, i });
+  });
+  return scored.sort((a, b) => a.rank - b.rank || a.i - b.i).map((x) => x.e);
 }
 
 const isMac = typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent);
@@ -35,10 +44,7 @@ export function QuickSearch({ items }: { items: VisibleNavLink[] }) {
   const listRef = useRef<HTMLUListElement>(null);
 
   const entries = useMemo(() => flatten(items), [items]);
-  const results = useMemo(() => {
-    const k = fold(q.trim());
-    return k ? entries.filter((e) => fold(`${e.label} ${e.section ?? ""}`).includes(k)) : entries;
-  }, [entries, q]);
+  const results = useMemo(() => search(entries, q), [entries, q]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -88,9 +94,9 @@ export function QuickSearch({ items }: { items: VisibleNavLink[] }) {
         closable={false}
         width={480}
         destroyOnHidden
-        styles={{ body: { padding: 0 }, container: { padding: 0, overflow: "hidden" } }}
+        title={<span className="sr-only">Tìm nhanh trang</span>}
+        styles={{ header: { margin: 0, padding: 0, minHeight: 0 }, body: { padding: 0 }, container: { padding: 0, overflow: "hidden" } }}
         style={{ top: 96 }}
-        aria-label="Tìm nhanh trang"
         afterOpenChange={(o) => {
           if (o) document.getElementById("quick-search-input")?.focus();
         }}
@@ -100,7 +106,7 @@ export function QuickSearch({ items }: { items: VisibleNavLink[] }) {
             id="quick-search-input"
             variant="borderless"
             prefix={<Search size={16} strokeWidth={1.75} aria-hidden className="text-faint" />}
-            placeholder="Nhập tên trang cần mở"
+            placeholder="Nhập tên trang, tiếng Việt hoặc tiếng Anh (vd: users, người dùng)"
             aria-label="Nhập tên trang cần mở"
             autoComplete="off"
             value={q}

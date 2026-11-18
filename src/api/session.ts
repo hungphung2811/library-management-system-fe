@@ -17,6 +17,8 @@ export type Session = {
   /** Tài khoản phải đổi mật khẩu: token không mang admin/permissions cho tới khi đổi. */
   mustChangePassword: boolean;
   accessToken: string;
+  /** Chỉ có với platform admin đang làm việc thay một đơn vị (xem `withActingTenant`): id đơn vị đó (cũng đặt vào `tenantId`). */
+  actingTenantId?: string;
 };
 
 /** Giải mã base64url thành chuỗi UTF-8 bằng atob (không dùng Buffer). */
@@ -53,6 +55,18 @@ export function sessionFromToken(token: string | null): Session | null {
     mustChangePassword: p.mustChangePassword === true,
     accessToken: token,
   };
+}
+
+const ALL_MODULES: string[] = ["LENDING", "SALES"];
+
+/**
+ * Platform admin chọn một đơn vị để làm việc thay (ADR-0016): session hiệu lực mang `tenantId` đó, `admin=true` và đủ module
+ * (BE cũng coi họ là admin của đơn vị, bỏ qua kiểm khóa và module), nhưng `platformAdmin` vẫn `true` để giữ khu Nền tảng SaaS.
+ * Người dùng khác hoặc chưa chọn đơn vị: trả nguyên session. Chỉ để ẩn/hiện UI, BE mới là nơi quyết định.
+ */
+export function withActingTenant(session: Session | null, actingTenantId: string | null): Session | null {
+  if (!session || !session.platformAdmin || !actingTenantId) return session;
+  return { ...session, admin: true, tenantId: actingTenantId, modules: ALL_MODULES, actingTenantId };
 }
 
 /** Quản trị viên luôn đúng; người khác cần khóa quyền trong claim `permissions`. Chỉ để ẩn/hiện UI, BE mới là nơi quyết định. */

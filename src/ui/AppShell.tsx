@@ -18,6 +18,7 @@ export function AppShell() {
       items={items}
       crumbs={CRUMBS}
       tenantId={session.tenantId}
+      platformAdmin={session.platformAdmin}
       user={{ id: session.userId, name: session.username, role: session.roles[0] }}
     >
       <Outlet />

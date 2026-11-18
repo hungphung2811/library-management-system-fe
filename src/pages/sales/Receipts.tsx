@@ -1,3 +1,4 @@
+import { usePageSize } from "@/ui";
 import { useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, apiFetch, can, useApi, useInvalidateApi, useSession } from "@/api";
@@ -21,6 +22,7 @@ import {
   formatMoney,
   type DataColumn,
   type Opt,
+  useFormModal,
 } from "@/ui";
 import { MoneyInput } from "./_components/MoneyInput";
 import { SalesGate } from "./_components/SalesGate";
@@ -36,7 +38,6 @@ import {
   type Supplier,
 } from "./_lib/sales";
 
-const SIZE = 20;
 const asRows = <T,>(items: T[]) => items as unknown as Record<string, unknown>[];
 const STATUS_COLOR: Record<string, string> = { DRAFT: "gold", CONFIRMED: "green", CANCELLED: "default" };
 
@@ -48,74 +49,6 @@ function useSupplierNames(enabled: boolean) {
 }
 
 type CreateValues = { supplierId?: string; lines: { title?: Opt; quantity?: number; unitCost?: number | null }[] };
-
-function CreateReceipt({ suppliers, canPickSupplier, onClose, open }: { suppliers: Supplier[]; canPickSupplier: boolean; onClose: () => void; open: boolean }) {
-  const invalidate = useInvalidateApi();
-  // clientRequestId cố định trong một lần mở hộp thoại: bấm Tạo lại sau lỗi mạng không tạo phiếu thứ hai.
-  const reqId = useRef(newRequestId());
-  const wasOpen = useRef(false);
-  if (open && !wasOpen.current) reqId.current = newRequestId();
-  wasOpen.current = open;
-  return (
-    <FormModal<CreateValues>
-      open={open}
-      title="Tạo phiếu nhập (nháp)"
-      okText="Tạo phiếu nháp"
-      successMessage="Đã tạo phiếu nhập nháp. Xác nhận phiếu để cộng tồn kho."
-      onCancel={onClose}
-      initialValues={{ lines: [{}] }}
-      onSubmit={async (v) => {
-        await apiFetch("/api/sales/goods-receipts", {
-          method: "POST",
-          json: {
-            supplierId: v.supplierId,
-            lines: v.lines.map((l) => ({ titleId: l.title?.value, quantity: l.quantity, unitCost: l.unitCost ?? 0 })),
-            clientRequestId: reqId.current,
-          },
-        });
-        await invalidate("/api/sales/goods-receipts");
-      }}
-    >
-      <Form.Item name="supplierId" label="Nhà cung cấp" rules={[{ required: true, message: "Chọn nhà cung cấp" }]}>
-        <Select
-          showSearch={{ optionFilterProp: "label" }}
-          placeholder={canPickSupplier ? "Chọn nhà cung cấp" : "Bạn chưa có quyền xem danh sách nhà cung cấp"}
-          disabled={!canPickSupplier}
-          options={suppliers.filter((x) => x.active).map((x) => ({ value: x.id, label: x.name }))}
-        />
-      </Form.Item>
-      <Form.List name="lines">
-        {(fields, { add, remove }) => (
-          <div className="flex flex-col gap-2">
-            <div className="text-sm font-medium text-ink">Dòng nhập</div>
-            {fields.map((f) => (
-              <div key={f.key} className="grid grid-cols-1 gap-2 rounded-card border border-line p-2 sm:grid-cols-[1fr_90px_140px_auto]">
-                <Form.Item name={[f.name, "title"]} label="Đầu sách" className="mb-0!" rules={[{ required: true, message: "Chọn đầu sách" }]}>
-                  <RemoteSelect
-                    placeholder="Gõ tên sách hoặc ISBN"
-                    fetcher={async (q) => (await searchBooks(q)).slice(0, 30).map((b) => ({ value: b.id, label: bookLabel(b) }))}
-                  />
-                </Form.Item>
-                <Form.Item name={[f.name, "quantity"]} label="Số lượng" className="mb-0!" rules={[{ required: true, message: "Nhập số lượng" }]}>
-                  <InputNumber className="w-full" min={1} max={100000} precision={0} />
-                </Form.Item>
-                <Form.Item name={[f.name, "unitCost"]} label="Giá nhập" className="mb-0!" rules={[{ required: true, message: "Nhập giá nhập" }]}>
-                  <MoneyInput />
-                </Form.Item>
-                <Form.Item label=" " className="mb-0!">
-                  <Button aria-label="Xóa dòng" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(f.name)} />
-                </Form.Item>
-              </div>
-            ))}
-            <Button icon={<PlusOutlined />} onClick={() => add({})} disabled={fields.length >= 200}>
-              Thêm dòng
-            </Button>
-          </div>
-        )}
-      </Form.List>
-    </FormModal>
-  );
-}
 
 function ReceiptDrawer({ id, row, supplierName, onClose }: { id: string | null; row: GoodsReceipt | null; supplierName: string; onClose: () => void }) {
   const s = useSession();
@@ -187,13 +120,31 @@ function ReceiptDrawer({ id, row, supplierName, onClose }: { id: string | null; 
 export default function ReceiptsPage() {
   const s = useSession();
   const [sp, setSp] = useSearchParams();
+  const SIZE = usePageSize();
   const status = sp.get("status") ?? "";
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const allowed = can(s, PERMISSIONS.RECEIPT_SEARCH);
   const q = useApi<Page<GoodsReceipt>>(allowed ? `/api/sales/goods-receipts?${pageParams(sp, SIZE, { status })}` : null);
   const canSup = can(s, PERMISSIONS.SUPPLIER_SEARCH);
   const { suppliers, names } = useSupplierNames(canSup);
-  const [creating, setCreating] = useState(false);
+  // clientRequestId cố định trong một lần mở hộp thoại: bấm Tạo lại sau lỗi mạng không tạo phiếu thứ hai.
+  const reqId = useRef(newRequestId());
+  const createForm = useFormModal<CreateValues>({
+    title: "Tạo phiếu nhập (nháp)",
+    okText: "Tạo phiếu nháp",
+    successMessage: "Đã tạo phiếu nhập nháp. Xác nhận phiếu để cộng tồn kho.",
+    initialValues: { lines: [{}] },
+    invalidate: ["/api/sales/goods-receipts"],
+    request: (v) =>
+      apiFetch("/api/sales/goods-receipts", {
+        method: "POST",
+        json: {
+          supplierId: v.supplierId,
+          lines: v.lines.map((l) => ({ titleId: l.title?.value, quantity: l.quantity, unitCost: l.unitCost ?? 0 })),
+          clientRequestId: reqId.current,
+        },
+      }),
+  });
   const [openId, setOpenId] = useState<string | null>(null);
 
   const columns: DataColumn[] = [
@@ -221,13 +172,16 @@ export default function ReceiptsPage() {
       permission={PERMISSIONS.RECEIPT_SEARCH}
       actions={
         can(s, PERMISSIONS.RECEIPT_CREATE) ? (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+              reqId.current = newRequestId();
+              createForm.openModal();
+            }}>
             Tạo phiếu nhập
           </Button>
         ) : undefined
       }
     >
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <label htmlFor="receipt-status" className="text-sm font-medium text-ink">
             Trạng thái
@@ -259,7 +213,45 @@ export default function ReceiptsPage() {
           )}
         </QueryBoundary>
       </div>
-      <CreateReceipt open={creating} suppliers={suppliers} canPickSupplier={canSup} onClose={() => setCreating(false)} />
+      <FormModal<CreateValues> {...createForm.modalProps}>
+      <Form.Item name="supplierId" label="Nhà cung cấp" rules={[{ required: true, message: "Chọn nhà cung cấp" }]}>
+        <Select
+          showSearch={{ optionFilterProp: "label" }}
+          placeholder={canSup ? "Chọn nhà cung cấp" : "Bạn chưa có quyền xem danh sách nhà cung cấp"}
+          disabled={!canSup}
+          options={suppliers.filter((x) => x.active).map((x) => ({ value: x.id, label: x.name }))}
+        />
+      </Form.Item>
+      <Form.List name="lines">
+        {(fields, { add, remove }) => (
+          <div className="flex flex-col gap-2">
+            <div className="text-sm font-medium text-ink">Dòng nhập</div>
+            {fields.map((f) => (
+              <div key={f.key} className="grid grid-cols-1 gap-2 rounded-card border border-line p-2 sm:grid-cols-[1fr_90px_140px_auto]">
+                <Form.Item name={[f.name, "title"]} label="Đầu sách" className="mb-0!" rules={[{ required: true, message: "Chọn đầu sách" }]}>
+                  <RemoteSelect
+                    placeholder="Gõ tên sách hoặc ISBN"
+                    fetcher={async (q) => (await searchBooks(q)).slice(0, 30).map((b) => ({ value: b.id, label: bookLabel(b) }))}
+                  />
+                </Form.Item>
+                <Form.Item name={[f.name, "quantity"]} label="Số lượng" className="mb-0!" rules={[{ required: true, message: "Nhập số lượng" }]}>
+                  <InputNumber className="w-full" min={1} max={100000} precision={0} />
+                </Form.Item>
+                <Form.Item name={[f.name, "unitCost"]} label="Giá nhập" className="mb-0!" rules={[{ required: true, message: "Nhập giá nhập" }]}>
+                  <MoneyInput />
+                </Form.Item>
+                <Form.Item label=" " className="mb-0!">
+                  <Button aria-label="Xóa dòng" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(f.name)} />
+                </Form.Item>
+              </div>
+            ))}
+            <Button icon={<PlusOutlined />} onClick={() => add({})} disabled={fields.length >= 200}>
+              Thêm dòng
+            </Button>
+          </div>
+        )}
+      </Form.List>
+      </FormModal>
       <ReceiptDrawer id={openId} row={current} supplierName={current ? names[current.supplierId] ?? current.supplierId.slice(0, 8) : ""} onClose={() => setOpenId(null)} />
     </SalesGate>
   );

@@ -21,7 +21,7 @@ export default function DepartmentsPage() {
   return (
     <>
       <PageHeader title="Phòng ban" description="Cây phòng ban của đơn vị." />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         {tree.isError ? (
           <ErrorBlock query={tree} />
         ) : (

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { apiFetch, toErrorInfo, useApi, useApiMutation } from "@/api";
 import {
@@ -20,6 +19,8 @@ import {
   Select,
   Tabs,
   Tag,
+  useDetailModal,
+  useFormModal,
 } from "@/ui";
 import { PlatformGate } from "../_components/PlatformGate";
 import { SUSPENSION_CAUSE, SUSPENSION_HINT } from "../_lib/contract-format";
@@ -46,10 +47,11 @@ function Detail() {
   const { id = "" } = useParams();
   const enc = encodeURIComponent(id);
   const { message } = App.useApp();
+  const modal = useDetailModal();
+  const inModal = !!modal;
   const [sp, setSp] = useSearchParams();
   const t = sp.get("tab");
   const tab: TabKey = t === "admins" || t === "members" || t === "contracts" || t === "origins" ? t : "modules";
-  const [editing, setEditing] = useState(false);
 
   const tenant = useApi<TenantDetail>(`/api/platform/tenants/${enc}`);
   const orgs = useApi<Organization[]>("/api/platform/organizations");
@@ -64,16 +66,19 @@ function Detail() {
       withTenantErrors(() => apiFetch<TenantSummary>(`/api/platform/tenants/${enc}/${to}`, { method: "POST" })),
     { invalidate: refresh },
   );
-  const update = useApiMutation(
-    (v: { name: string; organizationId?: string }) =>
+  const edit = useFormModal<{ name: string; organizationId?: string }, TenantSummary, TenantDetail>({
+    title: "Sửa thông tin đơn vị",
+    successMessage: "Đã lưu thông tin đơn vị",
+    invalidate: refresh,
+    initialValues: (t) => (t ? { name: t.name, organizationId: t.organizationId ?? undefined } : undefined),
+    request: (v) =>
       withTenantErrors(() =>
         apiFetch<TenantSummary>(`/api/platform/tenants/${enc}`, {
           method: "PUT",
           json: { name: v.name.trim(), organizationId: v.organizationId || null },
         }),
       ),
-    { invalidate: refresh },
-  );
+  });
 
   if (tenant.isPending) return <PageSkeleton variant="form" />;
   if (tenant.isError) {
@@ -83,9 +88,13 @@ function Detail() {
         status="404"
         title="Không tìm thấy đơn vị"
         extra={
-          <Link to="/platform/tenants">
-            <Button>Về danh sách đơn vị</Button>
-          </Link>
+          modal ? (
+            <Button onClick={modal.close}>Đóng</Button>
+          ) : (
+            <Link to="/platform/tenants">
+              <Button>Về danh sách đơn vị</Button>
+            </Link>
+          )
         }
       />
     ) : (
@@ -100,13 +109,15 @@ function Detail() {
   const userName = new Map((users.data?.items ?? []).map((u) => [u.id, u]));
 
   return (
-    <div className="flex max-w-[1200px] flex-col gap-4">
-      <Breadcrumb
-        items={[
-          { title: <Link to="/platform/tenants">Đơn vị</Link> },
-          { title: d.name },
-        ]}
-      />
+    <div className="flex flex-col gap-4">
+      {!inModal && (
+        <Breadcrumb
+          items={[
+            { title: <Link to="/platform/tenants">Đơn vị</Link> },
+            { title: d.name },
+          ]}
+        />
+      )}
       <PageHeader
         title={d.name}
         description={
@@ -117,7 +128,7 @@ function Detail() {
         }
         actions={
           <span className="flex flex-wrap gap-2">
-            <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>
+            <Button icon={<EditOutlined />} onClick={() => edit.openModal(d)}>
               Sửa thông tin
             </Button>
             {suspended ? (
@@ -230,16 +241,7 @@ function Detail() {
           },
         ]}
       />
-      <FormModal<{ name: string; organizationId?: string }>
-        open={editing}
-        title="Sửa thông tin đơn vị"
-        onCancel={() => setEditing(false)}
-        successMessage="Đã lưu thông tin đơn vị"
-        initialValues={{ name: d.name, organizationId: d.organizationId ?? undefined }}
-        onSubmit={async (v) => {
-          await update.mutateAsync(v);
-        }}
-      >
+      <FormModal<{ name: string; organizationId?: string }> {...edit.modalProps}>
         <Form.Item label="Mã đơn vị" extra="Không đổi được sau khi tạo.">
           <Input value={d.code} disabled className="font-mono" />
         </Form.Item>

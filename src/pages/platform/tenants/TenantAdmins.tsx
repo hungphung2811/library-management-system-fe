@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { apiFetch, useApiMutation } from "@/api";
-import { App, Button, ConfirmAction, DataTable, Form, FormModal, Input, PlusOutlined, Radio } from "@/ui";
+import { App, Button, DataTable, Form, FormModal, Input, PlusOutlined, Radio, Undo2, actionsColumn, useFormModal } from "@/ui";
 import { withTenantErrors } from "../_lib/tenant-format";
 import type { TenantUser } from "../_lib/tenant-types";
 
@@ -19,10 +18,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function TenantAdmins({ tenantId, adminIds, users }: { tenantId: string; adminIds: string[]; users: Map<string, TenantUser> }) {
   const enc = encodeURIComponent(tenantId);
   const { message } = App.useApp();
-  const [open, setOpen] = useState(false);
   const refresh = ["/api/platform/tenants", "/api/users"];
-  const add = useApiMutation(
-    (v: Values) =>
+  const add = useFormModal<Values>({
+    title: "Thêm quản trị viên",
+    okText: "Thêm",
+    successMessage: "Đã thêm quản trị viên",
+    initialValues: { mode: "new" },
+    invalidate: refresh,
+    request: (v) =>
       withTenantErrors(() =>
         apiFetch(`/api/platform/tenants/${enc}/admins`, {
           method: "POST",
@@ -39,8 +42,7 @@ export function TenantAdmins({ tenantId, adminIds, users }: { tenantId: string; 
                 },
         }),
       ),
-    { invalidate: refresh },
-  );
+  });
   const remove = useApiMutation(
     (userId: string) =>
       withTenantErrors(() => apiFetch(`/api/platform/tenants/${enc}/admins/${encodeURIComponent(userId)}`, { method: "DELETE" })),
@@ -50,7 +52,7 @@ export function TenantAdmins({ tenantId, adminIds, users }: { tenantId: string; 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-end">
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => add.openModal()}>
           Thêm quản trị viên
         </Button>
       </div>
@@ -64,46 +66,35 @@ export function TenantAdmins({ tenantId, adminIds, users }: { tenantId: string; 
           email: users.get(id)?.email ?? "—",
         }))}
         columns={[
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
           { key: "fullName", title: "Họ tên", dataIndex: "fullName" },
           { key: "username", title: "Tên đăng nhập", dataIndex: "username", kind: "mono" },
           { key: "email", title: "Email", dataIndex: "email" },
           { key: "id", title: "Mã người dùng", dataIndex: "id", kind: "mono" },
-          {
-            key: "actions",
-            title: "",
-            dataIndex: "id",
-            align: "right",
-            render: (_v, row) => (
-              <ConfirmAction
-                title="Gỡ quyền quản trị viên?"
-                description="Tài khoản vẫn là thành viên của đơn vị nhưng không còn vai trò quản trị."
-                okText="Gỡ"
-                danger
-                onConfirm={async () => {
+          actionsColumn(
+            (row) => [
+              {
+                key: "remove",
+                label: "Gỡ",
+                icon: <Undo2 size={16} />,
+                danger: true,
+                confirm: {
+                  title: "Gỡ quyền quản trị viên?",
+                  description: "Tài khoản vẫn là thành viên của đơn vị nhưng không còn vai trò quản trị.",
+                  okText: "Gỡ",
+                },
+                onClick: async () => {
                   await remove.mutateAsync(row.id as string);
                   message.success("Đã gỡ quản trị viên");
-                }}
-              >
-                <Button size="small" danger>
-                  Gỡ
-                </Button>
-              </ConfirmAction>
-            ),
-          },
+                },
+              },
+            ],
+            1,
+          ),
         ]}
         empty={{ title: "Đơn vị chưa có quản trị viên.", hint: "Hãy thêm ít nhất một quản trị viên." }}
       />
-      <FormModal<Values>
-        open={open}
-        title="Thêm quản trị viên"
-        okText="Thêm"
-        onCancel={() => setOpen(false)}
-        successMessage="Đã thêm quản trị viên"
-        initialValues={{ mode: "new" }}
-        onSubmit={async (v) => {
-          await add.mutateAsync(v);
-        }}
-      >
+      <FormModal<Values> {...add.modalProps}>
         <Form.Item name="mode" label="Cách thêm">
           <Radio.Group
             options={[

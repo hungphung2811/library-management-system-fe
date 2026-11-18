@@ -18,6 +18,7 @@ import {
   Text,
   describeError,
   formatDateTime,
+  useDetailModal,
 } from "@/ui";
 import { PlatformGate } from "./_components/PlatformGate";
 import { PLATFORM_ERRORS } from "./_lib/format";
@@ -48,6 +49,8 @@ function Editor({ page, reload }: { page: CmsPage; reload: () => void }) {
   const [form] = Form.useForm<Values>();
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const modal = useDetailModal();
+  const inModal = !!modal;
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const base = `/api/cms/pages/${encodeURIComponent(page.id)}` as const;
@@ -92,8 +95,8 @@ function Editor({ page, reload }: { page: CmsPage; reload: () => void }) {
 
   const unpublished = page.status === "DRAFT";
   return (
-    <div className="flex max-w-[1000px] flex-col gap-4">
-      <Breadcrumb items={[{ title: <Link to="/platform/cms-pages">Trang website</Link> }, { title: page.title }]} />
+    <div className={inModal ? "flex flex-col gap-4" : "flex max-w-[1000px] flex-col gap-4"}>
+      {!inModal && <Breadcrumb items={[{ title: <Link to="/platform/cms-pages">Trang website</Link> }, { title: page.title }]} />}
       <PageHeader
         title={page.title}
         description={
@@ -132,7 +135,7 @@ function Editor({ page, reload }: { page: CmsPage; reload: () => void }) {
               description="Không hoàn tác được."
               okText="Xóa"
               danger
-              onConfirm={() => run(() => remove.mutateAsync(), "Đã xóa trang.", () => void navigate("/platform/cms-pages"))}
+              onConfirm={() => run(() => remove.mutateAsync(), "Đã xóa trang.", () => (modal ? modal.close() : void navigate("/platform/cms-pages")))}
             >
               <Button danger>Xóa</Button>
             </ConfirmAction>

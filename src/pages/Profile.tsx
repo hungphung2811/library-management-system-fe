@@ -1,10 +1,24 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useApi, toErrorInfo } from "@/api";
 import { useSession } from "@/auth/AuthProvider";
-import { Card, ErrorPanel, KeyValueList, LinkButton, PageHeader, StatusTag, Tag, formatDate } from "@/ui";
+import { Card, ErrorPanel, KeyValueList, LinkButton, PageHeader, StatusTag, Tag, UserAvatar, dobText, formatDate, genderLabel, presentItems } from "@/ui";
 import { ExternalLinks, type ExternalLogin, type ExternalProvider } from "./profile/ExternalLinks";
 
-type UserView = { id: string; username: string; fullName?: string; email?: string; departmentId?: string; status?: string };
+type UserView = {
+  id: string;
+  username: string;
+  fullName?: string;
+  email?: string;
+  departmentId?: string;
+  status?: string;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  avatarUrl?: string | null;
+  jobTitle?: string | null;
+  employeeCode?: string | null;
+};
 type ReaderProfile = {
   cardNo?: string;
   fullName?: string;
@@ -12,6 +26,14 @@ type ReaderProfile = {
   cardExpiryDate?: string;
   status?: string;
   cardValid?: boolean;
+  phone?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  address?: string | null;
+  faculty?: string | null;
+  className?: string | null;
+  memberCode?: string | null;
+  cardIssuedDate?: string | null;
 };
 
 const READER_TYPES: Record<string, string> = { STUDENT: "Sinh viên", LECTURER: "Giảng viên" };
@@ -57,12 +79,7 @@ export default function ProfilePage() {
             <ErrorPanel error={toErrorInfo(me.error)} onRetry={retryOf(me)} />
           ) : (
             <div className="flex flex-col gap-5 sm:flex-row">
-              <span
-                aria-hidden
-                className="grid size-16 shrink-0 place-items-center rounded-full bg-primary-soft text-2xl font-semibold text-primary"
-              >
-                {displayName.trim().charAt(0).toUpperCase()}
-              </span>
+              <UserAvatar name={displayName} src={user?.avatarUrl} size={64} />
               <div className="min-w-0 flex-1">
                 <KeyValueList
                   columns={2}
@@ -70,6 +87,14 @@ export default function ProfilePage() {
                     { label: "Họ tên", value: user?.fullName },
                     { label: "Tên đăng nhập", value: user?.username ?? s.username, mono: true },
                     { label: "Email", value: user?.email },
+                    ...presentItems([
+                      { label: "Số điện thoại", value: user?.phone },
+                      { label: "Ngày sinh", value: dobText(user?.dateOfBirth) },
+                      { label: "Giới tính", value: genderLabel(user?.gender) },
+                      { label: "Địa chỉ", value: user?.address },
+                      { label: "Chức danh", value: user?.jobTitle },
+                      { label: "Mã cán bộ", value: user?.employeeCode, mono: true },
+                    ]),
                     {
                       label: "Vai trò",
                       value: s.roles.length ? (
@@ -119,6 +144,16 @@ export default function ProfilePage() {
                   ),
                 },
                 { label: "Trạng thái", value: <StatusTag domain="reader" value={card.status} /> },
+                ...presentItems([
+                  { label: "Khoa / đơn vị", value: card.faculty },
+                  { label: "Lớp / ngành", value: card.className },
+                  { label: "Mã SV / cán bộ", value: card.memberCode, mono: true },
+                  { label: "Ngày cấp thẻ", value: card.cardIssuedDate ? formatDate(card.cardIssuedDate) : null },
+                  { label: "Số điện thoại", value: user?.phone ? null : card.phone },
+                  { label: "Ngày sinh", value: user?.dateOfBirth ? null : dobText(card.dateOfBirth) },
+                  { label: "Giới tính", value: user?.gender ? null : genderLabel(card.gender) },
+                  { label: "Địa chỉ", value: user?.address ? null : card.address },
+                ]),
                 {
                   label: "Hiệu lực",
                   value:

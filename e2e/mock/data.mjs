@@ -16,6 +16,7 @@ export const KEYS = {
   COPY_VIEW: "BookCopyController/get",
   COPY_BY_BARCODE: "BookCopyController/getByBarcode",
   COPY_CHANGE_STATUS: "BookCopyController/changeStatus",
+  COPY_UPDATE_ACQUISITION: "BookCopyController/updateAcquisition",
   RESERVE: "ReservationController/reserve",
   RESERVATION_MINE: "ReservationController/mine",
   RESERVATION_CANCEL: "ReservationController/cancel",
@@ -121,7 +122,7 @@ export const COPIES = [
 ];
 
 export const DIRECTORY = [
-  { id: "a0000000-0000-4000-8000-000000000001", username: "hung.le", fullName: "Lê Văn Hùng", email: "hung.le@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
+  { id: "a0000000-0000-4000-8000-000000000001", username: "hung.le", fullName: "Lê Văn Hùng", email: "hung.le@gmail.com", departmentId: "dept-1", status: "ACTIVE", phone: "0912 345 678", dateOfBirth: "2003-05-14", gender: "MALE", address: "12 Nguyễn Trãi, Thanh Xuân, Hà Nội", avatarUrl: null, jobTitle: null, employeeCode: null },
   { id: "a0000000-0000-4000-8000-000000000002", username: "huong.pham", fullName: "Phạm Thị Hương", email: "huong.pham@gmail.com", departmentId: "dept-1", status: "ACTIVE" },
 ];
 
@@ -142,6 +143,6 @@ for (let i = 1; i <= 45; i++) {
 DIRECTORY.push({ id: "a2000000-0000-4000-8000-000000000001", username: "da.khoa", fullName: "Đỗ Văn Khóa", email: "da.khoa@gmail.com", departmentId: "dept-2", status: "DISABLED" });
 
 export const READER_PROFILES = [
-  { userId: DIRECTORY[0].id, cardNo: "SV21-04817", fullName: DIRECTORY[0].fullName, email: DIRECTORY[0].email, readerType: "STUDENT", cardExpiryDate: "2030-12-31", status: "ACTIVE", cardValid: true },
+  { userId: DIRECTORY[0].id, cardNo: "SV21-04817", fullName: DIRECTORY[0].fullName, email: DIRECTORY[0].email, readerType: "STUDENT", cardExpiryDate: "2030-12-31", status: "ACTIVE", cardValid: true, phone: "0912 345 678", dateOfBirth: "2003-05-14", gender: "MALE", address: "12 Nguyễn Trãi, Thanh Xuân, Hà Nội", faculty: "Khoa Công nghệ thông tin", className: "K21-CNTT2", memberCode: "SV21-04817", cardIssuedDate: "2021-09-01" },
   { userId: DIRECTORY[1].id, cardNo: "GV-0342", fullName: DIRECTORY[1].fullName, email: DIRECTORY[1].email, readerType: "LECTURER", cardExpiryDate: "2020-01-31", status: "ACTIVE", cardValid: false },
 ];

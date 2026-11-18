@@ -9,7 +9,18 @@ export type UserView = {
   /** Khóa đăng nhập tự động còn hiệu lực (sau nhiều lần sai). */
   locked?: boolean;
   lockedUntil?: string | null;
+  // Thông tin cá nhân (tất cả tùy chọn, dữ liệu cũ là null).
+  phone?: string | null;
+  /** yyyy-MM-dd */
+  dateOfBirth?: string | null;
+  gender?: Gender | null;
+  address?: string | null;
+  avatarUrl?: string | null;
+  jobTitle?: string | null;
+  employeeCode?: string | null;
 };
+
+export type Gender = "MALE" | "FEMALE" | "OTHER";
 
 export type UserPage = { items: UserView[]; total: number; page: number; size: number };
 
@@ -48,6 +59,16 @@ export type ReaderProfileView = {
   cardExpiryDate: string;
   status: string;
   cardValid: boolean;
+  phone?: string | null;
+  /** yyyy-MM-dd */
+  dateOfBirth?: string | null;
+  gender?: Gender | null;
+  address?: string | null;
+  faculty?: string | null;
+  className?: string | null;
+  memberCode?: string | null;
+  /** yyyy-MM-dd */
+  cardIssuedDate?: string | null;
 };
 
 export type AuditLogView = {

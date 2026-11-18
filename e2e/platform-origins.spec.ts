@@ -7,7 +7,10 @@ import { bearer, gotoAs, loginApi, sidebar } from "./helpers";
 let n = 0;
 const uid = () => `${(Date.now() % 1e7).toString(36)}${process.env.TEST_PARALLEL_INDEX ?? 0}${++n}`;
 const main = (page: Page) => page.getByRole("main");
+// Trang chi tiết đơn vị nằm trong modal (danh sách ở nền): platform admin thao tác trong dialog đầu tiên.
+const detail = (page: Page) => page.getByRole("dialog").first();
 const table = (page: Page) => main(page).getByRole("table");
+const dtable = (page: Page) => detail(page).getByRole("table");
 
 async function createTenantApi(page: Page, code = `o-${uid()}`) {
   const res = await page.request.post("/api/platform/tenants", {
@@ -23,8 +26,8 @@ async function createTenantApi(page: Page, code = `o-${uid()}`) {
 }
 
 async function addOrigin(page: Page, value: string) {
-  await main(page).getByRole("textbox", { name: "Địa chỉ origin" }).fill(value);
-  await main(page).getByRole("button", { name: "Thêm origin" }).click();
+  await detail(page).getByRole("textbox", { name: "Địa chỉ origin" }).fill(value);
+  await detail(page).getByRole("button", { name: "Thêm origin" }).click();
 }
 
 test.describe("origin website: platform admin", () => {
@@ -32,27 +35,27 @@ test.describe("origin website: platform admin", () => {
     const t = await createTenantApi(page);
     const host = `shop-${uid()}.example.vn`;
     await gotoAs(page, "platform", `/platform/tenants/${t.id}?tab=origins`);
-    await expect(main(page).getByTestId("origin-note")).toContainText("chỉ kiểm soát CORS");
-    await expect(main(page).getByTestId("origin-note")).toContainText("60 giây");
-    await expect(main(page).getByTestId("origin-usage")).toHaveText("Đã dùng 0/10");
+    await expect(detail(page).getByTestId("origin-note")).toContainText("chỉ kiểm soát CORS");
+    await expect(detail(page).getByTestId("origin-note")).toContainText("60 giây");
+    await expect(detail(page).getByTestId("origin-usage")).toHaveText("Đã dùng 0/10");
 
     await addOrigin(page, `  HTTPS://${host.toUpperCase()}/ `);
     const origin = `https://${host}`;
-    await expect(table(page).getByText(origin)).toBeVisible();
-    await expect(main(page).getByTestId("origin-usage")).toHaveText("Đã dùng 1/10");
+    await expect(dtable(page).getByText(origin)).toBeVisible();
+    await expect(detail(page).getByTestId("origin-usage")).toHaveText("Đã dùng 1/10");
 
-    const sw = table(page).getByRole("switch", { name: `Bật origin ${origin}` });
+    const sw = dtable(page).getByRole("switch", { name: `Bật origin ${origin}` });
     await expect(sw).toBeChecked();
     await sw.click();
     await expect(sw).not.toBeChecked();
-    await expect(table(page).getByText("Đang tắt")).toBeVisible();
+    await expect(dtable(page).getByText("Đang tắt")).toBeVisible();
     await sw.click();
     await expect(sw).toBeChecked();
 
-    await table(page).getByRole("button", { name: `Xóa origin ${origin}` }).click();
+    await dtable(page).getByRole("button", { name: `Xóa origin ${origin}` }).click();
     await page.getByRole("button", { name: "Xóa", exact: true }).last().click();
-    await expect(table(page).getByText(origin)).toHaveCount(0);
-    await expect(main(page).getByTestId("origin-usage")).toHaveText("Đã dùng 0/10");
+    await expect(dtable(page).getByText(origin)).toHaveCount(0);
+    await expect(detail(page).getByTestId("origin-usage")).toHaveText("Đã dùng 0/10");
   });
 
   test("lỗi: FE chặn thiếu scheme; BE trả lý do chi tiết cho path, wildcard, http; trùng chính tenant", async ({ page }) => {
@@ -60,20 +63,20 @@ test.describe("origin website: platform admin", () => {
     await gotoAs(page, "platform", `/platform/tenants/${t.id}?tab=origins`);
 
     await addOrigin(page, "shop.example.vn");
-    await expect(main(page).getByTestId("origin-input-error")).toContainText("bắt đầu bằng https://");
+    await expect(detail(page).getByTestId("origin-input-error")).toContainText("bắt đầu bằng https://");
 
     await addOrigin(page, `https://a-${uid()}.example.vn/duong-dan`);
-    await expect(main(page).getByTestId("origin-error")).toContainText("không được có đường dẫn");
+    await expect(detail(page).getByTestId("origin-error")).toContainText("không được có đường dẫn");
     await addOrigin(page, "https://*.example.vn");
-    await expect(main(page).getByTestId("origin-error")).toContainText("wildcard");
+    await expect(detail(page).getByTestId("origin-error")).toContainText("wildcard");
     await addOrigin(page, `http://b-${uid()}.example.vn`);
-    await expect(main(page).getByTestId("origin-error")).toContainText("Chỉ nhận https");
+    await expect(detail(page).getByTestId("origin-error")).toContainText("Chỉ nhận https");
 
     const ok = `https://c-${uid()}.example.vn`;
     await addOrigin(page, ok);
-    await expect(table(page).getByText(ok)).toBeVisible();
+    await expect(dtable(page).getByText(ok)).toBeVisible();
     await addOrigin(page, ok);
-    await expect(main(page).getByTestId("origin-error")).toContainText("đã được khai báo");
+    await expect(detail(page).getByTestId("origin-error")).toContainText("đã được khai báo");
   });
 
   test("trùng với tenant khác: báo đã được đơn vị khác dùng kèm lối tắt tới đơn vị đó", async ({ page }) => {
@@ -82,14 +85,14 @@ test.describe("origin website: platform admin", () => {
     const origin = `https://dup-${uid()}.example.vn`;
     await gotoAs(page, "platform", `/platform/tenants/${a.id}?tab=origins`);
     await addOrigin(page, origin);
-    await expect(table(page).getByText(origin)).toBeVisible();
+    await expect(dtable(page).getByText(origin)).toBeVisible();
 
     await page.goto(`/platform/tenants/${b.id}?tab=origins`);
     await addOrigin(page, origin);
-    await expect(main(page).getByTestId("origin-error")).toContainText("đã được đơn vị khác dùng");
-    await main(page).getByRole("link", { name: "Mở đơn vị đang dùng" }).click();
+    await expect(detail(page).getByTestId("origin-error")).toContainText("đã được đơn vị khác dùng");
+    await detail(page).getByRole("link", { name: "Mở đơn vị đang dùng" }).click();
     await expect(page).toHaveURL(new RegExp(`/platform/tenants/${a.id}[?]tab=origins`));
-    await expect(table(page).getByText(origin)).toBeVisible();
+    await expect(dtable(page).getByText(origin)).toBeVisible();
   });
 
   test("vượt giới hạn 10 origin: ô nhập bị khóa, API trả ORIGIN_LIMIT_EXCEEDED", async ({ page }) => {
@@ -105,9 +108,9 @@ test.describe("origin website: platform admin", () => {
     expect((await over.json()).code).toBe("ORIGIN_LIMIT_EXCEEDED");
 
     await gotoAs(page, "platform", `/platform/tenants/${t.id}?tab=origins`);
-    await expect(main(page).getByTestId("origin-usage")).toHaveText("Đã dùng 10/10");
-    await expect(main(page).getByRole("textbox", { name: "Địa chỉ origin" })).toBeDisabled();
-    await expect(main(page).getByRole("button", { name: "Thêm origin" })).toBeDisabled();
+    await expect(detail(page).getByTestId("origin-usage")).toHaveText("Đã dùng 10/10");
+    await expect(detail(page).getByRole("textbox", { name: "Địa chỉ origin" })).toBeDisabled();
+    await expect(detail(page).getByRole("button", { name: "Thêm origin" })).toBeDisabled();
   });
 });
 

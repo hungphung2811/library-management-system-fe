@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
-import { apiFetch, useApiMutation } from "@/api";
-import { Button, Form, FormModal, Input, InputNumber, PlusOutlined } from "@/ui";
+import { apiFetch } from "@/api";
+import { Button, Form, FormModal, Input, InputNumber, PlusOutlined, useFormModal } from "@/ui";
 import { withPlatformErrors } from "../_lib/format";
 import type { CmsPage } from "../_lib/types";
 
@@ -11,36 +10,35 @@ export const SLUG_RE = /^[a-z0-9-]+$/;
 
 /** Nút + hộp thoại "Thêm trang". Slug không đổi được sau khi tạo. Tạo xong chuyển sang trang sửa. */
 export function CreateCmsPageButton() {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const create = useApiMutation(
-    (body: Values) => apiFetch<CmsPage>("/api/cms/pages", { method: "POST", json: body }),
-    { invalidate: ["/api/cms/pages"] },
-  );
+  const create = useFormModal<Values, CmsPage>({
+    title: "Thêm trang",
+    okText: "Tạo",
+    successMessage: "Đã tạo trang (bản nháp).",
+    initialValues: { bodyMarkdown: "" },
+    invalidate: ["/api/cms/pages"],
+    request: (v) =>
+      withPlatformErrors(() =>
+        apiFetch<CmsPage>("/api/cms/pages", {
+          method: "POST",
+          json: {
+            slug: v.slug.trim(),
+            title: v.title.trim(),
+            bodyMarkdown: v.bodyMarkdown ?? "",
+            ...(v.sortOrder == null ? {} : { sortOrder: v.sortOrder }),
+          },
+        }),
+      ),
+    onSuccess: (created) => {
+      if (created?.id) void navigate(`/platform/cms-pages/${encodeURIComponent(created.id)}`);
+    },
+  });
   return (
     <>
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => create.openModal()}>
         Thêm trang
       </Button>
-      <FormModal<Values>
-        open={open}
-        title="Thêm trang"
-        okText="Tạo"
-        successMessage="Đã tạo trang (bản nháp)."
-        onCancel={() => setOpen(false)}
-        initialValues={{ bodyMarkdown: "" }}
-        onSubmit={async (v) => {
-          const created = await withPlatformErrors(() =>
-            create.mutateAsync({
-              slug: v.slug.trim(),
-              title: v.title.trim(),
-              bodyMarkdown: v.bodyMarkdown ?? "",
-              ...(v.sortOrder == null ? {} : { sortOrder: v.sortOrder }),
-            }),
-          );
-          if (created?.id) void navigate(`/platform/cms-pages/${encodeURIComponent(created.id)}`);
-        }}
-      >
+      <FormModal<Values> {...create.modalProps}>
         <Form.Item
           name="slug"
           label="Đường dẫn (slug)"

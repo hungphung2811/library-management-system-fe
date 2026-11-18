@@ -7,6 +7,10 @@ import { bearer, gotoAs, loginApi, sidebar } from "./helpers";
 let n = 0;
 const uid = () => `${(Date.now() % 1e7).toString(36)}${process.env.TEST_PARALLEL_INDEX ?? 0}${++n}`;
 const main = (page: Page) => page.getByRole("main");
+// Chi tiết yêu cầu liên hệ là modal giữ URL (danh sách ở nền): locator của chi tiết scope vào dialog.
+const dlg = (page: Page) => page.getByRole("dialog");
+// Chi tiết trang CMS cũng là modal: scope vào dialog đầu tiên (form con mở sau nên đứng sau).
+const detail = (page: Page) => page.getByRole("dialog").first();
 const BOOK = "b0000000-0000-4000-8000-000000000001";
 
 async function api(page: Page, user: "platform" | "admin") {
@@ -61,29 +65,29 @@ test.describe("nền tảng: trang CMS", () => {
     await dlg.getByRole("button", { name: "Tạo" }).click();
 
     await expect(page).toHaveURL(/\/platform\/cms-pages\/[^/]+$/);
-    await expect(main(page).getByText("Bản nháp").first()).toBeVisible();
-    await expect(main(page).getByLabel("Slug")).toBeDisabled();
+    await expect(detail(page).getByText("Bản nháp").first()).toBeVisible();
+    await expect(detail(page).getByLabel("Slug")).toBeDisabled();
 
-    await main(page).getByLabel("Nội dung (Markdown)").fill("# Chào <b>bạn</b>");
-    await main(page).getByRole("button", { name: "Lưu" }).click();
+    await detail(page).getByLabel("Nội dung (Markdown)").fill("# Chào <b>bạn</b>");
+    await detail(page).getByRole("button", { name: "Lưu" }).click();
     await expect(page.getByText("Đã lưu.")).toBeVisible();
 
-    await main(page).getByRole("button", { name: "Xuất bản" }).first().click();
+    await detail(page).getByRole("button", { name: "Xuất bản" }).first().click();
     await page.locator(".ant-popover").getByRole("button", { name: "Xuất bản" }).click();
-    await expect(main(page).getByText("Đã xuất bản", { exact: true })).toBeVisible();
+    await expect(detail(page).getByText("Đã xuất bản", { exact: true })).toBeVisible();
     // Bản công khai hiển thị là văn bản thô, không dựng HTML.
-    await expect(main(page).getByText("# Chào <b>bạn</b>").last()).toBeVisible();
-    await expect(main(page).locator("b")).toHaveCount(0);
+    await expect(detail(page).getByText("# Chào <b>bạn</b>").last()).toBeVisible();
+    await expect(detail(page).locator("b")).toHaveCount(0);
 
-    await main(page).getByLabel("Tiêu đề").fill("Về chúng tôi (sửa)");
-    await main(page).getByRole("button", { name: "Lưu" }).click();
-    await expect(main(page).getByText(/có thay đổi chưa xuất bản/)).toBeVisible();
+    await detail(page).getByLabel("Tiêu đề").fill("Về chúng tôi (sửa)");
+    await detail(page).getByRole("button", { name: "Lưu" }).click();
+    await expect(detail(page).getByText(/có thay đổi chưa xuất bản/)).toBeVisible();
 
-    await main(page).getByRole("button", { name: "Gỡ xuất bản" }).click();
+    await detail(page).getByRole("button", { name: "Gỡ xuất bản" }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Gỡ" }).click();
-    await expect(main(page).getByText("Bản nháp").first()).toBeVisible();
+    await expect(detail(page).getByText("Bản nháp").first()).toBeVisible();
 
-    await main(page).getByRole("button", { name: "Xóa" }).click();
+    await detail(page).getByRole("button", { name: "Xóa" }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Xóa" }).click();
     await expect(page).toHaveURL(/\/platform\/cms-pages$/);
     await expect(main(page).getByRole("cell", { name: slug })).toHaveCount(0);
@@ -103,17 +107,17 @@ test.describe("nền tảng: trang CMS", () => {
   test("lệch phiên bản (409 CMS_VERSION_CONFLICT): tải lại bản mới và báo người dùng", async ({ page }) => {
     const p = await createPage(page);
     await gotoAs(page, "platform", `/platform/cms-pages/${p.id}`);
-    await expect(main(page).getByLabel("Tiêu đề")).toHaveValue(p.title);
+    await expect(detail(page).getByLabel("Tiêu đề")).toHaveValue(p.title);
     // Người khác sửa trang trước.
     const put = await page.request.put(`/api/cms/pages/${p.id}`, {
       headers: await api(page, "platform"),
       data: { title: "Bản của người khác", bodyMarkdown: "x", sortOrder: 1, version: p.version },
     });
     expect(put.status()).toBe(200);
-    await main(page).getByLabel("Tiêu đề").fill("Bản của tôi");
-    await main(page).getByRole("button", { name: "Lưu" }).click();
-    await expect(main(page).getByText(/Trang vừa được người khác thay đổi/)).toBeVisible();
-    await expect(main(page).getByLabel("Tiêu đề")).toHaveValue("Bản của người khác");
+    await detail(page).getByLabel("Tiêu đề").fill("Bản của tôi");
+    await detail(page).getByRole("button", { name: "Lưu" }).click();
+    await expect(detail(page).getByText(/Trang vừa được người khác thay đổi/)).toBeVisible();
+    await expect(detail(page).getByLabel("Tiêu đề")).toHaveValue("Bản của người khác");
   });
 
   test("xuất bản từ danh sách gửi kèm version và hiện trạng thái", async ({ page }) => {
@@ -139,57 +143,71 @@ test.describe("nền tảng: yêu cầu liên hệ", () => {
 
     await row.getByRole("link", { name: org }).click();
     await expect(page).toHaveURL(new RegExp(`/platform/contact-requests/${c.id}$`));
-    await expect(main(page).getByText("a***@example.vn")).toBeVisible();
-    await expect(main(page).getByText("*******678")).toBeVisible();
-    await expect(main(page).getByText("an.nguyen@example.vn")).toHaveCount(0);
+    await expect(dlg(page).getByText("a***@example.vn")).toBeVisible();
+    await expect(dlg(page).getByText("*******678")).toBeVisible();
+    await expect(dlg(page).getByText("an.nguyen@example.vn")).toHaveCount(0);
 
-    await main(page).getByRole("button", { name: "Hiện thông tin cá nhân" }).click();
-    await expect(main(page).getByText("an.nguyen@example.vn")).toBeVisible();
-    await expect(main(page).getByText("0912345678")).toBeVisible();
-    const msg = main(page).getByTestId("contact-message");
+    await dlg(page).getByRole("button", { name: "Hiện thông tin cá nhân" }).click();
+    await expect(dlg(page).getByText("an.nguyen@example.vn")).toBeVisible();
+    await expect(dlg(page).getByText("0912345678")).toBeVisible();
+    const msg = dlg(page).getByTestId("contact-message");
     await expect(msg).toContainText("Chào <b>bạn</b>");
     await expect(msg).toContainText("<img src=x onerror=alert(1)>");
     await expect(msg.locator("b, img")).toHaveCount(0);
   });
 
+  test("chi tiết mở dạng modal: danh sách vẫn ở nền, đóng (X) quay về URL danh sách", async ({ page }) => {
+    const org = `Thư viện ${uid()}`;
+    const c = await createContact(page, { organization: org });
+    await gotoAs(page, "platform", "/platform/contact-requests");
+    await main(page).getByRole("row").filter({ hasText: org }).getByRole("link", { name: org }).click();
+    await expect(page).toHaveURL(new RegExp(`/platform/contact-requests/${c.id}$`));
+    await expect(dlg(page).getByRole("heading", { name: org })).toBeVisible();
+    await expect(dlg(page).getByRole("link", { name: "Yêu cầu liên hệ" })).toHaveCount(0); // không breadcrumb
+    await expect(main(page).getByRole("row").filter({ hasText: org })).toBeAttached(); // danh sách còn ở nền
+    await dlg(page).getByRole("button", { name: /close|đóng/i }).click();
+    await expect(dlg(page)).toHaveCount(0);
+    await expect(page).toHaveURL(/\/platform\/contact-requests$/);
+  });
+
   test("đổi trạng thái theo bảng chuyển hợp lệ", async ({ page }) => {
     const c = await createContact(page, { organization: `Hiệu sách ${uid()}` });
     await gotoAs(page, "platform", `/platform/contact-requests/${c.id}`);
-    await main(page).getByLabel("Trạng thái mới").click();
+    await dlg(page).getByLabel("Trạng thái mới").click();
     const options = page.locator(".ant-select-item-option");
     await expect(options).toHaveText(["Đang xử lý", "Đã xử lý", "Spam"]); // NEW không về lại NEW
     await options.filter({ hasText: "Đã xử lý" }).click();
-    await main(page).getByRole("button", { name: "Đổi trạng thái" }).click();
+    await dlg(page).getByRole("button", { name: "Đổi trạng thái" }).click();
     await expect(page.getByText("Đã đổi trạng thái.")).toBeVisible();
-    await expect(main(page).getByText("Đã xử lý").first()).toBeVisible();
-    await main(page).getByLabel("Trạng thái mới").click();
+    await expect(dlg(page).getByText("Đã xử lý").first()).toBeVisible();
+    await dlg(page).getByLabel("Trạng thái mới").click();
     await expect(page.locator(".ant-select-item-option")).toHaveText(["Đang xử lý"]); // HANDLED chỉ về IN_PROGRESS
   });
 
   test("lệch phiên bản: báo và tải lại bản mới", async ({ page }) => {
     const c = await createContact(page, { organization: `Đơn vị ${uid()}` });
     await gotoAs(page, "platform", `/platform/contact-requests/${c.id}`);
-    await expect(main(page).getByRole("button", { name: "Đổi trạng thái" })).toBeVisible();
+    await expect(dlg(page).getByRole("button", { name: "Đổi trạng thái" })).toBeVisible();
     // Người khác đổi trước (version 0 -> 1).
     const r = await page.request.put(`/api/cms/contact-requests/${c.id}/status`, {
       headers: await api(page, "platform"), data: { status: "IN_PROGRESS", version: 0 },
     });
     expect(r.status()).toBe(200);
-    await main(page).getByLabel("Trạng thái mới").click();
+    await dlg(page).getByLabel("Trạng thái mới").click();
     await page.locator(".ant-select-item-option").filter({ hasText: "Đã xử lý" }).click();
-    await main(page).getByRole("button", { name: "Đổi trạng thái" }).click();
-    await expect(main(page).getByText(/vừa được người khác thay đổi/)).toBeVisible();
-    await expect(main(page).getByText("Đang xử lý").first()).toBeVisible();
+    await dlg(page).getByRole("button", { name: "Đổi trạng thái" }).click();
+    await expect(dlg(page).getByText(/vừa được người khác thay đổi/)).toBeVisible();
+    await expect(dlg(page).getByText("Đang xử lý").first()).toBeVisible();
   });
 
   test("ẩn danh ngay: không còn dữ liệu cá nhân, không đổi được trạng thái", async ({ page }) => {
     const c = await createContact(page, { organization: `Đơn vị ${uid()}`, email: "xoa.toi@example.vn" });
     await gotoAs(page, "platform", `/platform/contact-requests/${c.id}`);
-    await main(page).getByRole("button", { name: "Ẩn danh ngay" }).click();
+    await dlg(page).getByRole("button", { name: "Ẩn danh ngay" }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Ẩn danh" }).click();
-    await expect(main(page).getByText(/Đã ẩn danh lúc/)).toBeVisible();
-    await expect(main(page).getByText("xoa.toi@example.vn")).toHaveCount(0);
-    await expect(main(page).getByRole("button", { name: "Đổi trạng thái" })).toHaveCount(0);
+    await expect(dlg(page).getByText(/Đã ẩn danh lúc/)).toBeVisible();
+    await expect(dlg(page).getByText("xoa.toi@example.vn")).toHaveCount(0);
+    await expect(dlg(page).getByRole("button", { name: "Đổi trạng thái" })).toHaveCount(0);
   });
 
   test("lọc trạng thái và phân trang trên URL; lọc ngày gửi ISO instant", async ({ page }) => {
@@ -209,13 +227,14 @@ test.describe("nền tảng: yêu cầu liên hệ", () => {
   });
 });
 
+// Form "Sửa mô tả" là dialog lồng trong modal chi tiết sách: chọn theo tên.
 test.describe("catalog: mô tả và đoạn đọc thử", () => {
   test("người có TitleController/updatePreview nhập, xem bộ đếm, lưu; hiển thị là text", async ({ page }) => {
     await gotoAs(page, "previewer", `/catalog/books/${BOOK}`);
-    const card = main(page).locator(".ant-card").filter({ hasText: "Mô tả và đọc thử" });
+    const card = detail(page).locator(".ant-card").filter({ hasText: "Mô tả và đọc thử" });
     await expect(card).toBeVisible();
     await card.getByRole("button", { name: "Sửa" }).click();
-    const dlg = page.getByRole("dialog");
+    const dlg = page.getByRole("dialog", { name: /^Sửa mô tả/ });
     // FormModal chuyển focus vào ô đầu sau khi hộp thoại mở xong: đợi, nếu không fill ô sau bị đoạt focus giữa chừng.
     await expect(dlg.getByLabel("Mô tả ngắn (văn bản thuần)")).toBeFocused();
     await dlg.getByLabel("Mô tả ngắn (văn bản thuần)").fill("Dòng 1 <b>đậm</b>\nDòng 2 😀");
@@ -235,14 +254,14 @@ test.describe("catalog: mô tả và đoạn đọc thử", () => {
 
   test("quá giới hạn bị chặn ngay trên biểu mẫu (đếm theo code point, emoji tính 1)", async ({ page }) => {
     await gotoAs(page, "previewer", `/catalog/books/${BOOK}`);
-    await main(page).getByRole("button", { name: "Sửa" }).click();
-    const dlg = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Sửa" }).click();
+    const dlg = page.getByRole("dialog", { name: /^Sửa mô tả/ });
     await expect(dlg.getByLabel("Mô tả ngắn (văn bản thuần)")).toBeFocused();
     await dlg.getByLabel("Mô tả ngắn (văn bản thuần)").fill("😀".repeat(500)); // 500 code point = 1000 đơn vị UTF-16: vẫn hợp lệ
     await dlg.getByRole("button", { name: "Lưu" }).click();
     await expect(page.getByText("Đã lưu.")).toBeVisible();
 
-    await main(page).getByRole("button", { name: "Sửa" }).click();
+    await detail(page).getByRole("button", { name: "Sửa" }).click();
     await dlg.getByLabel("Mô tả ngắn (văn bản thuần)").fill("a".repeat(501));
     await dlg.getByRole("button", { name: "Lưu" }).click();
     await expect(dlg.getByText("Tối đa 500 ký tự")).toBeVisible();
@@ -259,10 +278,10 @@ test.describe("catalog: mô tả và đoạn đọc thử", () => {
 
   test("chỉ có quyền xem (TitleController/preview) thì không có nút Sửa; không có khóa thì không thấy khối này", async ({ page }) => {
     await gotoAs(page, "previewviewer", `/catalog/books/${BOOK}`);
-    await expect(main(page).getByText("Mô tả và đọc thử")).toBeVisible();
-    await expect(main(page).getByRole("button", { name: "Sửa" })).toHaveCount(0);
+    await expect(detail(page).getByText("Mô tả và đọc thử")).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Sửa" })).toHaveCount(0);
     await gotoAs(page, "librarian", `/catalog/books/${BOOK}`);
-    await expect(main(page).getByText("Thông tin", { exact: true })).toBeVisible();
-    await expect(main(page).getByText("Mô tả và đọc thử")).toHaveCount(0);
+    await expect(detail(page).getByText("Thông tin", { exact: true })).toBeVisible();
+    await expect(detail(page).getByText("Mô tả và đọc thử")).toHaveCount(0);
   });
 });

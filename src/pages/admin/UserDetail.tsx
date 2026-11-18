@@ -1,6 +1,6 @@
 import { Link, useParams, useSearchParams } from "react-router";
 import { PERMISSIONS, can, toErrorInfo, useApi, useSession } from "@/api";
-import { Breadcrumb, Button, Card, ErrorPanel, NoPermission, PageHeader, PageSkeleton, Result, StatusTag, Tabs } from "@/ui";
+import { Breadcrumb, Button, Card, ErrorPanel, NoPermission, PageHeader, PageSkeleton, Result, StatusTag, Tabs, useDetailModal } from "@/ui";
 import { AccessTab } from "./_components/AccessTab";
 import { ResetPasswordButton } from "./_components/ResetPasswordButton";
 import { ReaderTab } from "./_components/ReaderTab";
@@ -12,6 +12,8 @@ type TabKey = "info" | "roles" | "reader";
 export default function UserDetailPage() {
   const { id = "" } = useParams();
   const s = useSession();
+  const modal = useDetailModal();
+  const inModal = !!modal;
   const [sp, setSp] = useSearchParams();
   const t = sp.get("tab");
   const tab: TabKey = t === "roles" || t === "reader" ? t : "info";
@@ -36,9 +38,13 @@ export default function UserDetailPage() {
         status="404"
         title="Không tìm thấy người dùng"
         extra={
-          <Link to="/admin/users">
-            <Button>Về danh sách người dùng</Button>
-          </Link>
+          inModal ? (
+            <Button onClick={modal.close}>Đóng</Button>
+          ) : (
+            <Link to="/admin/users">
+              <Button>Về danh sách người dùng</Button>
+            </Link>
+          )
         }
       />
     ) : (
@@ -54,14 +60,16 @@ export default function UserDetailPage() {
   const changeTab = (k: string) => setSp({ tab: k }, { replace: true });
 
   return (
-    <div className="flex max-w-[1200px] flex-col gap-4">
-      <Breadcrumb
-        items={[
-          { title: <Link to="/admin">Quản trị</Link> },
-          { title: <Link to="/admin/users">Người dùng</Link> },
-          { title: u.fullName },
-        ]}
-      />
+    <div className="flex flex-col gap-4">
+      {!inModal && (
+        <Breadcrumb
+          items={[
+            { title: <Link to="/admin">Quản trị</Link> },
+            { title: <Link to="/admin/users">Người dùng</Link> },
+            { title: u.fullName },
+          ]}
+        />
+      )}
       <PageHeader title={u.fullName} description={`${u.username} · ${u.email}`} actions={
           <div className="flex flex-wrap items-center gap-2">
             {can(s, PERMISSIONS.USER_RESET_PASSWORD) && u.id !== s.userId && <ResetPasswordButton userId={u.id} fullName={u.fullName} />}
@@ -117,6 +125,7 @@ export default function UserDetailPage() {
                   canIssue={can(s, PERMISSIONS.READER_ISSUE)}
                   canRenew={can(s, PERMISSIONS.READER_RENEW)}
                   canStatus={can(s, PERMISSIONS.READER_STATUS)}
+                  canUpdate={can(s, PERMISSIONS.READER_UPDATE)}
                 />
               ),
             },

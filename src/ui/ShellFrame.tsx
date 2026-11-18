@@ -19,6 +19,7 @@ import {
 import { Logo } from "./Logo";
 import { NotificationBell } from "./NotificationBell";
 import { QuickSearch } from "./QuickSearch";
+import { ActingTenantPicker } from "./ActingTenantPicker";
 import { TenantSwitcher } from "./TenantSwitcher";
 import { UserMenu } from "./UserMenu";
 import { menuIcon } from "./menu-icons";
@@ -27,8 +28,10 @@ import type { VisibleNavLink } from "./nav-links";
 export type ShellFrameProps = {
   items: VisibleNavLink[];
   user?: { id: string; name: string; role?: string };
-  /** Đơn vị hiện tại (claim tenantId), để UserMenu đánh dấu khi chuyển đơn vị. */
+  /** Đơn vị hiện tại (claim tenantId, hoặc đơn vị platform admin đang làm việc thay), để UserMenu đánh dấu khi chuyển đơn vị. */
   tenantId?: string;
+  /** Platform admin: thay bộ chọn đơn vị thường bằng ActingTenantPicker (làm việc thay đơn vị, ADR-0016). */
+  platformAdmin?: boolean;
   /** Tên breadcrumb theo đường dẫn, cho trang không nằm trong sidebar (hồ sơ, thông báo). Khớp khóa dài nhất. */
   crumbs?: Record<string, string>;
   children: ReactNode;
@@ -84,7 +87,7 @@ const groupId = (href: string) => `nav-group-${href.replace(/\W+/g, "-")}`;
  * Chỉ MỘT phần tử <nav> (chứa cả link và khối người dùng) để landmark không bị trùng.
  * Mọi link là route của cùng SPA nên dùng Link của react-router (giữ khung, không tải lại trang).
  */
-export function ShellFrame({ items, user, tenantId, crumbs, children }: ShellFrameProps) {
+export function ShellFrame({ items, user, tenantId, platformAdmin, crumbs, children }: ShellFrameProps) {
   const { pathname } = useLocation();
   const path = pathname.replace(/\/+$/, "") || "/";
   const active = findActive(items, path);
@@ -294,7 +297,7 @@ export function ShellFrame({ items, user, tenantId, crumbs, children }: ShellFra
           {user && (
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <QuickSearch items={items} />
-              <TenantSwitcher tenantId={tenantId} />
+              {platformAdmin ? <ActingTenantPicker actingTenantId={tenantId} /> : <TenantSwitcher tenantId={tenantId} />}
               <NotificationBell userId={user.id} />
               <UserMenu user={user} tenantId={tenantId} />
             </div>

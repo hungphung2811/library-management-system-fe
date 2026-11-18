@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useNavigate } from "react-router";
-import { ApiCallError, apiFetch, useApiMutation } from "@/api";
-import { Button, Form, FormModal, Input, PlusOutlined, Select, Switch } from "@/ui";
+import { ApiCallError, apiFetch } from "@/api";
+import { Button, Form, FormModal, Input, PlusOutlined, Select, Switch, useFormModal } from "@/ui";
 import type { UserView } from "../_lib/types";
+import { UserPersonalFields, personalPayload, type UserPersonalValues } from "./UserPersonalFields";
 
-type Values = {
+type Values = UserPersonalValues & {
   username: string;
   fullName: string;
   email: string;
@@ -25,15 +26,21 @@ export function CreateUserButton({
   departments: { value: string; label: string }[] | null;
   canCredential: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const created = useRef<UserView | null>(null);
-  const create = useApiMutation(
-    async (v: Values) => {
+  const create = useFormModal<Values, UserView>({
+    title: "Thêm người dùng",
+    okText: "Tạo",
+    invalidate: ["/api/users"],
+    initialValues: { mustChangePassword: true },
+    onSuccess: (user) => {
+      void navigate(`/admin/users/${user.id}`);
+    },
+    request: async (v) => {
       if (!created.current) {
         created.current = await apiFetch<UserView>("/api/users", {
           method: "POST",
-          json: { username: v.username, fullName: v.fullName, email: v.email, departmentId: v.departmentId || undefined },
+          json: { username: v.username, fullName: v.fullName, email: v.email, departmentId: v.departmentId || undefined, ...personalPayload(v) },
         });
       }
       const user = created.current;
@@ -64,25 +71,14 @@ export function CreateUserButton({
       created.current = null;
       return user;
     },
-    { invalidate: ["/api/users"] },
-  );
+  });
 
   return (
     <>
-      <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+      <Button type="primary" icon={<PlusOutlined />} onClick={() => create.openModal()}>
         Thêm người dùng
       </Button>
-      <FormModal<Values>
-        open={open}
-        title="Thêm người dùng"
-        okText="Tạo"
-        onCancel={() => setOpen(false)}
-        onSubmit={async (v) => {
-          const user = await create.mutateAsync(v);
-          void navigate(`/admin/users/${user.id}`);
-        }}
-        initialValues={{ mustChangePassword: true }}
-      >
+      <FormModal<Values> {...create.modalProps}>
         <Form.Item
           name="username"
           label="Tên đăng nhập"
@@ -109,6 +105,7 @@ export function CreateUserButton({
             <Select allowClear showSearch={{ optionFilterProp: "label" }} options={departments} placeholder="Không chọn" />
           </Form.Item>
         )}
+        <UserPersonalFields />
         {canCredential && (
           <>
             <Form.Item

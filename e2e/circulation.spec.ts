@@ -197,9 +197,13 @@ test.describe("circulation: xem phiếu, gia hạn, trả sách", () => {
 
   test("mã phiếu không tồn tại hoặc sai dạng: trang 404 của phiếu", async ({ page }) => {
     await gotoAs(page, "librarian", "/circulation/borrowings/bd000000-0000-4000-8000-0000000000ff");
-    await expect(page.getByText("Không tìm thấy phiếu mượn", { exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog").getByText("Không tìm thấy phiếu mượn", { exact: true })).toBeVisible();
     await gotoApp(page, "/circulation/borrowings/khong-phai-uuid");
-    await expect(page.getByText("Không tìm thấy phiếu mượn", { exact: true })).toBeVisible();
+    const detail = page.getByRole("dialog");
+    await expect(detail.getByText("Không tìm thấy phiếu mượn", { exact: true })).toBeVisible();
+    await detail.getByRole("button", { name: "Đóng", exact: true }).last().click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/circulation\/borrowings$/);
   });
 
   test("gia hạn phiếu: hạn trả đổi và số lần gia hạn tăng", async ({ page }) => {
@@ -207,7 +211,7 @@ test.describe("circulation: xem phiếu, gia hạn, trả sách", () => {
     const b = await createBorrowing(page, t, [COPY_JAVA_1.id]);
     await gotoApp(page, `/circulation/borrowings/${b.id}`);
     await expect(page.getByText("0/2 lần")).toBeVisible();
-    await page.getByRole("button", { name: "Gia hạn", exact: true }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Gia hạn", exact: true }).click();
     // Popconfirm: nút xác nhận cùng tên, nằm sau trong DOM
     await page.getByRole("button", { name: "Gia hạn", exact: true }).last().click();
     await expect(page.getByText(/Đã gia hạn\. Hạn trả mới/)).toBeVisible();
@@ -216,8 +220,8 @@ test.describe("circulation: xem phiếu, gia hạn, trả sách", () => {
 
   test("phiếu quá hạn: hiện cảnh báo quá hạn, BE từ chối gia hạn và FE hiện message BE", async ({ page }) => {
     await gotoAs(page, "librarian", `/circulation/borrowings/${BORROWING_OVERDUE_ID}`);
-    await expect(page.getByText(/Quá hạn \d+ ngày/)).toBeVisible();
-    await page.getByRole("button", { name: "Gia hạn", exact: true }).click();
+    await expect(page.getByRole("dialog").getByText(/Quá hạn \d+ ngày/)).toBeVisible();
+    await page.getByRole("dialog").getByRole("button", { name: "Gia hạn", exact: true }).click();
     await page.getByRole("button", { name: "Gia hạn", exact: true }).last().click();
     // 409 từ BE: Alert cảnh báo giữ message BE nguyên văn
     await expect(page.getByText("Phiếu mượn đã quá hạn, không thể gia hạn")).toBeVisible();
@@ -304,10 +308,23 @@ test.describe("circulation: danh sách phiếu mượn (lọc trạng thái, ph�
     await expect(overdue.getByText("Quá hạn")).toBeVisible();
 
     await markSpa(page);
-    await overdue.getByRole("link").click();
+    await overdue.getByRole("link").first().click();
     await expect(page).toHaveURL(new RegExp(`/circulation/borrowings/${BORROWING_OVERDUE_ID}$`));
-    await expect(page.getByText(/Quá hạn \d+ ngày/)).toBeVisible();
+    await expect(page.getByRole("dialog").getByText(/Quá hạn \d+ ngày/)).toBeVisible();
     expect(await readSpa(page), "không tải lại trang").toBe(1);
+  });
+
+  test("mở phiếu từ danh sách: modal chi tiết, danh sách còn ở nền, đóng (X) về URL danh sách", async ({ page }) => {
+    await loginAs(page, "clerk");
+    await gotoApp(page, "/circulation/borrowings");
+    await page.locator(`tr[data-row-key="${BORROWING_OVERDUE_ID}"]`).getByRole("link").first().click();
+    const detail = page.getByRole("dialog");
+    await expect(detail.getByText(/Quá hạn \d+ ngày/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Phiếu mượn", exact: true }).first()).toBeVisible();
+    await expect(page.locator(`tr[data-row-key="${BORROWING_OVERDUE_ID}"]`)).toBeVisible();
+    await detail.locator(".ant-modal-close").click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/circulation\/borrowings$/);
   });
 
   test("lọc Quá hạn: gọi API với overdue=true, đúng tổng và 20 dòng mỗi trang, phân trang server qua URL", async ({ page }) => {

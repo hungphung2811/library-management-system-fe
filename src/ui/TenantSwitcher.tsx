@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { toErrorInfo } from "@/api";
 import { useAuth, useTenants } from "@/auth/AuthProvider";
 import { App, Dropdown } from "./antd";
@@ -14,12 +13,11 @@ const PILL =
  * - Một đơn vị và token đã thuộc đơn vị đó: chỉ hiện tên (không bấm được).
  * - Từ hai đơn vị trở lên, hoặc token chưa gắn đơn vị: bấm để mở danh sách, chọn là chuyển ngay
  *   (cùng `switchTenant` như hộp thoại "Chuyển đơn vị" trong menu người dùng;
- *   thành công thì chuyển về `/?switched=1` vì quyền và dữ liệu đổi theo đơn vị).
+ *   thành công thì tải lại trang tại đúng đường dẫn hiện tại vì quyền, menu và dữ liệu đổi theo đơn vị).
  * Danh sách lấy từ `/api/me/tenants`.
  */
 export function TenantSwitcher({ tenantId }: { tenantId?: string }) {
   const { message } = App.useApp();
-  const navigate = useNavigate();
   const { switchTenant } = useAuth();
   const tenants = useTenants().data;
   const [busy, setBusy] = useState(false);
@@ -33,8 +31,9 @@ export function TenantSwitcher({ tenantId }: { tenantId?: string }) {
     if (busy || id === tenantId) return;
     setBusy(true);
     try {
-      await switchTenant(id);
-      void navigate("/?switched=1");
+      // reload: lưu token mới rồi tải lại cả trình duyệt tại đúng đường dẫn hiện tại, không render lại/gọi lại API của đơn vị cũ.
+      await switchTenant(id, { reload: true });
+      return;
     } catch (e) {
       const st = toErrorInfo(e);
       if (st.status !== 401) {

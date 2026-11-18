@@ -1,15 +1,31 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { useAuth, useTenants } from "@/auth/AuthProvider";
-import { Dropdown } from "./antd";
+import { useAuth, useTenants, type PermissionRefreshResult } from "@/auth/AuthProvider";
+import { App, Dropdown } from "./antd";
 import { ChevronDown } from "./icons";
 import { TenantSwitchModal } from "./TenantSwitchModal";
 
 const ITEM =
   "block w-full cursor-pointer rounded-control border-0 bg-transparent px-3 py-1.5 text-left text-body text-ink no-underline hover:bg-subtle";
 
+/** Thời gian chờ giữa hai lần bấm "Làm mới quyền" (ADR-0022, chống dồn tải /api/auth/refresh). */
+export const REFRESH_COOLDOWN_SECONDS = 30;
+
+const ENDED_TEXT: Record<"revoked" | "disabled" | "locked" | "no-token", string> = {
+  revoked: "Phiên đã hết hiệu lực do thay đổi phân quyền hoặc đã kết thúc, vui lòng đăng nhập lại.",
+  disabled: "Tài khoản đã bị vô hiệu hóa, vui lòng liên hệ quản trị viên.",
+  locked: "Tài khoản đang tạm thời bị khóa, vui lòng thử lại sau.",
+  "no-token": "Phiên đăng nhập đã kết thúc, vui lòng đăng nhập lại.",
+};
+
+function failedText(r: Extract<PermissionRefreshResult, { status: "failed" }>): string {
+  if (r.reason === "superseded") return "Phiên vừa được làm mới ở nơi khác, vui lòng thử lại sau vài giây.";
+  if (r.reason === "no-tenant") return "Bạn không còn thuộc đơn vị đang dùng, hãy chuyển sang đơn vị khác.";
+  return "Chưa làm mới được quyền do hệ thống bận hoặc mất kết nối, vui lòng thử lại sau.";
+}
+
 /**
- * Menu người dùng ở thanh trên: Hồ sơ của tôi, Đổi mật khẩu, Chuyển đơn vị (chỉ khi có từ 2 đơn vị), Đăng xuất.
+ * Menu người dùng ở thanh trên: Hồ sơ của tôi, Đổi mật khẩu, Làm mới quyền, Chuyển đơn vị (chỉ khi có từ 2 đơn vị), Đăng xuất.
  * Tên đơn vị hiện tại chỉ hiện trong đầu menu. Đăng xuất: thu hồi refresh token, xóa phiên rồi về /login.
  */
 export function UserMenu({
@@ -20,12 +36,45 @@ export function UserMenu({
   tenantId?: string;
 }) {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, session, refreshPermissions } = useAuth();
+  const { message } = App.useApp();
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const tenants = useTenants().data;
 
+  const secondsLeft = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const t = setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= cooldownUntil) clearInterval(t);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [cooldownUntil]);
+
   const onOpenChange = (o: boolean) => setOpen(o);
+
+  const onRefreshPermissions = async () => {
+    if (refreshing || secondsLeft > 0) return;
+    setRefreshing(true);
+    try {
+      const r = await refreshPermissions();
+      if (r.status === "updated") message.success("Đã cập nhật quyền.");
+      else if (r.status === "unchanged") message.info("Quyền không thay đổi.");
+      else if (r.status === "ended") {
+        message.error(ENDED_TEXT[r.reason]);
+        return; // phiên đã bị xóa: ProtectedRoute đưa về trang đăng nhập, không cần cooldown
+      } else if (r.status === "failed") message.warning(failedText(r));
+      setNow(Date.now());
+      setCooldownUntil(Date.now() + REFRESH_COOLDOWN_SECONDS * 1000);
+    } finally {
+      setRefreshing(false);
+      setOpen(false);
+    }
+  };
 
   const currentName = tenants?.find((t) => t.id === tenantId)?.name;
   const initial = user.name.slice(0, 1).toUpperCase();
@@ -53,6 +102,22 @@ export function UserMenu({
               <Link to="/change-password" onClick={() => setOpen(false)} className={ITEM}>
                 Đổi mật khẩu
               </Link>
+              {session && !session.mustChangePassword && (
+                <button
+                  type="button"
+                  className={`${ITEM} disabled:cursor-not-allowed disabled:text-muted disabled:hover:bg-transparent`}
+                  disabled={refreshing || secondsLeft > 0}
+                  aria-busy={refreshing}
+                  title="Dùng khi quản trị viên vừa thay đổi quyền của bạn"
+                  onClick={() => void onRefreshPermissions()}
+                >
+                  {refreshing
+                    ? "Đang làm mới quyền..."
+                    : secondsLeft > 0
+                      ? `Làm mới quyền (chờ ${secondsLeft}s)`
+                      : "Làm mới quyền"}
+                </button>
+              )}
               {tenants && tenants.length >= 2 && (
                 <button
                   type="button"

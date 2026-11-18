@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
-import { DataTable, NoPermission, PageHeader, PageSkeleton, Tag } from "@/ui";
+import { DataTable, NoPermission, PageHeader, PageSkeleton, Tag, UserAvatar, Eye, actionsColumn } from "@/ui";
 import { CreateUserButton } from "./_components/CreateUserButton";
 import { ExportUsersButton } from "./_components/ExportUsersButton";
 import { ImportUsersButton } from "./_components/ImportUsersButton";
@@ -11,7 +11,7 @@ import { UserFilters } from "./_components/UserFilters";
 import { keepPreviousData, pageNo, qp } from "./_lib/params";
 import type { DepartmentView, UserPage } from "./_lib/types";
 
-const SIZES = [10, 20, 50];
+const SIZES = [10, 20, 50, 100];
 
 export default function UsersPage() {
   const s = useSession();
@@ -64,7 +64,7 @@ export default function UsersPage() {
           </>
         }
       />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <UserFilters departments={deptOptions} total={users.data?.total ?? null} pageSize={pageSize} />
         {users.isError ? (
           <ErrorBlock query={users} />
@@ -76,9 +76,21 @@ export default function UsersPage() {
               mobileTitleKey="fullName"
               loading={users.isPlaceholderData}
               columns={[
-                { key: "fullName", title: "Họ tên", dataIndex: "fullName", kind: "link", href: "/admin/users/{id}" },
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
+                {
+                  key: "fullName",
+                  title: "Họ tên",
+                  dataIndex: "fullName",
+                  render: (_v, row) => (
+                    <Link to={`/admin/users/${encodeURIComponent(String(row.id))}`} className="inline-flex items-center gap-2">
+                      <UserAvatar name={String(row.fullName ?? "")} src={row.avatarUrl as string | null | undefined} size={28} />
+                      <span>{String(row.fullName ?? "")}</span>
+                    </Link>
+                  ),
+                },
                 { key: "username", title: "Tên đăng nhập", dataIndex: "username", kind: "mono" },
                 { key: "email", title: "Email", dataIndex: "email" },
+                { key: "phone", title: "Điện thoại", dataIndex: "phone", render: (v) => (v as string | null) || "—" },
                 { key: "departmentName", title: "Phòng ban", dataIndex: "departmentName", render: (v) => (v as string | null) ?? "—" },
                 { key: "status", title: "Trạng thái", dataIndex: "status", kind: "status", statusDomain: "user" },
                 {
@@ -87,7 +99,8 @@ export default function UsersPage() {
                   dataIndex: "locked",
                   render: (v) => (v ? <Tag color="error">Đang bị khóa</Tag> : "—"),
                 },
-              ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/admin/users/${encodeURIComponent(String(row.id))}` }], 1),
+]}
               empty={
                 hasFilter
                   ? { title: "Không có người dùng khớp bộ lọc.", action: { label: "Xóa bộ lọc", href: "/admin/users" } }

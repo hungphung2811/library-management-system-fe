@@ -76,13 +76,6 @@ export function UserFilters({
               options={STATUS_OPTIONS}
               onChange={(v) => set("status", v)}
             />
-            <Select
-              aria-label="Số dòng mỗi trang"
-              className="min-w-32"
-              value={pageSize}
-              options={PAGE_SIZES.map((n) => ({ value: n, label: `${n} / trang` }))}
-              onChange={(v) => set("size", v === 20 ? undefined : String(v))}
-            />
           </>
         }
       />

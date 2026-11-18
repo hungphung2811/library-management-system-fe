@@ -1,5 +1,5 @@
 import { useSearchParams } from "react-router";
-import { Pagination } from "@/ui";
+import { DEFAULT_PAGE_SIZES, Pagination } from "@/ui";
 
 /**
  * Phân trang server qua query `page` (từ 1), giữ nguyên các tham số lọc khác.
@@ -8,10 +8,13 @@ import { Pagination } from "@/ui";
  */
 export function ServerPager({ page, pageSize, total }: { page: number; pageSize: number; total: number }) {
   const [sp, setSp] = useSearchParams();
-  if (total <= pageSize) return null;
-  const go = (p: number) => {
+  if (total <= Math.min(pageSize, ...DEFAULT_PAGE_SIZES)) return null;
+  const go = (p: number, s: number) => {
     const q = new URLSearchParams(sp);
-    if (p <= 1) q.delete("page");
+    if (s !== pageSize) {
+      q.set("size", String(s));
+      q.delete("page");
+    } else if (p <= 1) q.delete("page");
     else q.set("page", String(p));
     setSp(q);
   };
@@ -21,7 +24,9 @@ export function ServerPager({ page, pageSize, total }: { page: number; pageSize:
         current={page}
         pageSize={pageSize}
         total={total}
-        showSizeChanger={false}
+        showSizeChanger
+        pageSizeOptions={Array.from(new Set([...DEFAULT_PAGE_SIZES, pageSize])).sort((a, b) => a - b)}
+        locale={{ items_per_page: "/ trang", page_size: "Số dòng mỗi trang" }}
         showTotal={(t, [a, b]) => `Hiển thị ${a}–${b} trên tổng ${t}`}
         onChange={go}
       />

@@ -6,6 +6,8 @@ import { bearer, gotoAs, loginApi, sidebar } from "./helpers";
 let n = 0;
 const uid = () => `${(Date.now() % 1e7).toString(36)}${process.env.TEST_PARALLEL_INDEX ?? 0}${++n}`;
 const main = (page: Page) => page.getByRole("main");
+// Chi tiết đơn vị/hợp đồng nằm trong modal (danh sách ở nền): scope vào dialog đầu tiên.
+const detail = (page: Page) => page.getByRole("dialog").first();
 const dmy = (offsetDays: number) => {
   const d = new Date(Date.now() + offsetDays * 86_400_000);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
@@ -35,9 +37,9 @@ test.describe("nền tảng: hợp đồng của đơn vị", () => {
   test("tạo nháp, kích hoạt, ghi thanh toán, đảo toàn phần", async ({ page }) => {
     const t = await createTenant(page);
     await gotoAs(page, "platform", `/platform/tenants/${t.id}?tab=contracts`);
-    await expect(main(page).getByTestId("no-contract-warning")).toBeVisible();
+    await expect(detail(page).getByTestId("no-contract-warning")).toBeVisible();
 
-    await main(page).getByRole("button", { name: "Tạo hợp đồng" }).click();
+    await detail(page).getByRole("button", { name: "Tạo hợp đồng" }).click();
     const dlg = page.getByRole("dialog", { name: "Tạo hợp đồng nháp" });
     await dlg.getByLabel("Tên hợp đồng").fill("Gói thử nghiệm");
     await dlg.getByLabel("Mượn trả").check();
@@ -47,31 +49,31 @@ test.describe("nền tảng: hợp đồng của đơn vị", () => {
     await dlg.getByRole("button", { name: "Tạo nháp" }).click();
 
     await expect(page).toHaveURL(/\/contracts\/[0-9a-f-]+$/);
-    await expect(main(page).getByRole("heading", { name: "Gói thử nghiệm" })).toBeVisible();
-    await expect(main(page).getByText("Nháp", { exact: true }).first()).toBeVisible();
+    await expect(detail(page).getByRole("heading", { name: "Gói thử nghiệm" })).toBeVisible();
+    await expect(detail(page).getByText("Nháp", { exact: true }).first()).toBeVisible();
     // Hợp đồng nháp chưa ghi thanh toán được.
-    await expect(main(page).getByRole("button", { name: "Ghi thanh toán" })).toHaveCount(0);
+    await expect(detail(page).getByRole("button", { name: "Ghi thanh toán" })).toHaveCount(0);
 
-    await main(page).getByRole("button", { name: "Kích hoạt" }).click();
+    await detail(page).getByRole("button", { name: "Kích hoạt" }).click();
     await page.getByRole("button", { name: "Kích hoạt" }).last().click();
-    await expect(main(page).getByText("Hiệu lực: đang hiệu lực").first()).toBeVisible();
+    await expect(detail(page).getByText("Hiệu lực: đang hiệu lực").first()).toBeVisible();
 
-    await main(page).getByRole("button", { name: "Ghi thanh toán" }).click();
+    await detail(page).getByRole("button", { name: "Ghi thanh toán" }).click();
     const pay = page.getByRole("dialog", { name: "Ghi thanh toán" });
     await pay.getByLabel("Số tiền (VND)").fill("400000");
     await pay.getByLabel("Mã tham chiếu").fill("CK-TEST");
     await pay.getByRole("button", { name: "Ghi thanh toán" }).click();
-    await expect(main(page).getByText("CK-TEST").first()).toBeVisible();
-    await expect(main(page).getByTestId("sum-paid").filter({ hasText: "400.000" })).toBeVisible();
-    await expect(main(page).getByTestId("sum-outstanding").filter({ hasText: "600.000" })).toBeVisible();
+    await expect(detail(page).getByText("CK-TEST").first()).toBeVisible();
+    await expect(detail(page).getByTestId("sum-paid").filter({ hasText: "400.000" })).toBeVisible();
+    await expect(detail(page).getByTestId("sum-outstanding").filter({ hasText: "600.000" })).toBeVisible();
 
-    await main(page).getByRole("button", { name: "Đảo", exact: true }).click();
+    await detail(page).getByRole("button", { name: "Đảo", exact: true }).click();
     await page.getByRole("button", { name: "Đảo", exact: true }).last().click();
-    await expect(main(page).getByText("Đã đảo").first()).toBeVisible();
-    await expect(main(page).getByText("Dòng đảo").first()).toBeVisible();
+    await expect(detail(page).getByText("Đã đảo").first()).toBeVisible();
+    await expect(detail(page).getByText("Dòng đảo").first()).toBeVisible();
     // Dòng đã đảo và dòng đảo không còn nút Đảo; tổng đã thu về 0.
-    await expect(main(page).getByRole("button", { name: "Đảo", exact: true })).toHaveCount(0);
-    await expect(main(page).getByTestId("sum-paid").filter({ hasText: /^Đã thu\s*0\s*₫/ })).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Đảo", exact: true })).toHaveCount(0);
+    await expect(detail(page).getByTestId("sum-paid").filter({ hasText: /^Đã thu\s*0\s*₫/ })).toBeVisible();
 
     // Kích hoạt chồng thời gian bị chặn bằng thông điệp tiếng Việt.
     const second = await page.request.post(`/api/platform/tenants/${t.id}/contracts`, {
@@ -80,7 +82,7 @@ test.describe("nền tảng: hợp đồng của đơn vị", () => {
     });
     const sid = ((await second.json()) as { id: string }).id;
     await page.goto(`/platform/tenants/${t.id}/contracts/${sid}`);
-    await main(page).getByRole("button", { name: "Kích hoạt" }).click();
+    await detail(page).getByRole("button", { name: "Kích hoạt" }).click();
     await page.getByRole("button", { name: "Kích hoạt" }).last().click();
     await expect(page.getByText("chồng với một hợp đồng đang hiệu lực khác")).toBeVisible();
   });
@@ -93,14 +95,14 @@ test.describe("nền tảng: hợp đồng của đơn vị", () => {
     });
     const id = ((await res.json()) as { id: string }).id;
     await gotoAs(page, "platform", `/platform/tenants/${t.id}/contracts/${id}`);
-    await main(page).getByRole("button", { name: "Hủy hợp đồng" }).click();
+    await detail(page).getByRole("button", { name: "Hủy hợp đồng" }).click();
     const dlg = page.getByRole("dialog", { name: "Hủy hợp đồng" });
     await dlg.getByRole("button", { name: "Xác nhận hủy" }).click();
     await expect(dlg.getByText("Nhập lý do hủy")).toBeVisible();
     await dlg.getByLabel("Lý do hủy").fill("Khách đổi ý");
     await dlg.getByRole("button", { name: "Xác nhận hủy" }).click();
-    await expect(main(page).getByText("Lý do hủy: Khách đổi ý")).toBeVisible();
-    await expect(main(page).getByText("Đã hủy").first()).toBeVisible();
+    await expect(detail(page).getByText("Lý do hủy: Khách đổi ý")).toBeVisible();
+    await expect(detail(page).getByText("Đã hủy").first()).toBeVisible();
   });
 
   test("trang sắp hết hạn và nguyên nhân tạm ngưng", async ({ page }) => {
@@ -112,7 +114,7 @@ test.describe("nền tảng: hợp đồng của đơn vị", () => {
     await page.goto("/platform/tenants?status=SUSPENDED");
     await expect(main(page).getByText("Tạm ngưng do hết hạn hợp đồng").first()).toBeVisible();
     await main(page).getByRole("link", { name: "Thư viện Ngưng" }).click();
-    await expect(main(page).getByTestId("suspension-cause")).toContainText("tự được kích hoạt lại");
+    await expect(detail(page).getByTestId("suspension-cause")).toContainText("tự được kích hoạt lại");
   });
 });
 

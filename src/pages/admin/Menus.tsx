@@ -64,7 +64,7 @@ export default function MenusPage() {
   };
 
   return (
-    <div className="flex max-w-[1200px] flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <Breadcrumb items={[{ title: <Link to="/admin">Quản trị</Link> }, { title: "Menu" }]} />
       <PageHeader
         title="Menu"

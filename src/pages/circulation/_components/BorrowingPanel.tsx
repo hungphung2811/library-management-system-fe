@@ -5,6 +5,7 @@ import {
   App,
   Button,
   Card,
+  Ban,
   ConfirmAction,
   DataTable,
   KeyValueList,
@@ -12,6 +13,8 @@ import {
   StatusTag,
   Tag,
   Text,
+  Undo2,
+  actionsColumn,
   describeError,
   formatDate,
 } from "@/ui";
@@ -266,40 +269,35 @@ export function BorrowingPanel({
             },
             ...(canReturn || canReportLost
               ? [
-                  {
-                    key: "action",
-                    title: "Thao tác",
-                    dataIndex: "bookCopyId",
-                    render: (id: unknown, row: Record<string, unknown>) =>
-                      row.returnDate ? null : (
-                        <span className="flex gap-2">
-                          {canReturn && (
-                            <Button
-                              size="small"
-                              loading={returning === id}
-                              disabled={returning !== null}
-                              aria-label={`Trả «${String(row.titleName)}»`}
-                              onClick={() => void doReturn(String(id))}
-                            >
-                              Trả
-                            </Button>
-                          )}
-                          {canReportLost && (
-                            <ConfirmAction
-                              title={`Báo mất «${String(row.titleName)}»?`}
-                              description="Hệ thống sẽ lập khoản phạt mất sách cho độc giả. Không hoàn tác được."
-                              okText="Xác nhận báo mất"
-                              danger
-                              onConfirm={() => doReportLost(String(id))}
-                            >
-                              <Button size="small" danger disabled={returning !== null} aria-label={`Báo mất «${String(row.titleName)}»`}>
-                                Báo mất
-                              </Button>
-                            </ConfirmAction>
-                          )}
-                        </span>
-                      ),
-                  },
+                  actionsColumn((row) => {
+                    const id = String(row.bookCopyId);
+                    const name = String(row.titleName);
+                    return [
+                      {
+                        key: "return",
+                        label: `Trả «${name}»`,
+                        icon: <Undo2 size={16} />,
+                        hidden: !canReturn || !!row.returnDate,
+                        loading: returning === id,
+                        disabled: returning !== null,
+                        onClick: () => doReturn(id),
+                      },
+                      {
+                        key: "lost",
+                        label: `Báo mất «${name}»`,
+                        icon: <Ban size={16} />,
+                        danger: true,
+                        hidden: !canReportLost || !!row.returnDate,
+                        disabled: returning !== null,
+                        confirm: {
+                          title: `Báo mất «${name}»?`,
+                          description: "Hệ thống sẽ lập khoản phạt mất sách cho độc giả. Không hoàn tác được.",
+                          okText: "Xác nhận báo mất",
+                        },
+                        onClick: () => doReportLost(id),
+                      },
+                    ];
+                  }, 2),
                 ]
               : []),
           ]}

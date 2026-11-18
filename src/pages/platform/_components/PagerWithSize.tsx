@@ -21,6 +21,7 @@ export function PagerWithSize({ page, size, total }: { page: number; size: numbe
         pageSize={size}
         total={total}
         pageSizeOptions={PAGE_SIZE_OPTIONS}
+        locale={{ items_per_page: "/ trang", page_size: "Số dòng mỗi trang" }}
         showSizeChanger
         showTotal={(t, [a, b]) => `Hiển thị ${a}–${b} trên tổng ${t}`}
         onChange={(p, s) => go(s !== size ? 1 : p, s)}

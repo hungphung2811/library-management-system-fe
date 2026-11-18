@@ -91,7 +91,7 @@ export default function AdminHome() {
   return (
     <>
       <PageHeader title="Quản trị" description="Tổng quan người dùng, vai trò, phòng ban và hoạt động hệ thống." />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <Text type="secondary">Vai trò của bạn: {s.roles.join(", ") || "—"}</Text>
 
         {!anyAdmin && (

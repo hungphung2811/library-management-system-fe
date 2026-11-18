@@ -30,7 +30,7 @@ export default function FinesPage() {
     return (
       <>
         {header}
-        <div className="flex max-w-[1200px] flex-col gap-5">
+        <div className="flex flex-col gap-5">
           <FineReaderPicker />
           <p className="text-sm text-muted">Chọn một độc giả để xem các khoản phạt.</p>
         </div>
@@ -48,7 +48,7 @@ export default function FinesPage() {
   return (
     <>
       {header}
-      <div className="flex max-w-[1200px] flex-col gap-5">
+      <div className="flex flex-col gap-5">
         {staff && <FineReaderPicker current={reader} />}
         <QueryBoundary query={fines}>
           {(data) => {

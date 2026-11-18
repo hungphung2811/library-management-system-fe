@@ -1,8 +1,10 @@
-import { useState } from "react";
 import { PERMISSIONS, apiFetch, can, useApiMutation, useSession } from "@/api";
-import { App, Button, ConfirmAction, EditOutlined, Form, FormModal, Input, KeyValueList, Select, StatusTag, Tag, Text, dayjs } from "@/ui";
+import { App, Button, ConfirmAction, EditOutlined, Form, FormModal, Input, KeyValueList, Select, StatusTag, Tag, Text, dayjs, useFormModal } from "@/ui";
+import { UserAvatar, dobText, genderLabel, presentItems } from "@/ui";
 import type { UserView } from "../_lib/types";
+import { UserPersonalFields, personalInitial, personalPayload, type UserPersonalValues } from "./UserPersonalFields";
 
+type EditValues = UserPersonalValues & { fullName: string; email: string; departmentId?: string };
 type Option = { value: string; label: string };
 
 /** Tab "Thông tin": xem, sửa, vô hiệu hóa / kích hoạt lại. */
@@ -23,7 +25,6 @@ export function UserInfoTab({
   const session = useSession();
   const canUnlock = can(session, PERMISSIONS.USER_UNLOCK);
   const canRevoke = can(session, PERMISSIONS.USER_REVOKE_SESSIONS);
-  const [editing, setEditing] = useState(false);
   const active = user.status === "ACTIVE";
   const deptName = departments?.find((d) => d.value === user.departmentId)?.label;
   const url = `/api/users/${encodeURIComponent(user.id)}` as const;
@@ -32,14 +33,18 @@ export function UserInfoTab({
     () => apiFetch(`${url}/status`, { method: "PUT", json: { status: active ? "DISABLED" : "ACTIVE" } }),
     { invalidate: ["/api/users"] },
   );
-  const update = useApiMutation(
-    (v: { fullName: string; email: string; departmentId?: string }) =>
+  const edit = useFormModal<EditValues>({
+    title: "Sửa thông tin người dùng",
+    okText: "Lưu",
+    successMessage: "Đã cập nhật thông tin.",
+    invalidate: ["/api/users"],
+    initialValues: { fullName: user.fullName, email: user.email, departmentId: user.departmentId ?? undefined, ...personalInitial(user) },
+    request: (v) =>
       apiFetch(url, {
         method: "PUT",
-        json: { fullName: v.fullName, email: v.email, departmentId: v.departmentId || undefined },
+        json: { fullName: v.fullName, email: v.email, departmentId: v.departmentId || undefined, ...personalPayload(v) },
       }),
-    { invalidate: ["/api/users"] },
-  );
+  });
 
   const unlock = useApiMutation(() => apiFetch<UserView>(`${url}/unlock`, { method: "POST" }), { invalidate: ["/api/users"] });
   const revoke = useApiMutation(() => apiFetch<{ revokedSessions: number }>(`${url}/sessions/revocation`, { method: "POST" }));
@@ -51,6 +56,13 @@ export function UserInfoTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <UserAvatar name={user.fullName} src={user.avatarUrl} size={56} />
+        <div className="min-w-0">
+          <div className="font-semibold">{user.fullName}</div>
+          {user.jobTitle && <div className="text-sm text-muted">{user.jobTitle}</div>}
+        </div>
+      </div>
       <KeyValueList
         columns={2}
         items={[
@@ -58,6 +70,14 @@ export function UserInfoTab({
           { label: "Tên đăng nhập", value: user.username, mono: true },
           { label: "Email", value: user.email },
           { label: "Phòng ban", value: deptName },
+          ...presentItems([
+            { label: "Số điện thoại", value: user.phone },
+            { label: "Ngày sinh", value: dobText(user.dateOfBirth) },
+            { label: "Giới tính", value: genderLabel(user.gender) },
+            { label: "Địa chỉ", value: user.address },
+            { label: "Chức danh", value: user.jobTitle },
+            { label: "Mã cán bộ", value: user.employeeCode, mono: true },
+          ]),
           {
             label: "Trạng thái",
             value: (
@@ -75,7 +95,7 @@ export function UserInfoTab({
       />
       <div className="flex flex-wrap items-center gap-2">
         {canEdit && (
-          <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>
+          <Button icon={<EditOutlined />} onClick={() => edit.openModal()}>
             Sửa
           </Button>
         )}
@@ -120,17 +140,7 @@ export function UserInfoTab({
         {canStatus && isSelf && <Text type="secondary">Bạn không thể vô hiệu hóa chính mình.</Text>}
       </div>
 
-      <FormModal<{ fullName: string; email: string; departmentId?: string }>
-        open={editing}
-        title="Sửa thông tin người dùng"
-        okText="Lưu"
-        successMessage="Đã cập nhật thông tin."
-        onCancel={() => setEditing(false)}
-        initialValues={{ fullName: user.fullName, email: user.email, departmentId: user.departmentId ?? undefined }}
-        onSubmit={async (v) => {
-          await update.mutateAsync(v);
-        }}
-      >
+      <FormModal<EditValues> {...edit.modalProps}>
         <Form.Item
           name="fullName"
           label="Họ tên"
@@ -150,6 +160,7 @@ export function UserInfoTab({
             <Select allowClear showSearch={{ optionFilterProp: "label" }} options={departments} placeholder="Không chọn" />
           </Form.Item>
         )}
+        <UserPersonalFields editing />
       </FormModal>
     </div>
   );

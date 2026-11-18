@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { DataTable, FilterBar, formatMoney, useFilterParams, type FilterField } from "@/ui";
 import { FINE_REASONS, shortId, type FineView } from "../_lib/circulation";
 
-const PAGE_SIZES = [10, 20, 50];
 
 /** Danh sách phạt của một độc giả (BE trả đủ, nên lọc/phân trang phía client): trạng thái, lý do, khoảng ngày phát sinh, tổng theo bộ lọc. */
 export function FinesTable({ fines }: { fines: FineView[] }) {
@@ -54,7 +53,7 @@ export function FinesTable({ fines }: { fines: FineView[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <FilterBar filters={f} total={rows.length} unit="khoản phạt" pageSizes={PAGE_SIZES} />
+      <FilterBar filters={f} total={rows.length} unit="khoản phạt" />
       <div className="text-sm text-muted" data-testid="fine-filter-total">
         Tổng theo bộ lọc: <b className="font-semibold text-ink">{formatMoney(sum(filtered))}</b>
         {" · "}chưa thanh toán: <b className="font-semibold text-ink">{formatMoney(sum(filtered.filter((x) => x.status === "UNPAID")))}</b>
@@ -64,7 +63,7 @@ export function FinesTable({ fines }: { fines: FineView[] }) {
         rowKey="id"
         rows={rows}
         mobileTitleKey="reason"
-        pagination={{ mode: "client", pageSize: f.size }}
+        pagination={{ mode: "client", pageSize: f.size, onSizeChange: f.setSize }}
         empty={
           f.hasFilter
             ? { title: "Không có khoản phạt nào khớp bộ lọc." }

@@ -49,8 +49,16 @@ export const USERS = {
   salesadmin: { username: "salesadmin", password: "Salesadmin@12345" },
   /** Thu ngân thao tác đơn online + trả trong hạn; KHÔNG có hủy đơn, áp giảm giá, trả quá hạn, hoàn tiền, nhật ký (e2e/mock/sales.mjs). */
   cashier: { username: "cashier", password: "Cashier@12345" },
+  /** Chỉ xem tồn kho, không có khóa getDetails (e2e/mock/sales.mjs). */
+  stocklite: { username: "stocklite", password: "Stocklite@12345" },
+  /** Xem tồn kho + chi tiết mặt hàng (getDetails) + ghi chú đơn (getNotes), không sửa (e2e/mock/sales.mjs). */
+  stockview: { username: "stockview", password: "Stockview@12345" },
+  /** Chỉ xem bản sao, không có khóa updateAcquisition (e2e/mock/catalog.mjs). */
+  copyviewer: { username: "copyviewer", password: "Copyviewer@12345" },
   /** Quản trị của đơn vị chưa có hợp đồng nào (e2e/mock/platform-contracts.mjs). */
   nocontract: { username: "nocontract", password: "Nocontract@12345" },
+  /** Không có khóa nào; quyền đổi qua POST /__test/user của mock (e2e/permission-refresh.spec.ts). */
+  permuser: { username: "permuser", password: "Permuser@12345" },
 } as const;
 
 export type UserKey = keyof typeof USERS;

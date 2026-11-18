@@ -3,16 +3,20 @@ import { Link, useSearchParams } from "react-router";
 import { Empty, Pagination, Spin, Table } from "./antd";
 import { LinkButton } from "./LinkButton";
 import { formatDate, formatDateTime, formatMoney } from "./format";
+import { ShortId } from "./ShortId";
 import { StatusTag } from "./StatusTag";
 import type { StatusDomain } from "./status-labels";
 
 type Row = Record<string, unknown>;
 
+/** Các cỡ trang mặc định của ô "/ trang" cạnh phân trang (trang truyền `pageSizes` để thay). */
+export const DEFAULT_PAGE_SIZES = [10, 20, 50, 100];
+
 export type DataColumn = {
   key: string;
   title: string;
   dataIndex: string | string[];
-  kind?: "text" | "mono" | "date" | "datetime" | "money" | "status" | "bool" | "link";
+  kind?: "text" | "mono" | "date" | "datetime" | "money" | "status" | "bool" | "link" | "id";
   /** Khi kind = "status". */
   statusDomain?: StatusDomain;
   /** Khi kind = "link": mẫu đường dẫn đầy đủ, ví dụ "/catalog/books/{id}"; {field} lấy từ dòng (đã encodeURIComponent). */
@@ -23,7 +27,10 @@ export type DataColumn = {
   render?: (value: unknown, row: Row) => ReactNode;
 };
 
-/** Tuỳ chọn đổi kích thước trang: có `pageSizes` thì hiện ô chọn; `onSizeChange` để trang lưu `size` (server mode nên xóa `page`). */
+/**
+ * Ô đổi kích thước trang luôn hiện cạnh phân trang. `pageSizes` thay danh sách mặc định; `onSizeChange` để trang tự lưu `size`.
+ * Không truyền `onSizeChange`: server mode ghi `size` lên URL (bỏ `page`, trang đọc lại bằng `usePageSize`), client mode giữ cỡ trang trong state.
+ */
 type PageSizeOpts = { pageSizes?: number[]; onSizeChange?: (size: number) => void };
 
 export type DataTablePagination =
@@ -65,6 +72,8 @@ function cell(col: DataColumn, row: Row): ReactNode {
   if (col.render) return col.render(v, row);
   const empty = v === null || v === undefined || v === "";
   switch (col.kind) {
+    case "id":
+      return <ShortId value={empty ? null : String(v)} />;
     case "mono":
       return empty ? DASH : <span className="font-mono">{String(v)}</span>;
     case "date":
@@ -100,15 +109,34 @@ function cell(col: DataColumn, row: Row): ReactNode {
  */
 export function DataTable({ columns, rows, rowKey, empty, pagination, mobileTitleKey, loading, embedded }: DataTableProps) {
   const [clientPage, setClientPage] = useState(1);
-  const [sp] = useSearchParams();
+  const [localSize, setLocalSize] = useState<number | null>(null);
+  const [sp, setSp] = useSearchParams();
 
-  const pageSize = pagination?.pageSize ?? 0;
+  const pageSize =
+    pagination?.mode === "client" && !pagination.onSizeChange && localSize ? localSize : (pagination?.pageSize ?? 0);
   const server = pagination?.mode === "server" ? pagination : null;
   const shown =
     pagination?.mode === "client" ? rows.slice((clientPage - 1) * pageSize, clientPage * pageSize) : rows;
   const total = server ? server.total : rows.length;
   const current = server ? server.page : clientPage;
   const param = server?.param ?? "page";
+
+  const changeSize = (s: number) => {
+    if (!pagination) return;
+    if (pagination.onSizeChange) return pagination.onSizeChange(s);
+    if (server) {
+      const q = new URLSearchParams(sp.toString());
+      q.delete(param);
+      q.set("size", String(s));
+      setSp(q);
+      return;
+    }
+    setLocalSize(s);
+    setClientPage(1);
+  };
+  const sizeOptions = pagination
+    ? Array.from(new Set([...(pagination.pageSizes?.length ? pagination.pageSizes : DEFAULT_PAGE_SIZES), pagination.pageSize])).sort((a, b) => a - b)
+    : [];
 
   const hrefFor = (p: number) => {
     const q = new URLSearchParams(sp.toString());
@@ -182,16 +210,16 @@ export function DataTable({ columns, rows, rowKey, empty, pagination, mobileTitl
         </Spin>
       )}
 
-      {pagination && total > Math.min(pageSize, ...(pagination.pageSizes ?? [])) && (
+      {pagination && total > Math.min(pageSize, ...sizeOptions) && (
         <div className="mt-3 flex justify-end">
           <Pagination
             current={current}
             pageSize={pageSize}
             total={total}
-            showSizeChanger={!!pagination.pageSizes?.length}
-            pageSizeOptions={pagination.pageSizes}
-            locale={{ items_per_page: "/ trang" }}
-            onShowSizeChange={(_, s) => pagination.onSizeChange?.(s)}
+            showSizeChanger
+            pageSizeOptions={sizeOptions}
+            locale={{ items_per_page: "/ trang", page_size: "Số dòng mỗi trang" }}
+            onShowSizeChange={(_, s) => changeSize(s)}
             showTotal={(t, [a, b]) => `Hiển thị ${a}–${b} trên tổng ${t}`}
             onChange={server ? undefined : (p) => setClientPage(p)}
             itemRender={

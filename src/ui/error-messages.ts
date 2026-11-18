@@ -86,6 +86,7 @@ export const ERROR_MESSAGES: Record<string, string> = {
   SUPPLIER_EXISTS: "Nhà cung cấp trùng tên đã tồn tại.",
   SUPPLIER_NOT_FOUND: "Không tìm thấy nhà cung cấp.",
   STOCK_ITEM_EXISTS: "Đầu sách này đã được đăng ký bán.",
+  SKU_EXISTS: "Mã SKU đã tồn tại.",
   STOCK_ITEM_NOT_FOUND: "Không tìm thấy mặt hàng tồn kho.",
   STOCK_ITEM_NOT_REGISTERED: "Đầu sách này chưa được đăng ký bán. Hãy đăng ký trước.",
   TITLE_NOT_AVAILABLE: "Không tìm thấy đầu sách trong danh mục.",

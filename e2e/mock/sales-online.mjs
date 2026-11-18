@@ -59,6 +59,7 @@ export function createPhase2(S) {
       paymentMethod: b.paymentMethod ?? "BANK_TRANSFER", fulfilment: b.fulfilment ?? "DELIVERY", customerUserId: uuid(), vatRateBps: settings.vatRateBps,
       pricesIncludeVat: settings.pricesIncludeVat, currency: "VND", subtotal: 0, discountTotal: 0, vatTotal: 0, shippingFee: 0, grandTotal: 0,
       createdAt: created, confirmedAt: null, paidAt: null, completedAt: null, cancelledAt: null, cancelReason: null, exchangeOfReturnId: null, version: 0,
+      customerNote: b.customerNote ?? null, staffNote: null, expectedDeliveryDate: null,
       lines: [{ id: uuid(), lineNo: 1, titleId, titleName: stockView(titleId).titleName ?? "", isbn: null, quantity: q, unitPrice, lineDiscount: 0, allocatedOrderDiscount: 0, amount: 0, vatAmount: 0, lineTotal: 0 }],
       _orderDiscount: 0, _taxable: 0,
     };

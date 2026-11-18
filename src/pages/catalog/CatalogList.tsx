@@ -1,14 +1,15 @@
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
-import { NoPermission, PageHeader, QueryBoundary, SearchBar } from "@/ui";
+import { Button, NoPermission, PageHeader, PlusOutlined, QueryBoundary, SearchBar } from "@/ui";
 import { BooksTable } from "./_components/BooksTable";
+import { NewBookModal } from "./_components/NewBookModal";
 import { ActiveFilters, CatalogControls } from "./_components/CatalogFilters";
 import { filterByIsbn, parsePage, parseSize, parseSort, sortBooks } from "./_components/catalog-filters";
 import type { TitleView } from "./_components/types";
 
 export default function CatalogListPage() {
   const s = useSession();
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
   const q = (sp.get("q") ?? "").trim();
   const isbn = (sp.get("isbn") ?? "").trim();
   const available = sp.get("available") === "true";
@@ -29,7 +30,27 @@ export default function CatalogListPage() {
   const qs = params.size ? `?${params}` : "";
   const query = useApi<TitleView[]>(allowed ? `/api/books${qs}` : null);
 
-  const header = <PageHeader title="Sách" description="Tìm đầu sách và xem số bản sẵn có." />;
+  const newOpen = canCreate && sp.get("new") === "1";
+  const setNewOpen = (open: boolean) => {
+    const n = new URLSearchParams(sp);
+    if (open) n.set("new", "1");
+    else n.delete("new");
+    setSp(n, { replace: true });
+  };
+
+  const header = (
+    <PageHeader
+      title="Sách"
+      description="Tìm đầu sách và xem số bản sẵn có."
+      actions={
+        canCreate && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewOpen(true)}>
+            Thêm sách
+          </Button>
+        )
+      }
+    />
+  );
   if (!allowed) {
     return (
       <>
@@ -47,13 +68,14 @@ export default function CatalogListPage() {
       }
     : {
         title: "Chưa có đầu sách nào.",
-        action: canCreate ? { label: "Thêm sách đầu tiên", href: "/catalog/books/new" } : undefined,
+        action: canCreate ? { label: "Thêm sách đầu tiên", href: "/catalog?new=1" } : undefined,
       };
 
   return (
     <>
       {header}
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <NewBookModal open={newOpen} onClose={() => setNewOpen(false)} />
+      <div className="flex flex-col gap-4">
         <SearchBar placeholder="Tìm theo tên sách hoặc tác giả" extra={<CatalogControls available={available} />} />
         <QueryBoundary query={query}>
           {(books) => {

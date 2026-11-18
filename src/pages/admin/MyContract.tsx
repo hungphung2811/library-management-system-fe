@@ -21,7 +21,7 @@ function Body() {
   return (
     <>
       <PageHeader title="Hợp đồng dịch vụ" description="Hợp đồng thuê dịch vụ của đơn vị bạn. Trang chỉ để xem; liên hệ nhà cung cấp để thay đổi." />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         {cur.isPending ? (
           <PageSkeleton />
         ) : noCurrent ? (

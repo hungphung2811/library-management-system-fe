@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { ApiCallError, apiFetch, useApi, useApiMutation } from "@/api";
-import { Button, Card, EditOutlined, Form, FormModal, Input, QueryBoundary, Text } from "@/ui";
+import { ApiCallError, apiFetch, useApi } from "@/api";
+import { Button, Card, EditOutlined, Form, FormModal, Input, QueryBoundary, Text, useFormModal } from "@/ui";
 import type { TitlePreviewView } from "./types";
 
 export const DESCRIPTION_MAX = 500;
@@ -32,9 +31,21 @@ type Values = { description?: string; previewText?: string };
 export function BookPreviewCard({ titleId, canEdit }: { titleId: string; canEdit: boolean }) {
   const path = `/api/books/${encodeURIComponent(titleId)}/preview` as const;
   const query = useApi<TitlePreviewView>(path);
-  const [open, setOpen] = useState(false);
-  const save = useApiMutation((v: Values) => apiFetch<TitlePreviewView>(path, { method: "PUT", json: { description: v.description ?? "", previewText: v.previewText ?? "" } }), {
+  const form = useFormModal<Values, TitlePreviewView>({
+    title: "Sửa mô tả và đọc thử",
+    successMessage: "Đã lưu.",
     invalidate: [path],
+    initialValues: { description: query.data?.description ?? "", previewText: query.data?.previewText ?? "" },
+    request: async (v) => {
+      try {
+        return await apiFetch<TitlePreviewView>(path, { method: "PUT", json: { description: v.description ?? "", previewText: v.previewText ?? "" } });
+      } catch (e) {
+        if (e instanceof ApiCallError && e.code && e.code in ERRORS) {
+          throw new ApiCallError(e.status, e.code, ERRORS[e.code as keyof typeof ERRORS], e.details);
+        }
+        throw e;
+      }
+    },
   });
 
   return (
@@ -42,7 +53,7 @@ export function BookPreviewCard({ titleId, canEdit }: { titleId: string; canEdit
       title="Mô tả và đọc thử"
       extra={
         canEdit ? (
-          <Button icon={<EditOutlined />} onClick={() => setOpen(true)} disabled={!query.data}>
+          <Button icon={<EditOutlined />} onClick={() => form.openModal()} disabled={!query.data}>
             Sửa
           </Button>
         ) : undefined
@@ -74,23 +85,7 @@ export function BookPreviewCard({ titleId, canEdit }: { titleId: string; canEdit
               </section>
             </div>
             {canEdit && (
-              <FormModal<Values>
-                open={open}
-                title="Sửa mô tả và đọc thử"
-                successMessage="Đã lưu."
-                onCancel={() => setOpen(false)}
-                initialValues={{ description: p.description ?? "", previewText: p.previewText ?? "" }}
-                onSubmit={async (v) => {
-                  try {
-                    await save.mutateAsync(v);
-                  } catch (e) {
-                    if (e instanceof ApiCallError && e.code && e.code in ERRORS) {
-                      throw new ApiCallError(e.status, e.code, ERRORS[e.code as keyof typeof ERRORS], e.details);
-                    }
-                    throw e;
-                  }
-                }}
-              >
+              <FormModal<Values> {...form.modalProps}>
                 <Form.Item name="description" label="Mô tả ngắn (văn bản thuần)" rules={[lengthRule(DESCRIPTION_MAX)]}>
                   <Input.TextArea rows={4} count={counter(DESCRIPTION_MAX)} />
                 </Form.Item>

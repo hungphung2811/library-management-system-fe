@@ -31,6 +31,19 @@ export function setTokens(t: Pick<TokenResponse, "accessToken" | "refreshToken">
   emit();
 }
 
+/**
+ * Chỉ ghi refresh token mới vào localStorage, không đổi access token trong bộ nhớ và không thông báo cho React.
+ * Dùng ngay trước khi tải lại trang (đổi đơn vị): lúc boot, refresh token này đổi ra access token của đơn vị mới,
+ * nên không cần render lại hay gọi lại API của đơn vị cũ.
+ */
+export function persistRefreshTokenOnly(refreshToken: string) {
+  try {
+    localStorage.setItem(REFRESH_KEY, refreshToken);
+  } catch {
+    /* localStorage bị chặn: không giữ được phiên qua lần tải lại */
+  }
+}
+
 export function clearTokens() {
   accessToken = null;
   try {

@@ -43,9 +43,16 @@ const PROFILES = {
   multi: { fullName: "Hồ Anh Tuấn", username: "tuan.ho" },
   multi2: { fullName: "Hồ Anh Tuấn", username: "tuan.ho2" },
 };
+// Thông tin cá nhân: chỉ `reader` và `librarian` có dữ liệu, người khác trả null (dữ liệu cũ).
+const PERSONAL = {
+  reader: { phone: "0987 654 321", dateOfBirth: "2002-11-03", gender: "FEMALE", address: "45 Lê Lợi, Quận 1, TP.HCM", avatarUrl: null, jobTitle: null, employeeCode: null },
+  librarian: { phone: "0901 112 233", dateOfBirth: "1990-02-20", gender: "MALE", address: "Hà Nội", avatarUrl: null, jobTitle: "Thủ thư", employeeCode: "CB-0042" },
+};
 const READER_CARD = {
   userId: USERS.reader.id, cardNo: "TV26-000512", fullName: PROFILES.reader.fullName, email: `${PROFILES.reader.username}@outlook.com`,
   readerType: "STUDENT", cardExpiryDate: "2030-12-31", status: "ACTIVE", cardValid: true,
+  phone: "0987 654 321", dateOfBirth: "2002-11-03", gender: "FEMALE", address: "45 Lê Lợi, Quận 1, TP.HCM",
+  faculty: "Khoa Ngữ văn", className: "K20-NV1", memberCode: "SV20-01234", cardIssuedDate: "2020-09-01",
 };
 
 // Liên kết tài khoản ngoài theo người dùng. `reader` chỉ để xem; `librarian` dành riêng cho test hủy liên kết
@@ -90,6 +97,7 @@ export function handle({ method, url, body, caller, send, tokens }) {
     return send(200, {
       id: USERS[caller].id, username: caller, fullName: PROFILES[caller]?.fullName ?? caller,
       email: `${PROFILES[caller]?.username ?? caller}@outlook.com`, departmentId: "dept-1", status: "ACTIVE",
+      ...(PERSONAL[caller] ?? {}),
     }), true;
   }
   if (method === "GET" && p === "/api/users/me/reader-profile") {

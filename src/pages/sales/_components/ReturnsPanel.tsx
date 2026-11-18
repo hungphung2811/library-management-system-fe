@@ -10,11 +10,12 @@ import {
   ERROR_MESSAGES,
   InputNumber,
   Input,
-  LinkButton,
+  ArrowLeftRight,
   Modal,
   QueryBoundary,
   Select,
   Tag,
+  actionsColumn,
   describeError,
   formatDateTime,
   formatMoney,
@@ -277,17 +278,18 @@ export function ReturnsPanel({ order }: { order: SalesOrder }) {
     { key: "at", title: "Lúc tạo", dataIndex: "createdAt", kind: "datetime" },
     { key: "late", title: "Quá hạn", dataIndex: "late", render: (v, r) => (v ? <Tag color="orange">Quá {String(r.daysOverdue)} ngày</Tag> : "—") },
     { key: "amt", title: "Tiền hoàn", dataIndex: "refundTotal", kind: "money", align: "right" },
-    {
-      key: "ex",
-      title: "",
-      dataIndex: "id",
-      render: (v) =>
-        canPos ? (
-          <LinkButton to={`/sales/pos?exchangeOfReturnId=${encodeURIComponent(String(v))}`} size="small">
-            Đổi hàng
-          </LinkButton>
-        ) : null,
-    },
+    actionsColumn(
+      (r) => [
+        {
+          key: "exchange",
+          label: "Đổi hàng",
+          icon: <ArrowLeftRight size={16} />,
+          hidden: !canPos,
+          to: `/sales/pos?exchangeOfReturnId=${encodeURIComponent(String(r.id))}`,
+        },
+      ],
+      1,
+    ),
   ];
 
   return (

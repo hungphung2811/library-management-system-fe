@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toErrorInfo, useApi } from "@/api";
-import { Alert, Button, DataTable, ErrorPanel, PageSkeleton, PlusOutlined, Tag, formatDate, formatMoney } from "@/ui";
+import { Alert, Button, DataTable, ErrorPanel, PageSkeleton, PlusOutlined, Tag, formatDate, formatMoney, Eye, actionsColumn } from "@/ui";
 import { ContractFormModal } from "../contracts/ContractFormModal";
 import { contractStatusLabel } from "../_lib/contract-format";
 import type { Contract, TenantContractList } from "../_lib/contract-types";
@@ -48,6 +48,7 @@ export function TenantContracts({ tenantId }: { tenantId: string }) {
         mobileTitleKey="name"
         rows={contracts}
         columns={[
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
           { key: "name", title: "Hợp đồng", dataIndex: "name", kind: "link", href: `/platform/tenants/${enc}/contracts/{id}` },
           {
             key: "status",
@@ -80,7 +81,8 @@ export function TenantContracts({ tenantId }: { tenantId: string }) {
           { key: "endDate", title: "Kết thúc", dataIndex: "endDate", render: (v) => (v ? formatDate(v as string) : "Không thời hạn") },
           { key: "totalAmount", title: "Tổng tiền", dataIndex: "totalAmount", align: "right", render: (v) => formatMoney(v as number) },
           { key: "outstandingAmount", title: "Còn nợ", dataIndex: "outstandingAmount", align: "right", render: (v) => formatMoney(v as number) },
-        ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/platform/tenants/${enc}/contracts/${encodeURIComponent(String(row.id))}` }], 1),
+]}
         empty={{ title: "Chưa có hợp đồng nào." }}
       />
       <ContractFormModal

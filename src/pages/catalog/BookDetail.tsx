@@ -2,6 +2,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { PERMISSIONS, can, toErrorInfo, useApi, useSession } from "@/api";
 import {
   Breadcrumb,
+  Button,
   Card,
   ErrorPanel,
   KeyValueList,
@@ -12,10 +13,12 @@ import {
   Result,
   Text,
   formatMoney,
+  useDetailModal,
 } from "@/ui";
 import { BookEditButton } from "./_components/BookEditButton";
 import { BookPreviewCard } from "./_components/BookPreviewCard";
 import { CopiesPanel } from "./_components/CopiesPanel";
+import { CoverImage, TagList, formatLabel, languageLabel, seriesLabel } from "./_components/PublicationFields";
 import { ReserveButton } from "./_components/ReserveButton";
 import type { TitleView } from "./_components/types";
 
@@ -23,6 +26,8 @@ export default function BookDetailPage() {
   const { id = "" } = useParams();
   const [sp] = useSearchParams();
   const s = useSession();
+  const modal = useDetailModal();
+  const inModal = !!modal;
   const allowed = can(s, PERMISSIONS.BOOK_VIEW);
   const query = useApi<TitleView>(allowed ? `/api/books/${encodeURIComponent(id)}` : null);
 
@@ -38,15 +43,21 @@ export default function BookDetailPage() {
   if (query.isError) {
     const err = toErrorInfo(query.error);
     return (
-      <div className="max-w-[1200px]">
+      <div className="">
         {err.status === 404 ? (
           <Result
             status="404"
             title="Không tìm thấy sách"
             extra={
-              <LinkButton type="primary" to="/catalog">
-                Về danh sách
-              </LinkButton>
+              inModal ? (
+                <Button type="primary" onClick={modal.close}>
+                  Đóng
+                </Button>
+              ) : (
+                <LinkButton type="primary" to="/catalog">
+                  Về danh sách
+                </LinkButton>
+              )
             }
           />
         ) : (
@@ -65,11 +76,11 @@ export default function BookDetailPage() {
   const openAdd = sp.get("addCopy") === "1";
 
   return (
-    <div className="flex max-w-[1200px] flex-col gap-5">
-      <Breadcrumb items={[{ title: <Link to="/catalog">Sách</Link> }, { title: book.name }]} />
+    <div className="flex flex-col gap-5">
+      {!inModal && <Breadcrumb items={[{ title: <Link to="/catalog">Sách</Link> }, { title: book.name }]} />}
       <PageHeader
         title={book.name}
-        description={book.author}
+        description={book.subtitle ? `${book.subtitle} · ${book.author}` : book.author}
         actions={
           canEdit || canReserve ? (
             <>
@@ -80,6 +91,9 @@ export default function BookDetailPage() {
         }
       />
       <Card title="Thông tin">
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <CoverImage url={book.coverImageUrl} alt={`Bìa sách ${book.name}`} />
+          <div className="min-w-0 flex-1">
         <KeyValueList
           columns={2}
           items={[
@@ -94,8 +108,19 @@ export default function BookDetailPage() {
               label: "Số bản sẵn có",
               value: book.availableCopies,
             },
+            ...(book.subtitle ? [{ label: "Phụ đề", value: book.subtitle }] : []),
+            ...(book.publicationYear != null ? [{ label: "Năm xuất bản", value: book.publicationYear }] : []),
+            ...(book.edition ? [{ label: "Lần tái bản", value: book.edition }] : []),
+            ...(book.language ? [{ label: "Ngôn ngữ", value: languageLabel(book.language) }] : []),
+            ...(book.pageCount != null ? [{ label: "Số trang", value: book.pageCount }] : []),
+            ...(book.format ? [{ label: "Hình thức", value: formatLabel(book.format) }] : []),
+            ...(book.translator ? [{ label: "Dịch giả", value: book.translator }] : []),
+            ...(book.series ? [{ label: "Bộ sách", value: seriesLabel(book) }] : []),
+            ...(book.tags?.length ? [{ label: "Thẻ", value: <TagList tags={book.tags} /> }] : []),
           ]}
         />
+          </div>
+        </div>
       </Card>
       {can(s, PERMISSIONS.BOOK_PREVIEW_VIEW) && (
         <BookPreviewCard titleId={book.id} canEdit={can(s, PERMISSIONS.BOOK_PREVIEW_UPDATE)} />

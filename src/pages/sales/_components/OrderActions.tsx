@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { PERMISSIONS, apiFetch, can, toErrorInfo, useInvalidateApi, useSession, type ErrorInfo } from "@/api";
-import { Alert, App, Button, ConfirmAction, Form, FormModal, Input, InputNumber, Select, describeError, formatMoney } from "@/ui";
+import { Alert, App, Button, ConfirmAction, Form, FormModal, Input, InputNumber, Select, describeError, formatMoney, useFormModal } from "@/ui";
 import { MoneyInput } from "./MoneyInput";
-import { ALL_PAYMENT_METHODS, FULFILMENTS, label, type Discount, type SalesOrder } from "../_lib/sales";
+import { ALL_PAYMENT_METHODS, FULFILMENTS, PAYMENT_METHODS, label, type Discount, type SalesOrder } from "../_lib/sales";
 
 const ACTIVE = ["PENDING_CONFIRMATION", "CONFIRMED", "READY_FOR_PICKUP", "SHIPPING"];
 
@@ -45,7 +45,6 @@ export function OrderActions({ order, onReload }: { order: SalesOrder; onReload:
   const s = useSession();
   const { message } = App.useApp();
   const invalidate = useInvalidateApi();
-  const [modal, setModal] = useState<null | "confirm" | "paid" | "discount" | "cancel">(null);
   const [err, setErr] = useState<ErrorInfo | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -61,8 +60,6 @@ export function OrderActions({ order, onReload }: { order: SalesOrder; onReload:
     complete: (st === "READY_FOR_PICKUP" || st === "SHIPPING") && can(s, PERMISSIONS.SALES_ORDER_COMPLETE),
     cancel: ACTIVE.includes(st) && can(s, PERMISSIONS.SALES_ORDER_CANCEL),
   };
-  if (!Object.values(show).some(Boolean)) return null;
-
   const post = async (suffix: string, json: Record<string, unknown>) => {
     const r = await apiFetch<SalesOrder>(`/api/sales/orders/${encodeURIComponent(order.id)}/${suffix}`, {
       method: "POST",
@@ -71,6 +68,48 @@ export function OrderActions({ order, onReload }: { order: SalesOrder; onReload:
     await invalidate("/api/sales/orders", "/api/sales/refunds", "/api/sales/stock-items");
     return r;
   };
+
+  const confirmForm = useFormModal<{ shippingFee?: number | null }>({
+    title: `Xác nhận đơn ${order.orderNo}`,
+    okText: "Xác nhận đơn",
+    successMessage: "Đã xác nhận đơn.",
+    request: async (v) => {
+      await post("confirmation", order.fulfilment === "DELIVERY" && v.shippingFee != null ? { shippingFee: v.shippingFee } : {});
+    },
+  });
+  const paidForm = useFormModal<{ method: string; reference?: string }>({
+    title: `Đánh dấu đã thu: ${order.orderNo}`,
+    okText: "Đánh dấu đã thu",
+    successMessage: "Đã ghi nhận thu tiền.",
+    initialValues: { method: order.paymentMethod ?? "BANK_TRANSFER" },
+    request: async (v) => {
+      await post("payment", { method: v.method, ...(v.reference?.trim() ? { reference: v.reference.trim() } : {}) });
+    },
+  });
+  const discountForm = useFormModal<DiscountValues>({
+    title: `Áp giảm giá: ${order.orderNo}`,
+    okText: "Áp giảm giá",
+    successMessage: "Đã cập nhật giảm giá.",
+    request: async (v) => {
+      const orderDiscount = toDiscount(v, "order");
+      const lineDiscounts = order.lines.flatMap((l) => {
+        const d = toDiscount(v, `line${l.lineNo}`);
+        return d ? [{ lineNo: l.lineNo, discount: d }] : [];
+      });
+      await post("discount", { ...(orderDiscount ? { orderDiscount } : {}), ...(lineDiscounts.length ? { lineDiscounts } : {}) });
+    },
+  });
+  const cancelForm = useFormModal<{ reason: string }>({
+    title: `Hủy đơn ${order.orderNo}`,
+    okText: "Hủy đơn",
+    cancelText: "Không hủy",
+    successMessage: "Đã hủy đơn.",
+    request: async (v) => {
+      await post("cancellation", { reason: v.reason.trim() });
+    },
+  });
+  if (!Object.values(show).some(Boolean)) return null;
+
   /** Thao tác một chạm (có hộp xác nhận): lỗi hiện ở khung báo lỗi phía trên các nút. */
   const run = async (suffix: string, okMsg: string) => {
     setErr(null);
@@ -113,17 +152,17 @@ export function OrderActions({ order, onReload }: { order: SalesOrder; onReload:
       )}
       <div className="flex flex-wrap gap-2">
         {show.confirm && (
-          <Button type="primary" disabled={busy} onClick={() => setModal("confirm")}>
+          <Button type="primary" disabled={busy} onClick={() => confirmForm.openModal()}>
             Xác nhận đơn
           </Button>
         )}
         {show.discount && (
-          <Button disabled={busy} onClick={() => setModal("discount")}>
+          <Button disabled={busy} onClick={() => discountForm.openModal()}>
             Áp giảm giá
           </Button>
         )}
         {show.paid && (
-          <Button type={st === "CONFIRMED" ? "default" : "primary"} disabled={busy} onClick={() => setModal("paid")}>
+          <Button type={st === "CONFIRMED" ? "default" : "primary"} disabled={busy} onClick={() => paidForm.openModal()}>
             Đánh dấu đã thu
           </Button>
         )}
@@ -155,23 +194,14 @@ export function OrderActions({ order, onReload }: { order: SalesOrder; onReload:
           </ConfirmAction>
         )}
         {show.cancel && (
-          <Button danger disabled={busy} onClick={() => setModal("cancel")}>
+          <Button danger disabled={busy} onClick={() => cancelForm.openModal()}>
             Hủy đơn
           </Button>
         )}
       </div>
       {show.complete && unpaid && <p className="m-0 text-xs text-muted">Chỉ hoàn tất được khi đơn đã được đánh dấu thu tiền.</p>}
 
-      <FormModal<{ shippingFee?: number | null }>
-        open={modal === "confirm"}
-        title={`Xác nhận đơn ${order.orderNo}`}
-        okText="Xác nhận đơn"
-        successMessage="Đã xác nhận đơn."
-        onCancel={() => setModal(null)}
-        onSubmit={async (v) => {
-          await post("confirmation", order.fulfilment === "DELIVERY" && v.shippingFee != null ? { shippingFee: v.shippingFee } : {});
-        }}
-      >
+      <FormModal<{ shippingFee?: number | null }> {...confirmForm.modalProps}>
         <p className="mt-0 text-muted">
           Nhận hàng: {label(FULFILMENTS, order.fulfilment)}. Phí vận chuyển không chịu VAT.
           {order.fulfilment === "DELIVERY" ? " Để trống để dùng phí cố định trong cấu hình." : " Nhận tại cửa hàng thì không có phí vận chuyển."}
@@ -183,43 +213,19 @@ export function OrderActions({ order, onReload }: { order: SalesOrder; onReload:
         )}
       </FormModal>
 
-      <FormModal<{ method: string; reference?: string }>
-        open={modal === "paid"}
-        title={`Đánh dấu đã thu: ${order.orderNo}`}
-        okText="Đánh dấu đã thu"
-        successMessage="Đã ghi nhận thu tiền."
-        initialValues={{ method: order.paymentMethod ?? "BANK_TRANSFER" }}
-        onCancel={() => setModal(null)}
-        onSubmit={async (v) => {
-          await post("payment", { method: v.method, ...(v.reference?.trim() ? { reference: v.reference.trim() } : {}) });
-        }}
-      >
+      <FormModal<{ method: string; reference?: string }> {...paidForm.modalProps}>
         <p className="mt-0">
           Số tiền thu: <strong>{grand}</strong> (tổng đơn tại thời điểm này). Chỉ đánh dấu được một lần.
         </p>
         <Form.Item name="method" label="Phương thức" rules={[{ required: true, message: "Chọn phương thức" }]}>
-          <Select options={Object.entries(ALL_PAYMENT_METHODS).map(([value, l]) => ({ value, label: l }))} />
+          <Select options={Object.entries({ ...PAYMENT_METHODS, COD: ALL_PAYMENT_METHODS.COD }).map(([value, l]) => ({ value, label: l }))} />
         </Form.Item>
         <Form.Item name="reference" label="Mã tham chiếu giao dịch (tùy chọn)">
           <Input maxLength={100} autoComplete="off" />
         </Form.Item>
       </FormModal>
 
-      <FormModal<DiscountValues>
-        open={modal === "discount"}
-        title={`Áp giảm giá: ${order.orderNo}`}
-        okText="Áp giảm giá"
-        successMessage="Đã cập nhật giảm giá."
-        onCancel={() => setModal(null)}
-        onSubmit={async (v) => {
-          const orderDiscount = toDiscount(v, "order");
-          const lineDiscounts = order.lines.flatMap((l) => {
-            const d = toDiscount(v, `line${l.lineNo}`);
-            return d ? [{ lineNo: l.lineNo, discount: d }] : [];
-          });
-          await post("discount", { ...(orderDiscount ? { orderDiscount } : {}), ...(lineDiscounts.length ? { lineDiscounts } : {}) });
-        }}
-      >
+      <FormModal<DiscountValues> {...discountForm.modalProps}>
         <p className="mt-0 text-muted">Mỗi lần áp dụng thay toàn bộ giảm giá hiện có; để trống mọi ô là gỡ giảm giá.</p>
         <DiscountField name="order" labelText="Giảm giá cả đơn" ariaLabel="Giảm giá cả đơn" />
         {order.lines.map((l) => (
@@ -227,17 +233,7 @@ export function OrderActions({ order, onReload }: { order: SalesOrder; onReload:
         ))}
       </FormModal>
 
-      <FormModal<{ reason: string }>
-        open={modal === "cancel"}
-        title={`Hủy đơn ${order.orderNo}`}
-        okText="Hủy đơn"
-        cancelText="Không hủy"
-        successMessage="Đã hủy đơn."
-        onCancel={() => setModal(null)}
-        onSubmit={async (v) => {
-          await post("cancellation", { reason: v.reason.trim() });
-        }}
-      >
+      <FormModal<{ reason: string }> {...cancelForm.modalProps}>
         <Alert
           type="warning"
           showIcon

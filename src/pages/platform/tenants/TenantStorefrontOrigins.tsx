@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { apiFetch, toErrorInfo, useApi, useApiMutation } from "@/api";
-import { Alert, App, Button, ConfirmAction, DataTable, ErrorPanel, Input, PageSkeleton, Switch, Tag } from "@/ui";
+import { Alert, App, Button, DataTable, ErrorPanel, Input, PageSkeleton, Switch, Tag, Trash2, actionsColumn } from "@/ui";
 import {
   ORIGIN_ERRORS,
   ORIGIN_NOTE,
@@ -124,6 +124,7 @@ export function TenantStorefrontOrigins({ tenantId }: { tenantId: string }) {
         mobileTitleKey="origin"
         rows={origins}
         columns={[
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
           { key: "origin", title: "Origin", dataIndex: "origin", kind: "mono" },
           {
             key: "enabled",
@@ -144,17 +145,19 @@ export function TenantStorefrontOrigins({ tenantId }: { tenantId: string }) {
           },
           { key: "createdAt", title: "Thêm lúc", dataIndex: "createdAt", kind: "datetime" },
           { key: "updatedAt", title: "Cập nhật", dataIndex: "updatedAt", kind: "datetime" },
-          {
-            key: "actions",
-            title: "",
-            dataIndex: "id",
-            render: (_, row) => (
-              <ConfirmAction
-                danger
-                title="Xóa origin này?"
-                description="Website này sẽ không gọi được API công khai của đơn vị sau khoảng 60 giây."
-                okText="Xóa"
-                onConfirm={async () => {
+          actionsColumn(
+            (row) => [
+              {
+                key: "delete",
+                label: `Xóa origin ${row.origin as string}`,
+                icon: <Trash2 size={16} />,
+                danger: true,
+                confirm: {
+                  title: "Xóa origin này?",
+                  description: "Website này sẽ không gọi được API công khai của đơn vị sau khoảng 60 giây.",
+                  okText: "Xóa",
+                },
+                onClick: async () => {
                   setError(null);
                   try {
                     await remove.mutateAsync(row.id as string);
@@ -162,14 +165,11 @@ export function TenantStorefrontOrigins({ tenantId }: { tenantId: string }) {
                   } catch (e) {
                     fail(e);
                   }
-                }}
-              >
-                <Button size="small" danger aria-label={`Xóa origin ${row.origin as string}`}>
-                  Xóa
-                </Button>
-              </ConfirmAction>
-            ),
-          },
+                },
+              },
+            ],
+            1,
+          ),
         ]}
         empty={{ title: "Đơn vị chưa khai báo origin website nào." }}
       />

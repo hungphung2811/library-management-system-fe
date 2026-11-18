@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router";
 import { toErrorInfo, useApi } from "@/api";
-import { Alert, DataTable, ErrorPanel, PageHeader, PageSkeleton, Select, Tag, formatDate, formatMoney } from "@/ui";
+import { Alert, DataTable, ErrorPanel, PageHeader, PageSkeleton, Select, Tag, formatDate, formatMoney, Eye, actionsColumn } from "@/ui";
 import { PlatformGate } from "../_components/PlatformGate";
 import type { ExpiringContract } from "../_lib/contract-types";
 
@@ -26,7 +26,7 @@ function List() {
         title="Hợp đồng sắp hết hạn"
         description="Hợp đồng đang hiệu lực (không tính hợp đồng chuyển tiếp) sắp tới hạn hoặc đang trong ân hạn, sớm nhất trước."
       />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm">Trong vòng</span>
           <Select
@@ -51,6 +51,7 @@ function List() {
               mobileTitleKey="tenantName"
               rows={q.data}
               columns={[
+{ key: "id", title: "ID", dataIndex: "contractId", kind: "id", width: 120 },
                 { key: "tenantName", title: "Đơn vị", dataIndex: "tenantName", kind: "link", href: "/platform/tenants/{tenantId}?tab=contracts" },
                 { key: "tenantCode", title: "Mã", dataIndex: "tenantCode", kind: "mono" },
                 { key: "name", title: "Hợp đồng", dataIndex: "name", kind: "link", href: "/platform/tenants/{tenantId}/contracts/{contractId}" },
@@ -68,7 +69,8 @@ function List() {
                     ),
                 },
                 { key: "outstandingAmount", title: "Còn nợ", dataIndex: "outstandingAmount", align: "right", render: (v) => formatMoney(v as number) },
-              ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/platform/tenants/${encodeURIComponent(String(row.tenantId))}/contracts/${encodeURIComponent(String(row.contractId))}` }], 1),
+]}
               empty={{ title: `Không có hợp đồng nào hết hạn trong ${withinDays} ngày tới.` }}
             />
           </>

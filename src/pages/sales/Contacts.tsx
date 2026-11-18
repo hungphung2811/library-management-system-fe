@@ -1,3 +1,4 @@
+import { usePageSize, Eye, actionsColumn } from "@/ui";
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
 import { DataTable, DatePicker, QueryBoundary, Select, Tag, dayjs, type DataColumn } from "@/ui";
@@ -5,11 +6,11 @@ import { SalesGate } from "./_components/SalesGate";
 import { CONTACT_NOTE, CONTACT_STATUS, CONTACT_STATUS_COLOR, CONTACT_TOPICS, type ContactSummary } from "./_lib/contacts";
 import { label, pageParams, type Page } from "./_lib/sales";
 
-const SIZE = 20;
 
 export default function ContactsPage() {
   const s = useSession();
   const [sp, setSp] = useSearchParams();
+  const SIZE = usePageSize();
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const status = sp.get("status") ?? "";
   const topic = sp.get("topic") ?? "";
@@ -38,7 +39,7 @@ export default function ContactsPage() {
     { key: "at", title: "Gửi lúc", dataIndex: "createdAt", kind: "datetime" },
     {
       key: "who",
-      title: "Người liên hệ (đã che)",
+      title: "Người liên hệ",
       dataIndex: "contact",
       render: (_v, r) => {
         const c = r.contact as ContactSummary["contact"];
@@ -46,11 +47,12 @@ export default function ContactsPage() {
       },
     },
     { key: "anon", title: "Ẩn danh", dataIndex: "piiAnonymizedAt", render: (v) => (v ? <Tag>Đã ẩn danh</Tag> : "—") },
-  ];
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/sales/contacts/${encodeURIComponent(String(row.id))}` }], 1),
+];
 
   return (
     <SalesGate title="Liên hệ khách" description={CONTACT_NOTE} permission={PERMISSIONS.SALES_CONTACT_SEARCH}>
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Select
             aria-label="Trạng thái liên hệ"

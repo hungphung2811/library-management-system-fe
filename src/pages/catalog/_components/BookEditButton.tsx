@@ -1,40 +1,33 @@
-import { useState } from "react";
-import { apiFetch, useApiMutation } from "@/api";
-import { Button, EditOutlined, Form, FormModal, Input, InputNumber } from "@/ui";
+import { apiFetch } from "@/api";
+import { Button, EditOutlined, Form, FormModal, Input, InputNumber, useFormModal } from "@/ui";
 import { ClassificationFields, classificationBody, classificationOf, type ClassificationValues } from "./ClassificationFields";
+import { PublicationFields, publicationBody, publicationOf, type PublicationValues } from "./PublicationFields";
 import type { TitleView } from "./types";
 
-type Values = { name: string; author: string; isbn?: string; coverPrice: number } & ClassificationValues;
+type Values = { name: string; author: string; isbn?: string; coverPrice: number } & ClassificationValues & PublicationValues;
 
 /** Nút "Sửa" + hộp thoại sửa đầu sách (PUT /api/books/{id}, khóa TitleController/update). Ô có sẵn giá trị hiện tại. */
 export function BookEditButton({ book }: { book: TitleView }) {
-  const [open, setOpen] = useState(false);
-  const save = useApiMutation(
-    (v: Values) => {
+  const form = useFormModal<Values, TitleView>({
+    title: "Sửa thông tin sách",
+    successMessage: "Đã cập nhật thông tin sách.",
+    invalidate: ["/api/books"],
+    initialValues: { name: book.name, author: book.author, isbn: book.isbn ?? "", coverPrice: book.coverPrice, ...classificationOf(book), ...publicationOf(book) },
+    request: (v) => {
       const isbn = v.isbn?.trim();
       return apiFetch<TitleView>(`/api/books/${encodeURIComponent(book.id)}`, {
         method: "PUT",
-        json: { name: v.name.trim(), author: v.author.trim(), isbn: isbn ? isbn : null, coverPrice: v.coverPrice, ...classificationBody(v) },
+        json: { name: v.name.trim(), author: v.author.trim(), isbn: isbn ? isbn : null, coverPrice: v.coverPrice, ...classificationBody(v), ...publicationBody(v) },
       });
     },
-    { invalidate: ["/api/books"] },
-  );
+  });
 
   return (
     <>
-      <Button icon={<EditOutlined />} onClick={() => setOpen(true)}>
+      <Button icon={<EditOutlined />} onClick={() => form.openModal()}>
         Sửa
       </Button>
-      <FormModal<Values>
-        open={open}
-        title="Sửa thông tin sách"
-        successMessage="Đã cập nhật thông tin sách."
-        onCancel={() => setOpen(false)}
-        initialValues={{ name: book.name, author: book.author, isbn: book.isbn ?? "", coverPrice: book.coverPrice, ...classificationOf(book) }}
-        onSubmit={async (v) => {
-          await save.mutateAsync(v);
-        }}
-      >
+      <FormModal<Values> {...form.modalProps}>
         <Form.Item
           name="name"
           label="Tên sách"
@@ -76,6 +69,7 @@ export function BookEditButton({ book }: { book: TitleView }) {
           />
         </Form.Item>
         <ClassificationFields book={book} />
+        <PublicationFields book={book} />
       </FormModal>
     </>
   );

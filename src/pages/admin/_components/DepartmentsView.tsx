@@ -4,17 +4,22 @@ import { apiFetch, toErrorInfo, useApiMutation } from "@/api";
 import {
   App,
   Button,
-  Dropdown,
   Empty,
   Form,
   FormModal,
   Input,
   PlusOutlined,
+  Pencil,
+  Plus,
+  Power,
+  RotateCcw,
+  RowActions,
   StatusTag,
   Switch,
   Tree,
   TreeSelect,
   describeError,
+  useFormModal,
 } from "@/ui";
 import type { DepartmentNode } from "../_lib/types";
 
@@ -80,12 +85,18 @@ export function DepartmentsView({
   const contextOnly = useMemo(() => new Set(q ? contextKeys(treeData, q.toLowerCase()) : []), [treeData, q]);
   const totalCount = useMemo(() => keysOf(fullTree).length, [fullTree]);
   const [expanded, setExpanded] = useState<string[]>(allKeys);
-  const [target, setTarget] = useState<Target | null>(null);
 
-  const save = useApiMutation(
-    (v: { edit?: Flat; code?: string; name: string; parentId?: string }) =>
-      v.edit
-        ? apiFetch(`/api/departments/${encodeURIComponent(v.edit.id)}`, {
+  const save = useFormModal<{ code?: string; name: string; parentId?: string }, unknown, Target>({
+    title: (t) => (t?.mode === "edit" ? `Sửa phòng ban «${t.dept.name}»` : "Thêm phòng ban"),
+    okText: (t) => (t?.mode === "edit" ? "Lưu" : "Tạo"),
+        invalidate: ["/api/departments"],
+    initialValues: (t) =>
+      t?.mode === "edit"
+        ? { name: t.dept.name, parentId: t.dept.parentId ?? undefined }
+        : { parentId: t?.mode === "create" ? t.parentId : undefined },
+    request: (v, t) =>
+      t?.mode === "edit"
+        ? apiFetch(`/api/departments/${encodeURIComponent(t.dept.id)}`, {
             method: "PUT",
             json: { name: v.name.trim(), parentId: v.parentId || undefined },
           })
@@ -93,8 +104,7 @@ export function DepartmentsView({
             method: "POST",
             json: { code: v.code?.trim(), name: v.name.trim(), parentId: v.parentId || undefined },
           }),
-    { invalidate: ["/api/departments"] },
-  );
+  });
   const setStatus = useApiMutation(
     (v: { id: string; status: "ACTIVE" | "INACTIVE" }) =>
       apiFetch(`/api/departments/${encodeURIComponent(v.id)}/status`, { method: "PUT", json: { status: v.status } }),
@@ -132,28 +142,21 @@ export function DepartmentsView({
     });
   };
 
-  const menuFor = (d: Flat) => {
-    const items = [
-      ...(canCreate ? [{ key: "add", label: "Thêm phòng ban con" }] : []),
-      ...(canUpdate ? [{ key: "edit", label: "Sửa" }] : []),
-      ...(canStatus ? [{ key: "status", label: d.status === "ACTIVE" ? "Ngừng dùng" : "Dùng lại" }] : []),
-    ];
-    return {
-      items,
-      onClick: ({ key }: { key: string }) => {
-        if (key === "add") setTarget({ mode: "create", parentId: d.id });
-        else if (key === "edit") setTarget({ mode: "edit", dept: d });
-        else changeStatus(d);
-      },
-    };
-  };
+  const actionsFor = (d: Flat) => [
+    { key: "add", label: "Thêm phòng ban con", icon: <Plus size={16} />, hidden: !canCreate, onClick: () => save.openModal({ mode: "create", parentId: d.id }) },
+    { key: "edit", label: "Sửa", icon: <Pencil size={16} />, hidden: !canUpdate, onClick: () => save.openModal({ mode: "edit", dept: d }) },
+    {
+      key: "status",
+      label: d.status === "ACTIVE" ? "Ngừng dùng" : "Dùng lại",
+      icon: d.status === "ACTIVE" ? <Power size={16} /> : <RotateCcw size={16} />,
+      danger: d.status === "ACTIVE",
+      hidden: !canStatus,
+      onClick: () => changeStatus(d),
+    },
+  ];
 
-  const edit = target?.mode === "edit" ? target.dept : null;
+  const edit = save.open && save.target?.mode === "edit" ? save.target.dept : null;
   const excludeId = edit?.id;
-  const initial =
-    target?.mode === "edit"
-      ? { name: target.dept.name, parentId: target.dept.parentId ?? undefined }
-      : { parentId: target?.mode === "create" ? target.parentId : undefined };
 
   return (
     <div className="flex flex-col gap-4">
@@ -181,7 +184,7 @@ export function DepartmentsView({
           </>
         )}
         {canCreate && (
-          <Button type="primary" icon={<PlusOutlined />} className="ml-auto" onClick={() => setTarget({ mode: "create" })}>
+          <Button type="primary" icon={<PlusOutlined />} className="ml-auto" onClick={() => save.openModal({ mode: "create" })}>
             Thêm phòng ban
           </Button>
         )}
@@ -194,7 +197,7 @@ export function DepartmentsView({
       {treeData.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={q ? "Không có phòng ban khớp." : "Chưa có phòng ban nào."}>
           {canCreate && !q && (
-            <Button type="primary" onClick={() => setTarget({ mode: "create" })}>
+            <Button type="primary" onClick={() => save.openModal({ mode: "create" })}>
               Thêm phòng ban gốc
             </Button>
           )}
@@ -208,19 +211,12 @@ export function DepartmentsView({
           onExpand={(k) => setExpanded(k.map(String))}
           titleRender={(n) => {
             const d = (n as unknown as TNode).dept;
-            const items = menuFor(d).items;
             return (
               <span className={`flex flex-wrap items-center gap-2 py-0.5 ${contextOnly.has(d.id) ? "text-muted" : "text-ink"}`}>
                 <span>{d.name}</span>
                 <span className="font-mono text-xs text-muted">{d.code}</span>
                 <StatusTag domain="department" value={d.status} />
-                {items.length > 0 && (
-                  <Dropdown trigger={["click"]} menu={menuFor(d)}>
-                    <Button size="small" type="text" aria-label={`Thao tác với «${d.name}»`}>
-                      …
-                    </Button>
-                  </Dropdown>
-                )}
+                {(canCreate || canUpdate || canStatus) && <RowActions actions={actionsFor(d)} />}
               </span>
             );
           }}
@@ -228,16 +224,9 @@ export function DepartmentsView({
       )}
 
       <FormModal<{ code?: string; name: string; parentId?: string }>
-        key={target ? (edit ? `edit-${edit.id}` : `create-${target.mode === "create" ? (target.parentId ?? "root") : ""}`) : "none"}
-        open={target !== null}
-        title={edit ? `Sửa phòng ban «${edit.name}»` : "Thêm phòng ban"}
-        okText={edit ? "Lưu" : "Tạo"}
+        {...save.modalProps}
+        key={save.open && save.target ? (edit ? `edit-${edit.id}` : `create-${save.target.mode === "create" ? (save.target.parentId ?? "root") : ""}`) : "none"}
         successMessage={edit ? "Đã cập nhật phòng ban." : "Đã tạo phòng ban."}
-        onCancel={() => setTarget(null)}
-        initialValues={initial}
-        onSubmit={async (v) => {
-          await save.mutateAsync({ ...v, edit: edit ?? undefined });
-        }}
       >
         {edit ? (
           <Form.Item label="Mã">

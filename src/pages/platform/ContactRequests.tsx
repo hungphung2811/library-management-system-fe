@@ -1,3 +1,4 @@
+import { usePageSize, Eye, actionsColumn } from "@/ui";
 import { useSearchParams } from "react-router";
 import { toErrorInfo, useApi } from "@/api";
 import { DataTable, DatePicker, ErrorPanel, PageHeader, PageSkeleton, Select, dayjs } from "@/ui";
@@ -7,7 +8,6 @@ import { PlatformGate } from "./_components/PlatformGate";
 import { BUSINESS_LABELS, CONTACT_STATUS_OPTIONS, PLATFORM_ERRORS, maskEmail } from "./_lib/format";
 import type { ContactRequestPage } from "./_lib/types";
 
-const PAGE_SIZE = 20;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Ngày lọc (YYYY-MM-DD, giờ địa phương) -> ISO instant; `to` là ngày cuối gồm cả ngày nên gửi đầu ngày kế tiếp (BE: `to` không gồm). */
@@ -32,6 +32,7 @@ function List() {
   const from = qp(sp, "from");
   const to = qp(sp, "to");
   const page = pageNo(sp);
+  const PAGE_SIZE = usePageSize();
   const hasFilter = !!(status || from || to);
 
   const params = new URLSearchParams({ page: String(page - 1), size: String(PAGE_SIZE) });
@@ -59,7 +60,7 @@ function List() {
         title="Yêu cầu liên hệ"
         description="Yêu cầu liên hệ và dùng thử của bên muốn mua dịch vụ. Chứa dữ liệu cá nhân: email được che, mở chi tiết để xem."
       />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Select
             aria-label="Lọc theo trạng thái"
@@ -98,12 +99,14 @@ function List() {
                 businessLabel: BUSINESS_LABELS[r.businessType] ?? r.businessType,
               }))}
               columns={[
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
                 { key: "organization", title: "Đơn vị", dataIndex: "organization", kind: "link", href: "/platform/contact-requests/{id}" },
                 { key: "businessLabel", title: "Loại hình", dataIndex: "businessLabel" },
                 { key: "email", title: "Email (đã che)", dataIndex: "email" },
                 { key: "status", title: "Trạng thái", dataIndex: "status", kind: "status", statusDomain: "contact" },
                 { key: "createdAt", title: "Gửi lúc", dataIndex: "createdAt", kind: "datetime" },
-              ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/platform/contact-requests/${encodeURIComponent(String(row.id))}` }], 1),
+]}
               empty={
                 hasFilter
                   ? { title: "Không có yêu cầu khớp bộ lọc.", action: { label: "Xóa bộ lọc", href: "/platform/contact-requests" } }

@@ -1,9 +1,8 @@
-import { Tag } from "antd";
 import { Button } from "@/ui";
 
 export type Chip = { key: string; label: string; onClose: () => void };
 
-/** Dải chip các bộ lọc đang bật (bấm × để bỏ từng cái) kèm nút "Xóa bộ lọc" thường trực (vô hiệu khi không có bộ lọc). */
+/** Số kết quả và nút "Xóa bộ lọc" (vô hiệu khi không có bộ lọc). Giá trị lọc đã hiện ngay trong ô lọc nên không lặp lại bằng chip. */
 export function FilterChips({ chips, onClear, count }: { chips: Chip[]; onClear?: () => void; count?: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2" data-testid="filter-chips">
@@ -12,11 +11,6 @@ export function FilterChips({ chips, onClear, count }: { chips: Chip[]; onClear?
           {count}
         </span>
       )}
-      {chips.map((c) => (
-        <Tag key={c.key} closable onClose={c.onClose} data-testid="filter-chip">
-          {c.label}
-        </Tag>
-      ))}
       {onClear && (
         <Button size="small" disabled={chips.length === 0} onClick={onClear}>
           Xóa bộ lọc

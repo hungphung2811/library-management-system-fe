@@ -17,6 +17,7 @@ import {
   StatusTag,
   describeError,
   formatDateTime,
+  useDetailModal,
 } from "@/ui";
 import { PlatformGate } from "./_components/PlatformGate";
 import {
@@ -49,6 +50,7 @@ function Detail() {
 
 /** Dữ liệu cá nhân chỉ hiện đầy đủ khi người dùng bấm "Hiện"; không ghi log hay gửi sang công cụ phân tích. Mọi chuỗi hiển thị bằng text (React escape). */
 function View({ r, reload }: { r: ContactRequest; reload: () => void }) {
+  const inModal = !!useDetailModal();
   const { message } = App.useApp();
   const [reveal, setReveal] = useState(false);
   const [next, setNext] = useState<ContactStatus | undefined>();
@@ -85,8 +87,8 @@ function View({ r, reload }: { r: ContactRequest; reload: () => void }) {
   const personal = (v: string | null, masked: string) => (anonymized ? "Đã ẩn danh" : reveal ? v : masked);
 
   return (
-    <div className="flex max-w-[900px] flex-col gap-4">
-      <Breadcrumb items={[{ title: <Link to="/platform/contact-requests">Yêu cầu liên hệ</Link> }, { title: r.organization ?? "Chi tiết" }]} />
+    <div className={inModal ? "flex flex-col gap-4" : "flex max-w-[900px] flex-col gap-4"}>
+      {!inModal && <Breadcrumb items={[{ title: <Link to="/platform/contact-requests">Yêu cầu liên hệ</Link> }, { title: r.organization ?? "Chi tiết" }]} />}
       <PageHeader
         title={r.organization ?? "Yêu cầu liên hệ"}
         description={<StatusTag domain="contact" value={r.status} />}

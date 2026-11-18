@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toErrorInfo } from "@/api";
-import { Alert, App, Form, Modal } from "./antd";
+import { Alert, App, Button, Form, Modal } from "./antd";
 import { describeError, type DescribedError } from "./error-messages";
 
 /**
@@ -19,6 +19,7 @@ export function FormModal<V = Record<string, unknown>>({
   initialValues,
   successMessage,
   destroyOnHidden = true,
+  secondary,
   children,
 }: {
   open: boolean;
@@ -30,6 +31,8 @@ export function FormModal<V = Record<string, unknown>>({
   initialValues?: Partial<V>;
   successMessage?: string;
   destroyOnHidden?: boolean;
+  /** Nút phụ cạnh nút chính (vd "Lưu và thêm bản sao"): cùng kiểm tra, cùng cách hiện lỗi; resolve thì đóng hộp thoại. */
+  secondary?: { text: string; onSubmit: (values: V) => Promise<void> };
   children: ReactNode;
 }) {
   const [form] = Form.useForm<V>();
@@ -60,7 +63,7 @@ export function FormModal<V = Record<string, unknown>>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, form]);
 
-  const submit = async () => {
+  const run = async (handler: (values: V) => Promise<void>) => {
     if (busy.current) return;
     let values: V;
     try {
@@ -72,7 +75,7 @@ export function FormModal<V = Record<string, unknown>>({
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(values);
+      await handler(values);
       if (successMessage) message.success(successMessage);
       onCancel();
     } catch (e) {
@@ -92,13 +95,29 @@ export function FormModal<V = Record<string, unknown>>({
     }
   };
 
+  const submit = () => run(onSubmit);
+
   return (
     <Modal
       open={open}
+      centered
       title={title}
       okText={okText}
       cancelText={cancelText}
       onOk={submit}
+      footer={
+        secondary
+          ? (_, { OkBtn, CancelBtn }) => (
+              <>
+                <CancelBtn />
+                <Button disabled={submitting} onClick={() => void run(secondary.onSubmit)}>
+                  {secondary.text}
+                </Button>
+                <OkBtn />
+              </>
+            )
+          : undefined
+      }
       onCancel={onCancel}
       confirmLoading={submitting}
       cancelButtonProps={{ disabled: submitting }}

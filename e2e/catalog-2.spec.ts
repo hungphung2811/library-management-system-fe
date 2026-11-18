@@ -8,8 +8,8 @@ test.describe("catalog: sửa đầu sách", () => {
   test("admin sửa tên, tác giả, ISBN, giá bìa; ô có sẵn giá trị và trang cập nhật", async ({ page }) => {
     await gotoAs(page, "admin", "/catalog?q=" + encodeURIComponent("Sách để sửa thông tin"));
     await page.getByRole("table").getByRole("link", { name: "Sách để sửa thông tin" }).click();
-    await page.getByRole("button", { name: /Sửa$/ }).first().click();
-    const dlg = page.getByRole("dialog");
+    await page.getByRole("dialog").first().getByRole("button", { name: /Sửa$/ }).first().click();
+    const dlg = page.getByRole("dialog", { name: "Sửa thông tin sách" });
     await expect(dlg.getByLabel("Tên sách")).toHaveValue("Sách để sửa thông tin");
     await expect(dlg.getByLabel("Tác giả")).toHaveValue("Tác giả cũ");
     await expect(dlg.getByLabel("ISBN")).toHaveValue("9786041119001");
@@ -22,8 +22,8 @@ test.describe("catalog: sửa đầu sách", () => {
   test("ISBN trùng thì báo lỗi trong hộp thoại và giữ dữ liệu", async ({ page }) => {
     await gotoAs(page, "admin", "/catalog?q=" + encodeURIComponent("Sách ISBN lọc A"));
     await page.getByRole("table").getByRole("link", { name: "Sách ISBN lọc A" }).click();
-    await page.getByRole("button", { name: /Sửa$/ }).first().click();
-    const dlg = page.getByRole("dialog");
+    await page.getByRole("dialog").first().getByRole("button", { name: /Sửa$/ }).first().click();
+    const dlg = page.getByRole("dialog", { name: "Sửa thông tin sách" });
     await dlg.getByLabel("ISBN").fill("9786041118882");
     await dlg.getByRole("button", { name: "Lưu" }).click();
     await expect(dlg.locator(".ant-alert-error")).toBeVisible();
@@ -33,7 +33,7 @@ test.describe("catalog: sửa đầu sách", () => {
   test("người không có TitleController/update không thấy nút Sửa", async ({ page }) => {
     await gotoAs(page, "librarian", "/catalog?q=" + encodeURIComponent("Sách ISBN lọc A"));
     await page.getByRole("table").getByRole("link", { name: "Sách ISBN lọc A" }).click();
-    await expect(page.getByRole("heading", { name: "Sách ISBN lọc A" })).toBeVisible();
+    await expect(page.getByRole("dialog").getByRole("heading", { name: "Sách ISBN lọc A" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Sửa$/ })).toHaveCount(0);
   });
 });
@@ -45,10 +45,10 @@ test.describe("catalog: form tìm kiếm", () => {
     await page.getByRole("textbox", { name: "Lọc theo ISBN" }).fill("97860411188");
     await expect(page).toHaveURL(/isbn=97860411188/);
     await expect(page.getByTestId("result-count")).toHaveText("2 đầu sách");
-    await expect(page.getByText("ISBN: 97860411188")).toBeVisible();
-    await page.getByRole("button", { name: "Bỏ bộ lọc ISBN: 97860411188" }).click();
+    await expect(page.getByRole("textbox", { name: "Lọc theo ISBN" })).toHaveValue("97860411188"); // giá trị lọc hiện trong ô, không có chip
+    await expect(page.getByText("ISBN: 97860411188")).toHaveCount(0);
+    await page.getByRole("textbox", { name: "Lọc theo ISBN" }).fill("");
     await expect(page).not.toHaveURL(/isbn=/);
-    await expect(page.getByRole("textbox", { name: "Lọc theo ISBN" })).toHaveValue(""); // ô đồng bộ lại khi bỏ chip
     await page.getByRole("textbox", { name: "Lọc theo ISBN" }).fill("97860411188");
     await expect(page).toHaveURL(/isbn=/);
     await page.getByRole("button", { name: "Xóa bộ lọc" }).click();

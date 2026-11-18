@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { useApi } from "@/api";
-import { DataTable, FilterBar, PageHeader, QueryBoundary, useFilterParams, type FilterField } from "@/ui";
+import { DataTable, FilterBar, PageHeader, QueryBoundary, useFilterParams, type FilterField, Eye, actionsColumn } from "@/ui";
 import { displayStatus, overdueDays, shortId, type BorrowingView } from "./_lib/circulation";
 
-const PAGE_SIZES = [10, 20, 50];
 
 /** Phiếu mượn của chính người đăng nhập (GET /api/borrowings/mine: chỉ cần đăng nhập, BE trả mảng nên lọc/phân trang phía client). */
 export default function MinePage() {
@@ -31,7 +30,7 @@ export default function MinePage() {
   return (
     <>
       <PageHeader title="Phiếu của tôi" description="Các phiếu mượn của bạn: sách đang mượn, hạn trả và lịch sử." />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <QueryBoundary query={q}>
           {(all) => {
             const list = all
@@ -55,7 +54,7 @@ export default function MinePage() {
             });
             return (
               <>
-                <FilterBar filters={f} total={rows.length} unit="phiếu" pageSizes={PAGE_SIZES} />
+                <FilterBar filters={f} total={rows.length} unit="phiếu" />
                 <DataTable
                   key={`${f.params.toString()}|${f.size}`}
                   rowKey="id"
@@ -66,7 +65,7 @@ export default function MinePage() {
                       ? { title: "Không có phiếu nào khớp bộ lọc.", action: { label: "Xóa bộ lọc", href: "/circulation/mine" } }
                       : { title: "Bạn chưa có phiếu mượn nào." }
                   }
-                  pagination={{ mode: "client", pageSize: f.size }}
+                  pagination={{ mode: "client", pageSize: f.size, onSizeChange: f.setSize }}
                   columns={[
                     { key: "code", title: "Mã phiếu", dataIndex: "code", kind: "link", href: "/circulation/borrowings/{id}" },
                     { key: "borrowDate", title: "Ngày mượn", dataIndex: "borrowDate", kind: "date" },
@@ -74,7 +73,8 @@ export default function MinePage() {
                     { key: "books", title: "Số sách", dataIndex: "books" },
                     { key: "renewCount", title: "Gia hạn", dataIndex: "renewCount", align: "right" },
                     { key: "status", title: "Trạng thái", dataIndex: "shownStatus", kind: "status", statusDomain: "borrowing" },
-                  ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/circulation/borrowings/${encodeURIComponent(String(row.id))}` }], 1),
+]}
                 />
               </>
             );

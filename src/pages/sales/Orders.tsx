@@ -1,3 +1,4 @@
+import { usePageSize, Eye, actionsColumn } from "@/ui";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
@@ -8,11 +9,11 @@ import { ALL_PAYMENT_METHODS, CHANNELS, FULFILMENTS, ORDER_STATUS, ORDER_STATUS_
 /** Bộ lọc "chuyển khoản chưa thu quá X giờ": chọn số giờ. */
 const OVERDUE_HOURS = [24, 48, 72];
 
-const SIZE = 20;
 
 export default function OrdersPage() {
   const s = useSession();
   const [sp, setSp] = useSearchParams();
+  const SIZE = usePageSize();
   const page = Math.max(1, Number(sp.get("page")) || 1);
   const status = sp.get("status") ?? "";
   const channel = sp.get("channel") ?? "";
@@ -59,7 +60,7 @@ export default function OrdersPage() {
     { key: "ful", title: "Nhận hàng", dataIndex: "fulfilment", render: (v) => label(FULFILMENTS, v as string) },
     {
       key: "cust",
-      title: "Khách (đã che)",
+      title: "Khách",
       dataIndex: ["contact", "name"],
       render: (v, r) => {
         const c = r.contact as { name?: string | null; phone?: string | null } | null;
@@ -67,11 +68,12 @@ export default function OrdersPage() {
       },
     },
     { key: "total", title: "Tổng tiền", dataIndex: "grandTotal", kind: "money", align: "right" },
-  ];
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/sales/orders/${encodeURIComponent(String(row.id))}` }], 1),
+];
 
   return (
     <SalesGate title="Đơn hàng" description="Đơn tại quầy và đơn trực tuyến, mới nhất trước." permission={PERMISSIONS.SALES_ORDER_SEARCH}>
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <SearchBar
           placeholder="Tìm theo số đơn"
           extra={

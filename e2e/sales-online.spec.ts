@@ -31,10 +31,13 @@ async function hdr(request: APIRequestContext, user: UserKey) {
   return bearer(await loginApi(request, user));
 }
 
-const statusOf = (page: Page) => main(page).getByTestId("order-status");
+// Chi tiết đơn là modal (giữ URL, danh sách ở nền): phân biệt modal chi tiết với hộp thoại thao tác lồng bên trong.
+const detail = (page: Page) => page.getByRole("dialog").filter({ has: page.getByTestId("order-status") });
+const actionDialog = (page: Page) => page.getByRole("dialog").filter({ hasNot: page.getByTestId("order-status") });
+const statusOf = (page: Page) => detail(page).getByTestId("order-status");
 const openOrder = async (page: Page, user: UserKey, o: Order) => {
   await gotoAs(page, user, `/sales/orders/${o.id}`);
-  await expect(main(page).getByTestId("order-status")).toBeVisible();
+  await expect(detail(page).getByTestId("order-status")).toBeVisible();
 };
 
 test.describe("bán hàng pha 2: nav và ma trận khóa", () => {
@@ -55,17 +58,17 @@ test.describe("bán hàng pha 2: nav và ma trận khóa", () => {
   test("thu ngân không thấy Hủy đơn, Áp giảm giá, Trả quá hạn; quản lý thấy", async ({ page }) => {
     const pending = await seed(page.request);
     await openOrder(page, "cashier", pending);
-    await expect(main(page).getByRole("button", { name: "Xác nhận đơn" })).toBeVisible();
-    await expect(main(page).getByRole("button", { name: "Hủy đơn" })).toHaveCount(0);
-    await expect(main(page).getByRole("button", { name: "Áp giảm giá" })).toHaveCount(0);
+    await expect(detail(page).getByRole("button", { name: "Xác nhận đơn" })).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Hủy đơn" })).toHaveCount(0);
+    await expect(detail(page).getByRole("button", { name: "Áp giảm giá" })).toHaveCount(0);
     await openOrder(page, "salesmgr", pending);
-    await expect(main(page).getByRole("button", { name: "Hủy đơn" })).toBeVisible();
-    await expect(main(page).getByRole("button", { name: "Áp giảm giá" })).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Hủy đơn" })).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Áp giảm giá" })).toBeVisible();
 
     const late = await seed(page.request, { status: "COMPLETED", paid: true, completedAgoDays: 30 });
     await openOrder(page, "cashier", late);
-    await main(page).getByRole("button", { name: "Tạo phiếu trả" }).click();
-    const dlg = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Tạo phiếu trả" }).click();
+    const dlg = actionDialog(page);
     await dlg.getByLabel(/Số lượng trả/).fill("1");
     await dlg.getByLabel("Lý do trả hàng").fill("Khách đổi ý");
     await dlg.getByRole("button", { name: "Tạo phiếu trả" }).click();
@@ -78,14 +81,14 @@ test.describe("bán hàng pha 2: nav và ma trận khóa", () => {
   test("người xem đơn không có khóa getContact thấy thông tin đã che; admin xem đầy đủ kèm địa chỉ", async ({ page }) => {
     const o = await seed(page.request);
     await openOrder(page, "salesmgr", o);
-    const c = main(page).getByTestId("order-contact");
+    const c = detail(page).getByTestId("order-contact");
     await expect(c).toContainText("N*** V*** K***");
     await expect(c).toContainText("***, Quận 1, TP Hồ Chí Minh");
     await expect(c).not.toContainText("12 Lê Lợi");
     await expect(c.getByRole("button", { name: "Xem thông tin đầy đủ" })).toHaveCount(0);
     await openOrder(page, "salesadmin", o);
-    await main(page).getByRole("button", { name: "Xem thông tin đầy đủ" }).click();
-    await expect(main(page).getByTestId("order-contact")).toContainText("12 Lê Lợi, Quận 1, TP Hồ Chí Minh");
+    await detail(page).getByRole("button", { name: "Xem thông tin đầy đủ" }).click();
+    await expect(detail(page).getByTestId("order-contact")).toContainText("12 Lê Lợi, Quận 1, TP Hồ Chí Minh");
   });
 });
 
@@ -115,49 +118,49 @@ test.describe("bán hàng pha 2: đơn online", () => {
     const o = await seed(page.request, { fulfilment: "DELIVERY", paymentMethod: "BANK_TRANSFER" });
     await openOrder(page, "salesmgr", o);
     await expect(statusOf(page)).toHaveText("Chờ xác nhận");
-    await expect(main(page).getByTestId("order-payment")).toContainText("Chưa thu");
+    await expect(detail(page).getByTestId("order-payment")).toContainText("Chưa thu");
 
     // Áp giảm giá 10% cả đơn (chỉ khi có khóa).
-    await main(page).getByRole("button", { name: "Áp giảm giá" }).click();
-    const dd = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Áp giảm giá" }).click();
+    const dd = actionDialog(page);
     await dd.getByLabel("Giảm giá cả đơn: loại").click();
     await page.getByTitle("%", { exact: true }).click();
     await dd.getByLabel("Giảm giá cả đơn: giá trị").fill("10");
     await dd.getByRole("button", { name: "Áp giảm giá" }).click();
     await expect(dd).toBeHidden();
-    await expect(main(page).getByText("-12.000")).toBeVisible();
+    await expect(detail(page).getByText("-12.000")).toBeVisible();
 
     // Xác nhận kèm phí ship 25.000.
-    await main(page).getByRole("button", { name: "Xác nhận đơn" }).click();
-    const cd = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Xác nhận đơn" }).click();
+    const cd = actionDialog(page);
     await cd.getByLabel("Phí vận chuyển (đồng)").fill("25000");
     await cd.getByRole("button", { name: "Xác nhận đơn" }).click();
     await expect(cd).toBeHidden();
     await expect(statusOf(page)).toHaveText("Đã xác nhận");
-    await expect(main(page).getByText("Phí vận chuyển")).toBeVisible();
-    await expect(main(page).getByText("25.000").first()).toBeVisible();
+    await expect(detail(page).getByText("Phí vận chuyển")).toBeVisible();
+    await expect(detail(page).getByText("25.000").first()).toBeVisible();
 
     // Giao hàng khi chưa thu: không thể hoàn tất.
-    await main(page).getByRole("button", { name: "Đang giao" }).click();
+    await detail(page).getByRole("button", { name: "Đang giao" }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Đang giao" }).click();
     await expect(statusOf(page)).toHaveText("Đang giao");
-    await expect(main(page).getByRole("button", { name: "Hoàn tất" })).toBeDisabled();
-    await expect(main(page).getByText(/Chỉ hoàn tất được khi đơn đã được đánh dấu thu tiền/)).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Hoàn tất" })).toBeDisabled();
+    await expect(detail(page).getByText(/Chỉ hoàn tất được khi đơn đã được đánh dấu thu tiền/)).toBeVisible();
 
     // Đánh dấu đã thu (COD hoặc chuyển khoản), rồi hoàn tất.
-    await main(page).getByRole("button", { name: "Đánh dấu đã thu" }).click();
-    const pd = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Đánh dấu đã thu" }).click();
+    const pd = actionDialog(page);
     await expect(pd).toContainText("Số tiền thu");
     await pd.getByLabel("Mã tham chiếu giao dịch (tùy chọn)").fill("FT123");
     await pd.getByRole("button", { name: "Đánh dấu đã thu" }).click();
     await expect(pd).toBeHidden();
-    await expect(main(page).getByTestId("order-payment")).toContainText("Đã thu");
-    await expect(main(page).getByRole("button", { name: "Đánh dấu đã thu" })).toHaveCount(0);
-    await main(page).getByRole("button", { name: "Hoàn tất" }).click();
+    await expect(detail(page).getByTestId("order-payment")).toContainText("Đã thu");
+    await expect(detail(page).getByRole("button", { name: "Đánh dấu đã thu" })).toHaveCount(0);
+    await detail(page).getByRole("button", { name: "Hoàn tất" }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Hoàn tất" }).click();
     await expect(statusOf(page)).toHaveText("Hoàn tất");
-    await expect(main(page).getByRole("button", { name: "Hủy đơn" })).toHaveCount(0);
-    await expect(main(page).getByTestId("returns-panel")).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Hủy đơn" })).toHaveCount(0);
+    await expect(detail(page).getByTestId("returns-panel")).toBeVisible();
   });
 
   test("hoàn tất khi chưa thu bị ORDER_NOT_PAID (qua API); nhận tại cửa hàng không có ô phí ship", async ({ page }) => {
@@ -169,11 +172,11 @@ test.describe("bán hàng pha 2: đơn online", () => {
 
     const p = await seed(page.request, { fulfilment: "PICKUP", paymentMethod: "CASH" });
     await openOrder(page, "salesmgr", p);
-    await main(page).getByRole("button", { name: "Xác nhận đơn" }).click();
-    await expect(page.getByRole("dialog").getByLabel("Phí vận chuyển (đồng)")).toHaveCount(0);
-    await page.getByRole("dialog").getByRole("button", { name: "Xác nhận đơn" }).click();
+    await detail(page).getByRole("button", { name: "Xác nhận đơn" }).click();
+    await expect(actionDialog(page).getByLabel("Phí vận chuyển (đồng)")).toHaveCount(0);
+    await actionDialog(page).getByRole("button", { name: "Xác nhận đơn" }).click();
     await expect(statusOf(page)).toHaveText("Đã xác nhận");
-    await main(page).getByRole("button", { name: "Sẵn sàng nhận" }).click();
+    await detail(page).getByRole("button", { name: "Sẵn sàng nhận" }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Sẵn sàng nhận" }).click();
     await expect(statusOf(page)).toHaveText("Sẵn sàng nhận");
   });
@@ -182,8 +185,8 @@ test.describe("bán hàng pha 2: đơn online", () => {
     const h = await hdr(page.request, "salesmgr");
     const o = await seed(page.request, { status: "CONFIRMED", paid: true });
     await openOrder(page, "salesmgr", o);
-    await main(page).getByRole("button", { name: "Hủy đơn" }).click();
-    const dlg = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Hủy đơn" }).click();
+    const dlg = actionDialog(page);
     await expect(dlg).toContainText("tạo khoản hoàn");
     await dlg.getByRole("button", { name: "Hủy đơn" }).click();
     await expect(dlg.getByText("Nhập lý do hủy")).toBeVisible();
@@ -191,7 +194,7 @@ test.describe("bán hàng pha 2: đơn online", () => {
     await dlg.getByRole("button", { name: "Hủy đơn" }).click();
     await expect(dlg).toBeHidden();
     await expect(statusOf(page)).toHaveText("Đã hủy");
-    await expect(main(page).getByTestId("order-cancel-reason")).toHaveText("Khách không nhận hàng");
+    await expect(detail(page).getByTestId("order-cancel-reason")).toHaveText("Khách không nhận hàng");
 
     // Hàng giữ được nhả (sổ cái RESERVE rồi RELEASE cho đúng đơn này) và có khoản hoàn chờ hoàn.
     const ledger = (await (await page.request.get(`/api/sales/stock-items/${BOOK1}/ledger?size=100`, { headers: h })).json()) as { items: { type: string; refId: string }[] };
@@ -207,8 +210,8 @@ test.describe("bán hàng pha 2: đơn online", () => {
     const a = await seed(page.request, { status: "CONFIRMED" });
     await openOrder(page, "salesmgr", a);
     expect((await page.request.post(`/api/sales/orders/${a.id}/payment`, { headers: cashier, data: { method: "CASH" } })).ok()).toBeTruthy();
-    await main(page).getByRole("button", { name: "Đánh dấu đã thu" }).click();
-    const dlg = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Đánh dấu đã thu" }).click();
+    const dlg = actionDialog(page);
     await dlg.getByRole("button", { name: "Đánh dấu đã thu" }).click();
     await expect(dlg.getByText(/vừa được người khác thao tác/)).toBeVisible();
     await dlg.getByRole("button", { name: "Hủy" }).click();
@@ -217,12 +220,12 @@ test.describe("bán hàng pha 2: đơn online", () => {
     const b = await seed(page.request, { status: "CONFIRMED", fulfilment: "PICKUP", paid: true });
     await openOrder(page, "salesmgr", b);
     expect((await page.request.post(`/api/sales/orders/${b.id}/ready-for-pickup`, { headers: cashier, data: {} })).ok()).toBeTruthy();
-    await main(page).getByRole("button", { name: "Sẵn sàng nhận" }).click();
+    await detail(page).getByRole("button", { name: "Sẵn sàng nhận" }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Sẵn sàng nhận" }).click();
-    await expect(main(page).getByText(/vừa được người khác thao tác/)).toBeVisible();
-    await main(page).getByRole("button", { name: "Tải lại đơn" }).click();
+    await expect(detail(page).getByText(/vừa được người khác thao tác/)).toBeVisible();
+    await detail(page).getByRole("button", { name: "Tải lại đơn" }).click();
     await expect(statusOf(page)).toHaveText("Sẵn sàng nhận");
-    await expect(main(page).getByText(/vừa được người khác thao tác/)).toHaveCount(0);
+    await expect(detail(page).getByText(/vừa được người khác thao tác/)).toHaveCount(0);
   });
 });
 
@@ -231,8 +234,8 @@ test.describe("bán hàng pha 2: trả hàng, đổi hàng", () => {
     const h = await hdr(page.request, "salesmgr");
     const o = await seed(page.request, { status: "COMPLETED", paid: true, quantity: 2 });
     await openOrder(page, "salesmgr", o);
-    await main(page).getByRole("button", { name: "Tạo phiếu trả" }).click();
-    const dlg = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Tạo phiếu trả" }).click();
+    const dlg = actionDialog(page);
     await dlg.getByLabel("Lý do trả hàng").fill("Sách bị rách bìa");
     await dlg.getByRole("button", { name: "Tạo phiếu trả" }).click();
     await expect(dlg.getByText("Chọn ít nhất một dòng và số lượng trả.")).toBeVisible();
@@ -241,7 +244,7 @@ test.describe("bán hàng pha 2: trả hàng, đổi hàng", () => {
     await page.getByTitle("Hao hụt (xuất hủy)").click();
     await dlg.getByRole("button", { name: "Tạo phiếu trả" }).click();
     await expect(dlg).toBeHidden();
-    const panel = main(page).getByTestId("returns-panel");
+    const panel = detail(page).getByTestId("returns-panel");
     await expect(panel.getByRole("button", { name: /^TH-/ })).toHaveCount(1);
 
     // 240.000 + VAT 10% = 264.000 cho 2 cuốn: trả 1 cuốn hoàn 132.000, khoản hoàn chờ hoàn.
@@ -274,6 +277,8 @@ test.describe("bán hàng pha 2: trả hàng, đổi hàng", () => {
     await scan.press("Enter");
     await expect(main(page).getByTestId("cart-line")).toHaveCount(1);
     await main(page).getByRole("button", { name: "Thanh toán" }).click();
+    await page.getByLabel("Tiền khách đưa").fill("200000");
+    await page.getByRole("button", { name: "Xác nhận đã thu" }).click();
     await expect(main(page).getByTestId("pos-done")).toBeVisible();
     expect(posts[0]?.exchangeOfReturnId).toBeTruthy();
   });
@@ -282,8 +287,8 @@ test.describe("bán hàng pha 2: trả hàng, đổi hàng", () => {
     const h = await hdr(page.request, "salesmgr");
     const o = await seed(page.request, { status: "COMPLETED", paid: true, quantity: 1, completedAgoDays: 40 });
     await openOrder(page, "salesmgr", o);
-    await main(page).getByRole("button", { name: "Tạo phiếu trả" }).click();
-    const dlg = page.getByRole("dialog");
+    await detail(page).getByRole("button", { name: "Tạo phiếu trả" }).click();
+    const dlg = actionDialog(page);
     await dlg.getByLabel(/Số lượng trả/).fill("1");
     await dlg.getByLabel("Lý do trả hàng").fill("Khách ốm không đến trả kịp");
     await dlg.getByRole("button", { name: "Tạo phiếu trả" }).click();
@@ -297,7 +302,7 @@ test.describe("bán hàng pha 2: trả hàng, đổi hàng", () => {
     await dlg.getByLabel(/Lý do cho phép trả quá hạn/).fill("Quản lý đồng ý do khách nhập viện");
     await lateBtn.click();
     await expect(dlg).toBeHidden();
-    await expect(main(page).getByTestId("returns-panel").getByText(/Quá \d+ ngày/)).toBeVisible();
+    await expect(detail(page).getByTestId("returns-panel").getByText(/Quá \d+ ngày/)).toBeVisible();
 
     const audit = (await (await page.request.get(`/api/sales/audit-log?action=RETURN_LATE_APPROVED&size=100`, { headers: h })).json()) as { items: { data: { lateReason: string } }[] };
     expect(audit.items.some((a) => a.data.lateReason === "Quản lý đồng ý do khách nhập viện")).toBeTruthy();

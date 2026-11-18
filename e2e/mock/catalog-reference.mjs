@@ -13,17 +13,54 @@ const TENANT = "00000000-0000-0000-0000-0000000000d1";
 const STORE = { authors: [], publishers: [], categories: [], "shelf-locations": [] };
 const make = (kind, label, extra = {}) => {
   const k = KINDS[kind];
-  const r = { id: uuid(), [k.field]: label, description: null, parentId: null, parentName: null, active: true, tenantId: TENANT, ...extra };
+  const r = { id: uuid(), [k.field]: label, description: null, parentId: null, parentName: null, active: true, tenantId: TENANT, ...(kind === "shelf-locations" ? { floor: null, zone: null, capacity: null } : {}), ...extra };
   STORE[kind].push(r);
   return r;
 };
 const fiction = make("categories", "Văn học");
 make("categories", "Tiểu thuyết", { parentId: fiction.id, parentName: fiction.name });
-make("authors", "Nguyễn Du");
-make("publishers", "Nhà xuất bản Kim Đồng");
-make("shelf-locations", "A1-01");
+make("authors", "Nguyễn Du", { birthYear: 1765, deathYear: 1820, nationality: "Việt Nam", website: "https://example.org/nguyen-du" });
+make("authors", "Tác giả chưa nhập thêm");
+make("publishers", "Nhà xuất bản Kim Đồng", { country: "Việt Nam", foundedYear: 1957, website: "https://nxbkimdong.com.vn", address: "55 Quang Trung, Hà Nội" });
+make("shelf-locations", "A1-01", { floor: "Tầng 1", zone: "Khu Văn học", capacity: 50 });
 
-const view = (_kind, r) => r;
+// Field bổ sung (hợp đồng docs/api/catalog-copy-reference-extra-fields.md): PUT/POST thay toàn bộ;
+// tác giả/NXB chỉ trả field có giá trị, vị trí kệ trả null khi chưa nhập.
+const EXTRA = {
+  authors: ["birthYear", "deathYear", "nationality", "photoUrl", "website"],
+  publishers: ["country", "foundedYear", "website", "address"],
+  "shelf-locations": ["floor", "zone", "capacity"],
+};
+const THIS_YEAR = new Date().getFullYear();
+const URL_RE = /^https?:\/\/\S+$/i;
+const clean = (v) => (v === "" || v == null ? null : typeof v === "string" ? v.trim() || null : v);
+const extras = (kind, body) => Object.fromEntries((EXTRA[kind] ?? []).map((f) => [f, clean(body[f])]));
+/** Trả null nếu hợp lệ; ngược lại { status, body }. */
+const checkExtras = (kind, e) => {
+  const bad = [];
+  const maxLen = { nationality: 100, country: 100, photoUrl: 500, website: 500, address: 500, floor: 20, zone: 50 };
+  for (const [f, max] of Object.entries(maxLen)) if (e[f] != null && String(e[f]).length > max) bad.push(`${f}: tối đa ${max} ký tự`);
+  for (const f of ["photoUrl", "website"]) if (e[f] != null && !URL_RE.test(e[f])) bad.push(`${f}: phải là địa chỉ http/https`);
+  const yr = (f, lo) => e[f] != null && !(Number.isInteger(e[f]) && e[f] >= lo && e[f] <= THIS_YEAR) && bad.push(`${f}: năm từ ${lo} đến ${THIS_YEAR}`);
+  yr("birthYear", 1);
+  yr("deathYear", 1);
+  yr("foundedYear", 1400);
+  if (e.capacity != null && !(Number.isInteger(e.capacity) && e.capacity >= 1 && e.capacity <= 100000)) bad.push("capacity: từ 1 đến 100000");
+  if (bad.length) return { status: 400, body: { code: "VALIDATION_FAILED", message: "Dữ liệu không hợp lệ", details: bad } };
+  if (kind === "authors" && e.birthYear != null && e.deathYear != null && e.deathYear < e.birthYear) {
+    return { status: 422, body: { code: "INVALID_AUTHOR", message: "Năm mất không được nhỏ hơn năm sinh" } };
+  }
+  return null;
+};
+
+const view = (kind, r) => {
+  if (kind === "authors" || kind === "publishers") {
+    const out = { ...r };
+    for (const f of EXTRA[kind]) if (out[f] == null) delete out[f];
+    return out;
+  }
+  return r;
+};
 
 export function handle({ method, url, body, send, requireKey }) {
   const m = url.pathname.match(/^\/api\/(authors|publishers|categories|shelf-locations)(?:\/([^/]+))?(?:\/(options|status))?$/);
@@ -53,7 +90,7 @@ export function handle({ method, url, body, send, requireKey }) {
   if (method === "GET" && id) {
     if (!key("get")) return true;
     const r = rows.find((x) => x.id === id);
-    return r ? send(200, r) : send(404, { code: k.nf, message: "Không tìm thấy" }), true;
+    return r ? send(200, view(kind, r)) : send(404, { code: k.nf, message: "Không tìm thấy" }), true;
   }
   if (method === "POST" && !id) {
     if (!key("create")) return true;
@@ -62,7 +99,10 @@ export function handle({ method, url, body, send, requireKey }) {
     if (rows.some((r) => norm(r[k.field]) === norm(label))) return send(409, { code: k.dup, message: "Trùng" }), true;
     const parent = kind === "categories" && body.parentId ? rows.find((r) => r.id === body.parentId) : null;
     if (parent?.parentId) return send(422, { code: "CATEGORY_TOO_DEEP", message: "Quá 2 cấp" }), true;
-    return send(201, make(kind, label, { description: body.description ?? null, parentId: parent?.id ?? null, parentName: parent?.name ?? null })), true;
+    const ex = extras(kind, body);
+    const bad = checkExtras(kind, ex);
+    if (bad) return send(bad.status, bad.body), true;
+    return send(201, view(kind, make(kind, label, { description: body.description ?? null, parentId: parent?.id ?? null, parentName: parent?.name ?? null, ...ex }))), true;
   }
   const r = id ? rows.find((x) => x.id === id) : null;
   if (method === "PUT" && id && sub === "status") {
@@ -79,8 +119,11 @@ export function handle({ method, url, body, send, requireKey }) {
     if (rows.some((x) => x.id !== id && norm(x[k.field]) === norm(label))) return send(409, { code: k.dup, message: "Trùng" }), true;
     if (kind === "categories" && body.parentId === id) return send(422, { code: "CATEGORY_CYCLE", message: "Vòng cha-con" }), true;
     const parent = kind === "categories" && body.parentId ? rows.find((x) => x.id === body.parentId) : null;
-    Object.assign(r, { [k.field]: label, description: body.description ?? null, ...(kind === "categories" ? { parentId: parent?.id ?? null, parentName: parent?.name ?? null } : {}) });
-    return send(200, r), true;
+    const ex = extras(kind, body);
+    const bad = checkExtras(kind, ex);
+    if (bad) return send(bad.status, bad.body), true;
+    Object.assign(r, { [k.field]: label, description: body.description ?? null, ...ex, ...(kind === "categories" ? { parentId: parent?.id ?? null, parentName: parent?.name ?? null } : {}) });
+    return send(200, view(kind, r)), true;
   }
   return false;
 }

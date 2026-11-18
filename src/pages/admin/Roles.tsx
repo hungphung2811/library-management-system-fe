@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
-import { DataTable, NoPermission, PageHeader, PageSkeleton, SearchBar, Select } from "@/ui";
+import { DataTable, NoPermission, PageHeader, PageSkeleton, SearchBar, Select, Eye, actionsColumn } from "@/ui";
 import { CreateRoleButton } from "./_components/CreateRoleButton";
 import { ErrorBlock } from "./_components/ErrorBlock";
 import { FilterChips, type Chip } from "./_components/FilterChips";
@@ -49,7 +49,7 @@ export default function RolesPage() {
         description="Vai trò gom các quyền; gán vai trò cho người dùng ở trang người dùng."
         actions={can(s, PERMISSIONS.ROLE_CREATE) ? <CreateRoleButton sessionAdmin={s.admin} /> : undefined}
       />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <SearchBar
           placeholder="Tìm theo tên hoặc mô tả vai trò"
           extra={
@@ -80,11 +80,13 @@ export default function RolesPage() {
             rows={rows}
             mobileTitleKey="name"
             columns={[
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
               { key: "name", title: "Tên", dataIndex: "name", kind: "link", href: "/admin/roles/{id}" },
               { key: "description", title: "Mô tả", dataIndex: "description" },
               { key: "type", title: "Loại", dataIndex: "type" },
               { key: "count", title: "Số quyền", dataIndex: "count", align: "right" },
-            ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/admin/roles/${encodeURIComponent(String(row.id))}` }], 1),
+]}
             empty={chips.length ? { title: "Không có vai trò khớp bộ lọc." } : { title: "Chưa có vai trò nào." }}
           />
         )}

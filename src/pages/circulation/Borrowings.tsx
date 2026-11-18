@@ -1,5 +1,5 @@
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
-import { DataTable, NoPermission, PageHeader, QueryBoundary } from "@/ui";
+import { DataTable, NoPermission, PageHeader, QueryBoundary, Eye, actionsColumn } from "@/ui";
 import { BorrowingFilters, useBorrowingFilters } from "./_components/BorrowingFilters";
 import { LookupForm } from "./_components/LookupForm";
 import {
@@ -73,7 +73,7 @@ export default function BorrowingsPage() {
   return (
     <>
       {header}
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <BorrowingFilters filters={filters} status={filter} setStatus={setStatus} total={total} />
         <QueryBoundary query={query}>
           {(raw) => {
@@ -106,7 +106,8 @@ export default function BorrowingsPage() {
                   { key: "books", title: "Số sách", dataIndex: "books" },
                   { key: "renewCount", title: "Gia hạn", dataIndex: "renewCount", align: "right" },
                   { key: "status", title: "Trạng thái", dataIndex: "shownStatus", kind: "status", statusDomain: "borrowing" },
-                ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/circulation/borrowings/${encodeURIComponent(String(row.id))}` }], 1),
+]}
               />
             );
           }}

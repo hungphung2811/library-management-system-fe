@@ -63,7 +63,6 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
     children: [
       { href: "/catalog", label: "Danh sách sách", permission: PERMISSIONS.BOOK_SEARCH },
       { href: "/catalog/barcode", label: "Tra mã vạch", permission: PERMISSIONS.COPY_BY_BARCODE },
-      { href: "/catalog/books/new", label: "Thêm sách", permission: PERMISSIONS.BOOK_CREATE },
       { href: "/catalog/authors", label: "Tác giả", permission: PERMISSIONS.AUTHOR_SEARCH },
       { href: "/catalog/publishers", label: "Nhà xuất bản", permission: PERMISSIONS.PUBLISHER_SEARCH },
       { href: "/catalog/categories", label: "Thể loại", permission: PERMISSIONS.CATEGORY_SEARCH },

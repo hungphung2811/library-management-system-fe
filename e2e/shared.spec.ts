@@ -123,16 +123,18 @@ test.describe("chuyển đơn vị qua giao diện", () => {
     await expect(page.getByRole("button", { name: /^Đơn vị làm việc/ })).toHaveCount(0);
   });
 
-  test("bộ chọn ở header: chọn đơn vị khác thì đổi tên, về /?switched=1 và giữ sau khi tải lại", async ({ page }) => {
+  test("bộ chọn ở header: chọn đơn vị khác thì tải lại trình duyệt, giữ nguyên đường dẫn và đổi tên đơn vị", async ({ page }) => {
     await restoreA(page);
     await loginAs(page, "multi2");
     await gotoApp(page, "/catalog");
     try {
       await page.getByRole("button", { name: "Đơn vị làm việc: Thư viện trung tâm" }).click();
+      const reloaded = page.waitForEvent("load");
       await page.getByRole("menuitem", { name: /Thư viện cơ sở 2/ }).click();
-      await expect(page).toHaveURL(/\/\?switched=1$/);
+      await reloaded;
+      await expect(page).toHaveURL(/\/catalog$/);
       await expect(page.getByRole("button", { name: "Đơn vị làm việc: Thư viện cơ sở 2" })).toBeVisible();
-      // Tải lại: refresh token cấp token mới thuộc đơn vị B.
+      // Tải lại tiếp: refresh token cấp token mới thuộc đơn vị B.
       await page.reload();
       await expect(page.getByRole("button", { name: "Đơn vị làm việc: Thư viện cơ sở 2" })).toBeVisible();
     } finally {
@@ -153,8 +155,10 @@ test.describe("chuyển đơn vị qua giao diện", () => {
       await expect(dialog.getByText("Đang làm việc")).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Chuyển" })).toBeDisabled();
       await dialog.getByText("Thư viện cơ sở 2").click();
+      const reloaded = page.waitForEvent("load");
       await dialog.getByRole("button", { name: "Chuyển" }).click();
-      await expect(page).toHaveURL(/\/\?switched=1$/);
+      await reloaded;
+      await expect(page).toHaveURL(/\/$/);
       await expect(page.getByRole("button", { name: "Đơn vị làm việc: Thư viện cơ sở 2" })).toBeVisible();
     } finally {
       await restoreA(page);

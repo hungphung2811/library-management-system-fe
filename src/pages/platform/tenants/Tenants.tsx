@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router";
 import { toErrorInfo, useApi } from "@/api";
-import { Button, DataTable, LinkButton, ErrorPanel, PageHeader, PageSkeleton, SearchBar, Select, Tag } from "@/ui";
+import { Button, DataTable, LinkButton, ErrorPanel, PageHeader, PageSkeleton, SearchBar, Select, Tag, Eye, actionsColumn } from "@/ui";
 import { keepPreviousData, pageNo, qp } from "../../admin/_lib/params";
 import { PagerWithSize } from "../_components/PagerWithSize";
 import { PlatformGate } from "../_components/PlatformGate";
@@ -67,7 +67,7 @@ function List() {
           </>
         }
       />
-      <div className="flex max-w-[1200px] flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <SearchBar
           placeholder="Tìm theo mã hoặc tên đơn vị"
           extra={
@@ -111,17 +111,6 @@ function List() {
                 : `${tenants.data.total} đơn vị`
               : ""}
           </span>
-          {chips.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              aria-label={`Bỏ lọc ${c.text}`}
-              onClick={() => set(c.key, null)}
-              className="cursor-pointer border-0 bg-transparent p-0"
-            >
-              <Tag>{c.text} ✕</Tag>
-            </button>
-          ))}
           {hasFilter && (
             <Button
               type="link"
@@ -142,6 +131,7 @@ function List() {
               mobileTitleKey="name"
               rows={items.map((t) => ({ ...t, organizationName: (t.organizationId && orgName.get(t.organizationId)) || null }))}
               columns={[
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
                 { key: "name", title: "Tên đơn vị", dataIndex: "name", kind: "link", href: "/platform/tenants/{id}" },
                 { key: "code", title: "Mã", dataIndex: "code", kind: "mono" },
                 { key: "organizationName", title: "Tổ chức", dataIndex: "organizationName" },
@@ -177,7 +167,8 @@ function List() {
                     ),
                 },
                 { key: "memberCount", title: "Thành viên", dataIndex: "memberCount", align: "right" },
-              ]}
+actionsColumn((row) => [{ key: "view", label: "Xem", icon: <Eye size={16} />, to: `/platform/tenants/${encodeURIComponent(String(row.id))}` }], 1),
+]}
               empty={
                 hasFilter
                   ? { title: "Không có đơn vị khớp bộ lọc.", action: { label: "Xóa bộ lọc", href: "/platform/tenants" } }

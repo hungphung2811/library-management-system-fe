@@ -12,6 +12,7 @@ export function ScanInput({
   label,
   onScan,
   busy,
+  disabled,
   hint,
   status,
   autoFocus,
@@ -20,7 +21,10 @@ export function ScanInput({
 }: {
   label: string;
   onScan: (code: string) => Promise<void>;
+  /** Đang xử lý ở phía cha (hiện vòng xoay, khóa ô). */
   busy?: boolean;
+  /** Chưa dùng được (vd chưa chọn độc giả): khóa ô nhưng KHÔNG hiện vòng xoay để khỏi giống đang tải. */
+  disabled?: boolean;
   hint?: string;
   status?: ReactNode;
   autoFocus?: boolean;
@@ -33,7 +37,8 @@ export function ScanInput({
   const [value, setValue] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const locked = pending || !!busy;
+  const working = pending || !!busy;
+  const locked = working || !!disabled;
 
   useEffect(() => {
     if (autoFocus) input.current?.focus();
@@ -41,7 +46,7 @@ export function ScanInput({
 
   const submit = async () => {
     const code = value.trim();
-    if (!code || running.current || busy) return;
+    if (!code || running.current || busy || disabled) return;
     running.current = true;
     setPending(true);
     setError(null);
@@ -72,7 +77,7 @@ export function ScanInput({
         maxLength={maxLength}
         placeholder={placeholder}
         prefix={<ScanOutlined aria-hidden />}
-        suffix={locked ? <Spin size="small" /> : undefined}
+        suffix={working ? <Spin size="small" /> : undefined}
         value={value}
         readOnly={locked}
         onChange={(e) => setValue(e.target.value)}

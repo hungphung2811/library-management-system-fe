@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { toErrorInfo } from "@/api";
 import { useAuth, type TenantSummary } from "@/auth/AuthProvider";
 import { Alert, Modal, Radio } from "./antd";
 
 export type { TenantSummary } from "@/auth/AuthProvider";
 
-/** Hộp thoại chọn đơn vị làm việc. Thành công thì token mới thay token cũ, cache dữ liệu bị bỏ và chuyển về `/?switched=1` (quyền và dữ liệu đổi theo đơn vị). */
+/** Hộp thoại chọn đơn vị làm việc. Thành công thì token mới thay token cũ, cache dữ liệu bị bỏ và trang được tải lại tại đúng đường dẫn hiện tại (quyền, menu và dữ liệu đổi theo đơn vị). */
 export function TenantSwitchModal({
   open,
   tenants,
@@ -18,7 +17,6 @@ export function TenantSwitchModal({
   currentTenantId?: string;
   onClose: () => void;
 }) {
-  const navigate = useNavigate();
   const { switchTenant } = useAuth();
   const [picked, setPicked] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
@@ -29,10 +27,8 @@ export function TenantSwitchModal({
     setLoading(true);
     setError(null);
     try {
-      await switchTenant(picked);
-      setLoading(false);
-      onClose();
-      void navigate("/?switched=1");
+      // reload: lưu token mới rồi tải lại trang (nút giữ trạng thái đang chạy tới lúc đó), không gọi lại API của đơn vị cũ.
+      await switchTenant(picked, { reload: true });
       return;
     } catch (e) {
       const st = toErrorInfo(e);

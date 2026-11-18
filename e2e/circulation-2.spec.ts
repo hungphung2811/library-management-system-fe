@@ -34,7 +34,7 @@ test.describe("circulation-2: bộ lọc danh sách phiếu mượn", () => {
     await req;
     await expect(page).toHaveURL(new RegExp(`readerId=${READER_BULK.id}`));
     await expect(page.getByText("45 phiếu", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Độc giả" })).toContainText(READER_BULK.name);
+    await expect(page.locator('div[aria-label="Độc giả"]')).toContainText(READER_BULK.name); // hiện trong ô lọc, không có chip
     await expect(dataRows(page)).toHaveCount(20);
 
     // Kết hợp với trạng thái rồi xóa tất cả bằng một nút
@@ -43,19 +43,18 @@ test.describe("circulation-2: bộ lọc danh sách phiếu mượn", () => {
     await expect(page.getByText("Không có phiếu mượn nào khớp bộ lọc.")).toBeVisible();
     await page.getByRole("button", { name: "Xóa bộ lọc" }).first().click();
     await expect(page).not.toHaveURL(/readerId=|status=/);
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Độc giả" })).toHaveCount(0);
+    await expect(page.locator('div[aria-label="Độc giả"]')).not.toContainText(READER_BULK.name);
     await expect(dataRows(page).first()).toBeVisible();
   });
 
-  test("độc giả trên URL được giữ khi tải lại; bỏ chip thì bỏ lọc", async ({ page }) => {
+  test("độc giả trên URL được giữ khi tải lại; Xóa bộ lọc thì bỏ lọc", async ({ page }) => {
     await loginAs(page, "clerk");
     await gotoApp(page, `/circulation/borrowings?readerId=${READER_VALID.id}`);
     await expect(page.getByText(/^\d+ phiếu$/)).toBeVisible(); // nhiều test khác cũng lập phiếu cho độc giả này
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Độc giả" })).toContainText(READER_VALID.name);
+    await expect(page.locator('div[aria-label="Độc giả"]')).toContainText(READER_VALID.name);
     await expect(page.locator(`tr[data-row-key="${BORROWING_OVERDUE_ID}"]`)).toBeVisible();
-    await page.getByRole("button", { name: "Bỏ bộ lọc Độc giả" }).click();
+    await page.getByRole("button", { name: "Xóa bộ lọc" }).first().click();
     await expect(page).not.toHaveURL(/readerId=/);
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Độc giả" })).toHaveCount(0);
   });
 
   test("kích thước trang 10/20/50 gửi size lên BE và lên URL", async ({ page }) => {
@@ -98,7 +97,7 @@ test.describe("circulation-2: phiếu của tôi", () => {
     await gotoApp(page, "/circulation/mine?status=RETURNED");
     await expect(page.locator(`tr[data-row-key="${MINE_RETURNED_ID}"]`)).toBeVisible();
     await expect(page.locator(`tr[data-row-key="${MINE_ACTIVE_ID}"]`)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Trạng thái" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Xóa bộ lọc" }).first()).toBeVisible();
     await page.getByRole("button", { name: "Xóa bộ lọc" }).first().click();
     await expect(page.locator(`tr[data-row-key="${MINE_ACTIVE_ID}"]`)).toBeVisible();
   });
@@ -135,12 +134,12 @@ test.describe("circulation-2: phạt và đặt trước có bộ lọc", () => 
     await gotoApp(page, `/circulation/fines?readerId=${READER_VALID.id}&fineStatus=PAID`);
     await expect(dataRows(page)).toHaveCount(1);
     await expect(page.getByTestId("fine-filter-total")).toContainText("50.000");
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Trạng thái" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Xóa bộ lọc" }).first()).toBeVisible();
 
     // Khoảng ngày phát sinh: chỉ khoản 2020-03-12 nằm sau 2020-03-01
     await gotoApp(page, `/circulation/fines?readerId=${READER_VALID.id}&createdFrom=2020-03-01`);
     await expect(dataRows(page)).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Ngày phát sinh" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Xóa bộ lọc" }).first()).toBeVisible();
 
     await gotoApp(page, `/circulation/fines?readerId=${READER_VALID.id}&reason=LATE_RETURN`);
     await expect(dataRows(page)).toHaveCount(1);
@@ -163,7 +162,7 @@ test.describe("circulation-2: phạt và đặt trước có bộ lọc", () => 
     await gotoApp(page, "/circulation/reservations?status=FULFILLED");
     await expect(page.getByRole("tab", { name: /Lịch sử \(1\)/ })).toBeVisible();
     await expect(page.getByRole("tab", { name: /Đang hiệu lực \(0\)/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Bỏ bộ lọc Trạng thái" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Xóa bộ lọc" }).first()).toBeVisible();
 
     await gotoApp(page, "/circulation/reservations");
     const q = page.getByRole("searchbox", { name: "Tên sách" });

@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Card,
+  DataTable,
   Input,
   KeyValueList,
   LinkButton,
@@ -14,6 +15,8 @@ import {
   StatusTag,
   Tag,
   Text,
+  X,
+  actionsColumn,
   describeError,
   formatDate,
 } from "@/ui";
@@ -241,14 +244,19 @@ export function BorrowDesk({
           </div>
           <Statistic title="Hạn trả" value={formatDate(b.dueDate)} />
         </div>
-        <ul className="m-0 mb-4 list-none p-0">
-          {created.items.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-b-0">
-              <span>{c.titleName ?? "Bản sao"}</span>
-              <span className="font-mono text-sm text-muted">{c.barcode}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="mb-4">
+          <DataTable
+            embedded
+            rowKey="id"
+            mobileTitleKey="titleName"
+            empty={{ title: "Phiếu chưa có sách" }}
+            columns={[
+              { key: "titleName", title: "Sách", dataIndex: "titleName" },
+              { key: "barcode", title: "Mã vạch", dataIndex: "barcode", kind: "mono", width: 200 },
+            ]}
+            rows={created.items.map((c) => ({ id: c.id, titleName: c.titleName ?? "Bản sao", barcode: c.barcode }))}
+          />
+        </div>
         <p className="text-sm text-muted">
           Mã phiếu là thông tin cần có để nhận trả sách. Hãy in hoặc ghi lại cho độc giả.
         </p>
@@ -385,9 +393,10 @@ export function BorrowDesk({
         <ScanInput
           key={resetKey}
           label={canScan ? "Quét hoặc nhập mã vạch sách" : "Nhập mã bản sao (UUID)"}
-          hint="Nhấn Enter để thêm vào phiếu."
+          hint={reader ? "Nhấn Enter để thêm vào phiếu." : "Chọn độc giả ở trên trước, rồi mới quét hoặc nhập mã vạch."}
           autoFocus={canScanNow}
-          busy={!canScanNow || submitting}
+          busy={submitting}
+          disabled={!canScanNow}
           onScan={onScan}
           status={
             scanStatus && <Text type={scanStatus.kind === "success" ? "success" : "warning"}>{scanStatus.text}</Text>
@@ -398,30 +407,27 @@ export function BorrowDesk({
         ) : (
           <div className="mt-2">
             <div className="mb-1 text-sm font-medium text-ink">{cart.length} cuốn</div>
-            <ul className="m-0 list-none p-0" aria-label="Sách trong phiếu">
-              {cart.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-b-0"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{c.titleName ?? "Bản sao"}</span>
-                    <span className="font-mono text-xs text-muted">{c.barcode}</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <StatusTag domain="copy" value={c.status} />
-                    <Button
-                      size="small"
-                      disabled={submitting}
-                      aria-label={`Bỏ «${c.titleName ?? c.barcode}» khỏi phiếu`}
-                      onClick={() => setCart((cur) => cur.filter((x) => x.id !== c.id))}
-                    >
-                      Bỏ
-                    </Button>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <DataTable
+              embedded
+              rowKey="id"
+              mobileTitleKey="titleName"
+              empty={{ title: "Chưa có sách" }}
+              columns={[
+                { key: "titleName", title: "Sách", dataIndex: "titleName" },
+                { key: "barcode", title: "Mã vạch", dataIndex: "barcode", kind: "mono", width: 200 },
+                { key: "status", title: "Trạng thái", dataIndex: "status", kind: "status", statusDomain: "copy", width: 150 },
+                actionsColumn((row) => [
+                  {
+                    key: "remove",
+                    label: `Bỏ «${String(row.titleName ?? row.barcode)}» khỏi phiếu`,
+                    icon: <X size={16} />,
+                    disabled: submitting,
+                    onClick: () => setCart((cur) => cur.filter((x) => x.id !== row.id)),
+                  },
+                ], 1),
+              ]}
+              rows={cart.map((c) => ({ id: c.id, titleName: c.titleName ?? "Bản sao", barcode: c.barcode, status: c.status }))}
+            />
           </div>
         )}
       </Card>

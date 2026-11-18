@@ -67,10 +67,12 @@ function unknownPaths(items: VisibleNavLink[]): string[] {
 /**
  * Nguồn điều hướng của sidebar. Có đơn vị (tenant) và GET /api/menus/me trả menu không rỗng thì dùng menu đó (mục có path
  * không khớp route nào vẫn hiện nhưng ghi cảnh báo console). Rỗng, lỗi hoặc đang tải thì dùng DEFAULT_NAV_LINKS như cũ.
- * Platform admin (không có tenantId) luôn dùng danh sách hằng (có mục platformOnly), không gọi API.
+ * Platform admin chưa chọn đơn vị (không có tenantId) dùng danh sách hằng (có mục platformOnly), không gọi API. Platform admin
+ * đang làm việc thay một đơn vị (ADR-0016: session có tenantId, `apiFetch` gửi X-Tenant-Id) nhận menu của đơn vị đó, kèm
+ * khu "Nền tảng SaaS" để vẫn quản trị được nền tảng.
  */
 export function useNavItems(session: NavSession): VisibleNavLink[] {
-  const dynamic = !!session.tenantId && session.platformAdmin !== true;
+  const dynamic = !!session.tenantId;
   const q = useApi<MenuNode[]>("/api/menus/me", { enabled: dynamic, retry: false, staleTime: 60_000 });
   const data = q.data;
 
@@ -78,7 +80,9 @@ export function useNavItems(session: NavSession): VisibleNavLink[] {
     const fallback = visibleNav(DEFAULT_NAV_LINKS, session);
     if (!dynamic || !Array.isArray(data) || data.length === 0) return fallback;
     const fromMenu = menuToNav(data);
-    return fromMenu.length > 0 ? withMenuAdminLink(fromMenu, session) : fallback;
+    if (fromMenu.length === 0) return fallback;
+    const platform = session.platformAdmin ? visibleNav(DEFAULT_NAV_LINKS.filter((l) => l.href === "/platform"), session) : [];
+    return [...withMenuAdminLink(fromMenu, session), ...platform];
   }, [dynamic, data, session]);
 
   const unknown = useMemo(() => (dynamic && Array.isArray(data) && data.length ? unknownPaths(items) : []), [dynamic, data, items]);

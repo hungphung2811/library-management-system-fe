@@ -10,8 +10,8 @@ import { person, roleSpec } from "./fake.mjs";
 const main = (page: Page) => page.getByRole("main");
 
 async function dialogSettled(page: Page) {
-  const sel = ".ant-modal input:not([type=hidden]), .ant-modal textarea";
-  await page.locator(sel).first().waitFor();
+  // Modal form có thể lồng trong modal chi tiết (không có ô nhập): lấy modal trên cùng (cuối DOM).
+  await page.locator(".ant-modal").last().locator("input:not([type=hidden]), textarea").first().waitFor();
   await page.waitForTimeout(500);
 }
 
@@ -103,7 +103,7 @@ test.describe("admin: đặt lại mật khẩu, sửa/xóa vai trò", () => {
   test("đặt lại mật khẩu: ConfirmAction rồi nhập mật khẩu tạm; mật khẩu ngắn bị chặn; thành công báo buộc đổi", async ({ page }) => {
     const u = await createUser(page);
     await gotoAs(page, "admin", `/admin/users/${u.id}`);
-    await page.getByRole("button", { name: "Đặt lại mật khẩu" }).click();
+    await page.getByRole("dialog").first().getByRole("button", { name: "Đặt lại mật khẩu" }).click();
     await expect(page.getByText(`Đặt lại mật khẩu cho «${u.fullName}»?`)).toBeVisible();
     await page.locator(".ant-popover").getByRole("button", { name: "Tiếp tục" }).click();
     await dialogSettled(page);
@@ -122,15 +122,16 @@ test.describe("admin: đặt lại mật khẩu, sửa/xóa vai trò", () => {
   test("sửa vai trò: đổi mô tả; tên trùng báo lỗi 409", async ({ page }) => {
     const r = await createRole(page);
     await gotoAs(page, "admin", `/admin/roles/${r.id}`);
-    await page.getByRole("button", { name: "Sửa" }).click();
+    const detail = page.getByRole("dialog").first();
+    await detail.getByRole("button", { name: "Sửa" }).click();
     await dialogSettled(page);
     const dialog = page.getByRole("dialog", { name: "Sửa vai trò" });
     await dialog.getByLabel("Mô tả").fill("Mô tả mới sau khi sửa");
     await dialog.getByRole("button", { name: "Lưu" }).click();
     await expect(page.getByText("Đã cập nhật vai trò.")).toBeVisible();
-    await expect(main(page).getByText("Mô tả mới sau khi sửa")).toBeVisible();
+    await expect(detail.getByText("Mô tả mới sau khi sửa")).toBeVisible();
 
-    await page.getByRole("button", { name: "Sửa" }).click();
+    await detail.getByRole("button", { name: "Sửa" }).click();
     await dialogSettled(page);
     await page.getByRole("dialog", { name: "Sửa vai trò" }).getByLabel("Tên vai trò").fill("MEMBER");
     await page.getByRole("dialog", { name: "Sửa vai trò" }).getByRole("button", { name: "Lưu" }).click();
@@ -144,18 +145,19 @@ test.describe("admin: đặt lại mật khẩu, sửa/xóa vai trò", () => {
     const assign = await page.request.post(`/api/access/users/${u.id}/roles`, { headers: bearer(t), data: { roleId: r.id } });
     expect(assign.status()).toBe(204);
     await gotoAs(page, "admin", `/admin/roles/${r.id}`);
-    await page.getByRole("button", { name: /^(delete )?Xóa$/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^(delete )?Xóa$/ }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Xóa", exact: true }).click();
     await expect(page.getByText(/đang được gán cho người dùng/)).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/admin/roles/${r.id}$`));
   });
 
-  test("xóa vai trò chưa gán cho ai: xóa xong về danh sách", async ({ page }) => {
+  test("xóa vai trò chưa gán cho ai: xóa xong modal đóng và về danh sách", async ({ page }) => {
     const r = await createRole(page);
     await gotoAs(page, "admin", `/admin/roles/${r.id}`);
-    await page.getByRole("button", { name: /^(delete )?Xóa$/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^(delete )?Xóa$/ }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Xóa", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/roles$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("link", { name: r.name, exact: true })).toHaveCount(0);
   });
 
@@ -167,11 +169,11 @@ test.describe("admin: đặt lại mật khẩu, sửa/xóa vai trò", () => {
     const t = await loginApi(page.request, "admin");
     await page.request.post(`/api/access/users/${u.id}/roles`, { headers: bearer(t), data: { roleId: r.id } });
     await gotoAs(page, "admin", `/admin/roles/${r.id}`);
-    await page.getByRole("main").getByRole("button", { name: /^(delete )?Xóa$/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^(delete )?Xóa$/ }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Xóa", exact: true }).click();
     await expect(page.getByText(/đang được gán cho người dùng/)).toBeVisible();
     await page.request.delete(`/api/access/users/${u.id}/roles/${r.id}`, { headers: bearer(t) });
-    await page.getByRole("main").getByRole("button", { name: /^(delete )?Xóa$/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^(delete )?Xóa$/ }).click();
     await page.locator(".ant-popover").getByRole("button", { name: "Xóa", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/roles$/);
   });
@@ -181,7 +183,8 @@ test.describe("admin: form tìm kiếm đủ tiện ích", () => {
   test("người dùng: đếm, chip, kích thước trang, Xóa bộ lọc giữ size", async ({ page }) => {
     await gotoAs(page, "admin", "/admin/users?q=nguoidung");
     await expect(page.getByTestId("result-count")).toHaveText("45 người dùng");
-    await expect(page.getByTestId("filter-chip")).toHaveCount(1);
+    await expect(page.getByRole("searchbox")).toHaveValue("nguoidung"); // giá trị lọc hiện ngay trong ô, không có chip lặp lại
+    await expect(page.getByTestId("filter-chip")).toHaveCount(0);
     await expect(page.getByText("Hiển thị 1–20 trên tổng 45")).toBeVisible();
 
     const req = page.waitForRequest((r) => r.url().includes("/api/users?") && /[?&]size=10\b/.test(r.url()));
@@ -193,14 +196,15 @@ test.describe("admin: form tìm kiếm đủ tiện ích", () => {
 
     await page.getByRole("button", { name: "Xóa bộ lọc" }).click();
     await expect(page).toHaveURL(/\/admin\/users\?size=10$/);
-    await expect(page.getByTestId("filter-chip")).toHaveCount(0);
+    await expect(page.getByRole("searchbox")).toHaveValue("");
     await expect(page.getByRole("button", { name: "Xóa bộ lọc" })).toBeDisabled();
   });
 
-  test("người dùng: bỏ chip trạng thái bằng dấu x", async ({ page }) => {
+  test("người dùng: lọc trạng thái hiện trong ô lọc (không có chip); Xóa bộ lọc bỏ lọc", async ({ page }) => {
     await gotoAs(page, "admin", "/admin/users?status=DISABLED");
-    await expect(page.getByTestId("filter-chip")).toContainText("Trạng thái: Đã vô hiệu");
-    await page.getByTestId("filter-chip").locator(".ant-tag-close-icon, [aria-label=close], .anticon-close").first().click();
+    await expect(page.getByTestId("filter-chip")).toHaveCount(0);
+    await expect(page.locator(".ant-select").filter({ has: page.getByRole("combobox", { name: "Lọc theo trạng thái" }) })).toContainText("Đã vô hiệu");
+    await page.getByRole("button", { name: "Xóa bộ lọc" }).click();
     await expect(page).toHaveURL(/\/admin\/users$/);
   });
 
@@ -209,7 +213,8 @@ test.describe("admin: form tìm kiếm đủ tiện ích", () => {
     await page.getByLabel("Loại sự kiện").fill("UserCreated");
     await expect(page).toHaveURL(/[?&]eventType=UserCreated/);
     await expect(page.getByTestId("result-count")).toHaveText("15 sự kiện");
-    await expect(page.getByTestId("filter-chip")).toContainText("Loại: UserCreated");
+    await expect(page.getByLabel("Loại sự kiện")).toHaveValue("UserCreated");
+    await expect(page.getByTestId("filter-chip")).toHaveCount(0);
 
     const req = page.waitForRequest((r) => r.url().includes("/api/audit-logs?") && /[?&]size=50\b/.test(r.url()));
     await page.getByRole("combobox", { name: "Số dòng mỗi trang" }).click();

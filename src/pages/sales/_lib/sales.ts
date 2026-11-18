@@ -31,6 +31,29 @@ export type StockItem = {
   sku?: string | null;
   supplier?: string | null;
   binLocation?: string | null;
+  reorderQuantity?: number | null;
+  lastRestockedAt?: string | null;
+};
+
+/** GET/PUT /api/sales/stock-items/{titleId}/details: PUT thay toàn bộ (vắng là xóa; riêng lastRestockedAt vắng thì giữ). */
+export type StockDetails = {
+  titleId: string;
+  sku: string | null;
+  supplier: string | null;
+  costPrice: number | null;
+  binLocation: string | null;
+  reorderQuantity: number | null;
+  lastRestockedAt: string | null;
+  note: string | null;
+};
+
+/** GET/PUT /api/sales/orders/{id}/notes */
+export type OrderNotes = {
+  id: string;
+  customerNote: string | null;
+  staffNote: string | null;
+  expectedDeliveryDate: string | null;
+  version: number;
 };
 
 export type LedgerEntry = {
@@ -115,6 +138,8 @@ export type SalesOrder = {
   cancelledAt?: string | null;
   cancelReason?: string | null;
   exchangeOfReturnId?: string | null;
+  customerNote?: string | null;
+  expectedDeliveryDate?: string | null;
   version: number;
   lines: OrderLine[];
   /** Chỉ đơn POS thanh toán QR (status AWAITING_PAYMENT lúc mới tạo). */

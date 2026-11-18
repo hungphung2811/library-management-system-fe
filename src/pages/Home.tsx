@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { useApi } from "@/api";
+import { hasModule, useApi } from "@/api";
+import Dashboard from "@/pages/dashboard/Dashboard";
+import PlatformDashboard from "@/pages/dashboard/PlatformDashboard";
 import { useSession } from "@/auth/AuthProvider";
 import { ArrowLeftRight, BookOpen, KeyRound, PageHeader, ShieldCheck, Tag, User, formatDateTime } from "@/ui";
 import { DEFAULT_NAV_LINKS, visibleNav } from "@/ui/nav-links";
@@ -35,9 +37,14 @@ export default function Home() {
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .slice(0, 3);
 
+  // Số liệu chỉ cho nhân viên/quản trị trong một đơn vị; từng khối còn tự ẩn theo module và quyền BE trả về.
+  const staff = !!s.tenantId && (s.admin || modules.some((m) => m.href === "/catalog" || m.href === "/circulation"));
+
   return (
     <>
       <PageHeader title="Tổng quan" description="Chọn một phân hệ để bắt đầu làm việc" />
+      {s.platformAdmin && !s.tenantId && <PlatformDashboard />}
+      {staff && <Dashboard lending={hasModule(s, "LENDING")} sales={hasModule(s, "SALES")} />}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <div className="grid grid-cols-2 gap-4">

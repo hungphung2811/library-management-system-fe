@@ -33,3 +33,33 @@
     padding-left: 0 !important;
   }
 }
+
+/* In phiếu bán hàng từ trang chi tiết dạng modal: modal antd render ở body (ngoài data-print-scope),
+   nên ẩn danh sách ở nền và đưa modal về luồng thường để in đủ nội dung. */
+@media print {
+  body:has([data-print-scope="sales"]):has(.ant-modal-root) [data-print-scope="sales"] {
+    display: none !important;
+  }
+  body:has([data-print-scope="sales"]) .ant-modal-root .ant-modal-mask,
+  body:has([data-print-scope="sales"]) .ant-modal-root .ant-modal-close {
+    display: none !important;
+  }
+  body:has([data-print-scope="sales"]) .ant-modal-root .ant-modal-wrap {
+    position: static !important;
+    overflow: visible !important;
+  }
+  body:has([data-print-scope="sales"]) .ant-modal-root .ant-modal {
+    width: auto !important;
+    max-width: none !important;
+    top: 0 !important;
+    padding: 0 !important;
+  }
+  body:has([data-print-scope="sales"]) .ant-modal-root .ant-modal-container {
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  body:has([data-print-scope="sales"]) .ant-modal-root .ant-modal-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}

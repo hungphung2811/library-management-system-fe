@@ -7,6 +7,8 @@ import { bearer, gotoAs, loginApi, sidebar } from "./helpers";
 let n = 0;
 const uid = () => `${(Date.now() % 1e7).toString(36)}${process.env.TEST_PARALLEL_INDEX ?? 0}${++n}`;
 const main = (page: Page) => page.getByRole("main");
+// Trang chi tiết nằm trong modal (danh sách ở nền): locator chi tiết scope vào dialog đầu tiên (form con mở sau nên đứng sau).
+const detail = (page: Page) => page.getByRole("dialog").first();
 
 async function platformHeaders(page: Page) {
   return bearer(await loginApi(page.request, "platform"));
@@ -46,7 +48,7 @@ test.describe("nền tảng: danh sách đơn vị", () => {
     await expect(page).toHaveURL(/q=seed-lib/);
     await expect(main(page).getByTestId("tenant-count")).toHaveText("1 đơn vị");
     await expect(main(page).getByRole("link", { name: "Thư viện Seed" })).toBeVisible();
-    await expect(main(page).getByRole("button", { name: /Bỏ lọc Từ khóa/ })).toBeVisible();
+    await expect(main(page).getByRole("searchbox")).toHaveValue("seed-lib"); // giá trị lọc hiện trong ô, không có chip
 
     await main(page).getByRole("button", { name: "Xóa bộ lọc" }).first().click();
     await expect(page).not.toHaveURL(/q=/);
@@ -86,8 +88,8 @@ test.describe("nền tảng: tạo và quản lý đơn vị", () => {
     await dlg.getByLabel("Mật khẩu tạm").fill("Temp@12345");
     await dlg.getByRole("button", { name: "Tạo" }).click();
     await expect(page).toHaveURL(/\/platform\/tenants\/[0-9a-f-]+$/);
-    await expect(main(page).getByRole("heading", { name: `Thư viện ${code}` })).toBeVisible({ timeout: 15_000 });
-    await expect(main(page).getByText("Bán hàng").first()).toBeVisible();
+    await expect(page.getByRole("dialog").getByRole("heading", { name: `Thư viện ${code}` })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("dialog").getByText("Bán hàng").first()).toBeVisible();
   });
 
   test("mã trùng hiện thông báo tiếng Việt và giữ dữ liệu đã nhập", async ({ page }) => {
@@ -108,8 +110,8 @@ test.describe("nền tảng: tạo và quản lý đơn vị", () => {
   test("bật SALES, tắt LENDING, không tắt được module cuối", async ({ page }) => {
     const t = await createTenantApi(page);
     await gotoAs(page, "platform", `/platform/tenants/${t.id}`);
-    const lending = main(page).getByRole("switch", { name: "Module Mượn trả" });
-    const sales = main(page).getByRole("switch", { name: "Module Bán hàng" });
+    const lending = detail(page).getByRole("switch", { name: "Module Mượn trả" });
+    const sales = detail(page).getByRole("switch", { name: "Module Bán hàng" });
     await expect(lending).toBeChecked();
     await expect(sales).not.toBeChecked();
     await sales.click();
@@ -126,45 +128,56 @@ test.describe("nền tảng: tạo và quản lý đơn vị", () => {
   test("tạm ngưng rồi kích hoạt lại", async ({ page }) => {
     const t = await createTenantApi(page);
     await gotoAs(page, "platform", `/platform/tenants/${t.id}`);
-    await main(page).getByRole("button", { name: "Tạm ngưng" }).click();
+    await detail(page).getByRole("button", { name: "Tạm ngưng" }).click();
     await page.getByRole("button", { name: "Tạm ngưng" }).last().click();
-    await expect(main(page).getByRole("button", { name: "Kích hoạt" })).toBeVisible();
-    await main(page).getByRole("button", { name: "Kích hoạt" }).click();
+    await expect(detail(page).getByRole("button", { name: "Kích hoạt" })).toBeVisible();
+    await detail(page).getByRole("button", { name: "Kích hoạt" }).click();
     await page.getByRole("button", { name: "Kích hoạt" }).last().click();
-    await expect(main(page).getByRole("button", { name: "Tạm ngưng" })).toBeVisible();
+    await expect(detail(page).getByRole("button", { name: "Tạm ngưng" })).toBeVisible();
   });
 
   test("sửa tên đơn vị", async ({ page }) => {
     const t = await createTenantApi(page);
     await gotoAs(page, "platform", `/platform/tenants/${t.id}`);
-    await main(page).getByRole("button", { name: "Sửa thông tin" }).click();
+    await detail(page).getByRole("button", { name: "Sửa thông tin" }).click();
     const dlg = page.getByRole("dialog", { name: "Sửa thông tin đơn vị" });
     await dlg.getByLabel("Tên đơn vị").fill(`Tên mới ${t.code}`);
     await dlg.getByRole("button", { name: "Lưu" }).click();
-    await expect(main(page).getByRole("heading", { name: `Tên mới ${t.code}` })).toBeVisible();
+    await expect(detail(page).getByRole("heading", { name: `Tên mới ${t.code}` })).toBeVisible();
   });
 
   test("thêm và gỡ quản trị viên", async ({ page }) => {
     const t = await createTenantApi(page);
     await gotoAs(page, "platform", `/platform/tenants/${t.id}?tab=admins`);
     const extra = `adm2-${uid()}`;
-    await main(page).getByRole("button", { name: "Thêm quản trị viên" }).click();
+    await detail(page).getByRole("button", { name: "Thêm quản trị viên" }).click();
     const dlg = page.getByRole("dialog", { name: "Thêm quản trị viên" });
     await dlg.getByLabel("Tên đăng nhập").fill(extra);
     await dlg.getByLabel("Họ tên").fill("Quản trị Hai");
     await dlg.getByLabel("Email").fill(`${extra}@example.vn`);
     await dlg.getByLabel("Mật khẩu tạm").fill("Temp@12345");
     await dlg.getByRole("button", { name: "Thêm" }).click();
-    const row = main(page).getByRole("row", { name: new RegExp(extra) });
+    const row = detail(page).getByRole("row", { name: new RegExp(extra) });
     await expect(row).toBeVisible();
     await row.getByRole("button", { name: "Gỡ" }).click();
     await page.getByRole("button", { name: "Gỡ" }).last().click();
-    await expect(main(page).getByRole("row", { name: new RegExp(extra) })).toHaveCount(0);
+    await expect(detail(page).getByRole("row", { name: new RegExp(extra) })).toHaveCount(0);
+  });
+
+  test("chi tiết đơn vị mở dạng modal trên danh sách, đóng bằng X quay về danh sách", async ({ page }) => {
+    const t = await createTenantApi(page);
+    await gotoAs(page, "platform", `/platform/tenants/${t.id}`);
+    const dlg = detail(page);
+    await expect(dlg.getByRole("heading", { name: `Đơn vị ${t.code}` })).toBeVisible();
+    await expect(main(page).getByRole("heading", { name: "Đơn vị (tenant)" }).or(main(page).getByTestId("tenant-count")).first()).toBeVisible();
+    await dlg.locator(".ant-modal-close").click();
+    await expect(page).toHaveURL(/\/platform\/tenants$/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
   test("đơn vị không tồn tại hiện trang không tìm thấy", async ({ page }) => {
     await gotoAs(page, "platform", "/platform/tenants/a0000000-0000-4000-8000-999999999999");
-    await expect(main(page).getByText("Không tìm thấy đơn vị")).toBeVisible();
+    await expect(detail(page).getByText("Không tìm thấy đơn vị")).toBeVisible();
   });
 });
 

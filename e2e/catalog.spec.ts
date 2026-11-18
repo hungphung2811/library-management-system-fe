@@ -11,7 +11,8 @@ async function openBook(page: Page, name: string) {
   await gotoApp(page, `/catalog?q=${encodeURIComponent(name)}`);
   await page.getByRole("table").getByRole("link", { name }).first().click();
   await expect(page).toHaveURL(/\/catalog\/books\/[^/]+$/);
-  await expect(page.getByRole("heading", { name })).toBeVisible();
+  // Chi tiết nằm trong modal, danh sách vẫn ở nền.
+  await expect(page.getByRole("dialog").getByRole("heading", { name })).toBeVisible();
 }
 
 /** Tạo sách mới qua BFF (đầu sách thật kèm lần tái bản riêng, chưa có bản sao). */
@@ -67,10 +68,11 @@ test.describe("zone catalog: danh sách và tìm sách", () => {
     await expect(rows).toHaveCount(5);
   });
 
-  test("mục Thêm sách và Tra mã vạch ở sidebar chỉ hiện khi có quyền; đầu danh sách không còn nút điều hướng", async ({ page, browser }) => {
+  test("Tra mã vạch ở sidebar và nút Thêm sách (mở hộp thoại) chỉ hiện khi có quyền; Thêm sách không còn là mục sidebar", async ({ page, browser }) => {
     await gotoAs(page, "librarian", "/catalog");
     const nav = sidebar(page);
-    await expect(nav.getByRole("link", { name: "Thêm sách" })).toHaveAttribute("href", "/catalog/books/new");
+    await expect(nav.getByRole("link", { name: "Thêm sách" })).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("button", { name: "Thêm sách" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Tra mã vạch" })).toHaveAttribute("href", "/catalog/barcode");
     await expect(page.getByRole("main").getByRole("link", { name: "Tra theo mã vạch" })).toHaveCount(0);
 
@@ -80,6 +82,7 @@ test.describe("zone catalog: danh sách và tìm sách", () => {
     await expect(r.getByRole("table")).toBeVisible();
     await expect(sidebar(r).getByRole("link", { name: "Danh sách sách" })).toBeVisible();
     await expect(sidebar(r).getByRole("link", { name: "Thêm sách" })).toHaveCount(0);
+    await expect(r.getByRole("main").getByRole("button", { name: "Thêm sách" })).toHaveCount(0);
     await expect(sidebar(r).getByRole("link", { name: "Tra mã vạch" })).toHaveCount(0);
     await ctx.close();
   });
@@ -104,8 +107,22 @@ test.describe("zone catalog: chi tiết sách và bản sao", () => {
 
   test("sách không tồn tại hiện 404 và nút về danh sách", async ({ page }) => {
     await gotoAs(page, "librarian", "/catalog/books/khong-ton-tai");
-    await expect(page.getByText("Không tìm thấy sách")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Về danh sách" })).toBeVisible();
+    const detail = page.getByRole("dialog");
+    await expect(detail.getByText("Không tìm thấy sách")).toBeVisible();
+    await detail.getByRole("button", { name: "Đóng", exact: true }).last().click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/catalog$/);
+  });
+
+  test("mở sách từ danh sách: modal chi tiết, danh sách còn ở nền, đóng (X) về URL danh sách", async ({ page }) => {
+    await gotoAs(page, "librarian", "/catalog?q=" + encodeURIComponent(STATES_BOOK));
+    await page.getByRole("table").getByRole("link", { name: STATES_BOOK }).first().click();
+    const detail = page.getByRole("dialog");
+    await expect(detail.getByRole("heading", { name: STATES_BOOK })).toBeVisible();
+    await expect(page.getByRole("table").getByRole("link", { name: STATES_BOOK }).first()).toBeVisible();
+    await detail.locator(".ant-modal-close").click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/catalog\?q=/);
   });
 
   test("thủ thư thấy bản sao, lọc theo trạng thái", async ({ page }) => {
@@ -126,19 +143,19 @@ test.describe("zone catalog: chi tiết sách và bản sao", () => {
 
     const barcode = copyBarcode();
     await page.getByRole("button", { name: /Thêm bản sao/ }).click();
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog", { name: /^Thêm bản sao/ });
     // FormModal gọi resetFields trong afterOpenChange (sau animation mở): đợi animation xong rồi mới gõ, nếu không ô bị xóa mất.
-    await expect(page.locator(".ant-modal")).not.toHaveClass(/ant-zoom/);
+    await expect(page.locator(".ant-modal").last()).not.toHaveClass(/ant-zoom/);
     await dialog.getByLabel("Mã vạch").fill(barcode);
     await dialog.getByLabel("Mã vạch").press("Enter");
     await expect(dialog).toHaveCount(0);
     await expect(copyRow(page, barcode)).toContainText("Sẵn sàng");
 
     await page.getByRole("button", { name: /Thêm bản sao/ }).click();
-    await expect(page.locator(".ant-modal")).not.toHaveClass(/ant-zoom/);
-    await page.getByRole("dialog").getByLabel("Mã vạch").fill(barcode);
-    await page.getByRole("dialog").getByRole("button", { name: "Lưu" }).click();
-    await expect(page.getByRole("dialog").getByText(`Mã vạch ${barcode} đã tồn tại`)).toBeVisible();
+    await expect(page.locator(".ant-modal").last()).not.toHaveClass(/ant-zoom/);
+    await dialog.getByLabel("Mã vạch").fill(barcode);
+    await dialog.getByRole("button", { name: "Lưu" }).click();
+    await expect(dialog.getByText(`Mã vạch ${barcode} đã tồn tại`)).toBeVisible();
   });
 
   test("đổi trạng thái: báo hư hỏng, báo mất, sửa xong, nhả giữ chỗ", async ({ page }) => {
@@ -166,42 +183,52 @@ test.describe("zone catalog: chi tiết sách và bản sao", () => {
   });
 });
 
-test.describe("zone catalog: thêm sách", () => {
-  test("thiếu quyền BOOK_CREATE thì thấy trang 403", async ({ page }) => {
+test.describe("zone catalog: thêm sách (hộp thoại)", () => {
+  test("thiếu quyền BOOK_CREATE thì không có nút và link cũ /catalog/books/new không mở hộp thoại", async ({ page }) => {
     await gotoAs(page, "reader", "/catalog/books/new");
-    await expect(page.getByText("Bạn chưa có quyền xem trang này")).toBeVisible();
+    await expect(page).toHaveURL(/\/catalog(\?|$)/);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("button", { name: "Thêm sách" })).toHaveCount(0);
+  });
+
+  test("link cũ /catalog/books/new chuyển về danh sách và mở sẵn hộp thoại", async ({ page }) => {
+    await gotoAs(page, "librarian", "/catalog/books/new");
+    await expect(page.getByRole("dialog", { name: "Thêm sách" })).toBeVisible();
   });
 
   test("kiểm tra bắt buộc rồi tạo sách và chuyển tới trang chi tiết", async ({ page }) => {
-    await gotoAs(page, "librarian", "/catalog/books/new");
-    
-    await page.getByRole("button", { name: "Lưu", exact: true }).click();
-    await expect(page.getByText("Nhập tên sách")).toBeVisible();
-    await expect(page.getByText("Nhập tác giả")).toBeVisible();
-    await expect(page.getByText("Nhập giá bìa")).toBeVisible();
+    await gotoAs(page, "librarian", "/catalog");
+    await page.getByRole("main").getByRole("button", { name: "Thêm sách" }).click();
+    const dlg = page.getByRole("dialog", { name: "Thêm sách" });
+    await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
+    await expect(dlg.getByText("Nhập tên sách")).toBeVisible();
+    await expect(dlg.getByText("Nhập tác giả")).toBeVisible();
+    await expect(dlg.getByText("Nhập giá bìa")).toBeVisible();
 
     const b = book();
     const name = b.name;
-    await page.getByLabel("Tên sách").fill(name);
-    await page.getByLabel("Tác giả").fill(b.author);
-    await page.getByLabel("ISBN").fill(b.isbn);
-    await page.getByLabel("Giá bìa").fill(String(b.coverPrice));
-    await page.getByRole("button", { name: "Lưu", exact: true }).click();
+    await dlg.getByLabel("Tên sách").fill(name);
+    await dlg.getByLabel("Tác giả").fill(b.author);
+    await dlg.getByLabel("ISBN").fill(b.isbn);
+    await dlg.getByLabel("Giá bìa").fill(String(b.coverPrice));
+    await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
 
     await expect(page).toHaveURL(/\/catalog\/books\/[^/]+$/);
-    await expect(page.getByRole("heading", { name })).toBeVisible();
-    await expect(page.getByText(b.isbn)).toBeVisible();
+    await expect(page.getByRole("dialog").getByRole("heading", { name })).toBeVisible();
+    await expect(page.getByRole("dialog").getByText(b.isbn)).toBeVisible();
   });
 
   test("Lưu và thêm bản sao mở sẵn hộp thoại thêm bản sao", async ({ page }) => {
-    await gotoAs(page, "librarian", "/catalog/books/new");
-        const b = book();
-    await page.getByLabel("Tên sách").fill(b.name);
-    await page.getByLabel("Tác giả").fill(b.author);
-    await page.getByLabel("Giá bìa").fill(String(b.coverPrice));
-    await page.getByRole("button", { name: "Lưu và thêm bản sao" }).click();
+    await gotoAs(page, "librarian", "/catalog");
+    await page.getByRole("main").getByRole("button", { name: "Thêm sách" }).click();
+    const dlg = page.getByRole("dialog", { name: "Thêm sách" });
+    const b = book();
+    await dlg.getByLabel("Tên sách").fill(b.name);
+    await dlg.getByLabel("Tác giả").fill(b.author);
+    await dlg.getByLabel("Giá bìa").fill(String(b.coverPrice));
+    await dlg.getByRole("button", { name: "Lưu và thêm bản sao" }).click();
     await expect(page).toHaveURL(/addCopy=1/);
-    await expect(page.getByRole("dialog").getByLabel("Mã vạch")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: /^Thêm bản sao/ }).getByLabel("Mã vạch")).toBeVisible();
   });
 });
 
@@ -226,5 +253,103 @@ test.describe("zone catalog: tra theo mã vạch", () => {
     await input.press("Enter");
     await expect(page.getByText("Không tìm thấy bản sao có mã vạch «TV99999998».")).toBeVisible();
     await expect(input).toBeFocused();
+  });
+});
+
+test.describe("zone catalog: thông tin xuất bản của đầu sách", () => {
+  const COVER = "https://covers.example.test/bia.png";
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+
+  test("sách có đủ trường: trang chi tiết hiện nhãn tiếng Việt, bộ sách, thẻ và ảnh bìa", async ({ page }) => {
+    await page.route(COVER, (r) => r.fulfill({ contentType: "image/png", body: PNG }));
+    await gotoAs(page, "librarian", "/catalog");
+    const t = await loginAs(page, "librarian");
+    const b = book();
+    const res = await page.request.post("/api/books", {
+      headers: bearer(t),
+      data: {
+        name: b.name, author: b.author, isbn: b.isbn, coverPrice: b.coverPrice,
+        subtitle: "Phiên bản minh họa", publicationYear: 2019, edition: "Tái bản lần 4", language: "fr", pageCount: 320,
+        format: "HARDCOVER", translator: "Đỗ Thanh Hà", series: "Tủ sách vàng", seriesNumber: 7, coverImageUrl: COVER, tags: ["kinh điển", "thiếu nhi"],
+      },
+    });
+    expect(res.status()).toBe(201);
+    const { id } = (await res.json()) as { id: string };
+    await gotoApp(page, `/catalog/books/${id}`);
+    const main = page.getByRole("dialog").first();
+    await expect(main.getByText("Phiên bản minh họa").first()).toBeVisible();
+    await expect(main.getByText("Bìa cứng")).toBeVisible();
+    await expect(main.getByText("Tiếng Pháp")).toBeVisible();
+    await expect(main.getByText("2019")).toBeVisible();
+    await expect(main.getByText("320")).toBeVisible();
+    await expect(main.getByText("Tái bản lần 4")).toBeVisible();
+    await expect(main.getByText("Đỗ Thanh Hà")).toBeVisible();
+    await expect(main.getByText("Tủ sách vàng - Tập 7")).toBeVisible();
+    await expect(main.getByText("kinh điển")).toBeVisible();
+    await expect(main.getByText("thiếu nhi")).toBeVisible();
+    await expect(main.getByRole("img", { name: `Bìa sách ${b.name}` })).toBeVisible();
+  });
+
+  test("sách không có trường xuất bản: không hiện nhãn trống; ảnh bìa lỗi tải thì có dự phòng", async ({ page }) => {
+    await page.route(COVER, (r) => r.abort());
+    await gotoAs(page, "librarian", "/catalog");
+    const t = await loginAs(page, "librarian");
+    const plain = book();
+    const r1 = await page.request.post("/api/books", { headers: bearer(t), data: { name: plain.name, author: plain.author, coverPrice: plain.coverPrice } });
+    const idPlain = ((await r1.json()) as { id: string }).id;
+    await gotoApp(page, `/catalog/books/${idPlain}`);
+    const main = page.getByRole("dialog").first();
+    await expect(main.getByRole("heading", { name: plain.name })).toBeVisible();
+    for (const label of ["Phụ đề", "Năm xuất bản", "Lần tái bản", "Ngôn ngữ", "Số trang", "Hình thức", "Dịch giả", "Bộ sách", "Thẻ"]) {
+      await expect(main.getByText(label, { exact: true })).toHaveCount(0);
+    }
+    await expect(main.getByTestId("cover-fallback")).toBeVisible();
+
+    const broken = book();
+    const r2 = await page.request.post("/api/books", { headers: bearer(t), data: { name: broken.name, author: broken.author, coverPrice: broken.coverPrice, coverImageUrl: COVER } });
+    const idBroken = ((await r2.json()) as { id: string }).id;
+    await gotoApp(page, `/catalog/books/${idBroken}`);
+    await expect(page.getByRole("dialog").first().getByTestId("cover-fallback")).toBeVisible();
+  });
+
+  test("form thêm sách: nhập khối Thông tin xuất bản, lưu rồi hiện ở chi tiết; sửa được và kiểm URL ảnh bìa", async ({ page }) => {
+    await gotoAs(page, "admin", "/catalog");
+    await page.getByRole("main").getByRole("button", { name: "Thêm sách" }).click();
+    const dlg = page.getByRole("dialog", { name: "Thêm sách" });
+    const b = book();
+    await dlg.getByLabel("Tên sách").fill(b.name);
+    await dlg.getByLabel("Tác giả").fill(b.author);
+    await dlg.getByLabel("Giá bìa").fill(String(b.coverPrice));
+    await dlg.getByLabel("Phụ đề").fill("Bản đặc biệt");
+    await dlg.getByLabel("Năm xuất bản").fill("2020");
+    await dlg.getByLabel("Số trang").fill("256");
+    await dlg.getByLabel("Hình thức").click();
+    await page.getByTitle("Sách điện tử").click();
+    await dlg.getByLabel("Bộ sách").fill("Bộ thử nghiệm");
+    await dlg.getByLabel("Tập số").fill("3");
+    await dlg.getByLabel("Thẻ").fill("văn học");
+    await dlg.getByLabel("Thẻ").press("Enter");
+    await dlg.getByLabel("Ảnh bìa (URL)").fill("ftp://x/y.png");
+    await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
+    await expect(dlg.getByText("Phải là địa chỉ http:// hoặc https://")).toBeVisible();
+    await dlg.getByLabel("Ảnh bìa (URL)").fill("");
+    await dlg.getByRole("button", { name: "Lưu", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/catalog\/books\/[^/]+$/);
+    const main = page.getByRole("dialog").first();
+    await expect(main.getByText("Bản đặc biệt").first()).toBeVisible();
+    await expect(main.getByText("Sách điện tử")).toBeVisible();
+    await expect(main.getByText("Bộ thử nghiệm - Tập 3")).toBeVisible();
+    await expect(main.getByText("văn học")).toBeVisible();
+
+    await main.getByRole("button", { name: "Sửa" }).first().click();
+    const edit = page.getByRole("dialog", { name: "Sửa thông tin sách" });
+    await expect(edit.getByLabel("Phụ đề")).toHaveValue("Bản đặc biệt");
+    await edit.getByLabel("Phụ đề").fill("");
+    await edit.getByLabel("Bộ sách").fill("");
+    await edit.getByRole("button", { name: "Lưu", exact: true }).click();
+    await expect(edit).toBeHidden();
+    await expect(main.getByText("Bản đặc biệt")).toHaveCount(0);
+    await expect(main.getByText("Bộ thử nghiệm")).toHaveCount(0);
   });
 });

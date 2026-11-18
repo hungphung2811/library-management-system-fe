@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { ApiCallError } from "@/api";
-import { App, Button, DatePicker, Empty, Pagination, Segmented, Select, Tag, dayjs, formatDateTime, formatRelativeTime } from "@/ui";
+import { App, Button, DEFAULT_PAGE_SIZES, DatePicker, Empty, Pagination, Segmented, Select, Tag, dayjs, formatDateTime, formatRelativeTime, usePageSize } from "@/ui";
 import { useNotificationActions } from "@/ui/NotificationBell";
 
 export type NotificationItem = { id: string; type?: string | null; message: string; createdAt: string; readAt?: string | null };
 
-const PAGE_SIZE = 20;
 const DATE_FORMAT = "DD/MM/YYYY";
 
 /**
@@ -24,6 +23,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
   const from = sp.get("from") ?? "";
   const to = sp.get("to") ?? "";
   const page = Math.max(1, Number.parseInt(sp.get("page") ?? "1", 10) || 1);
+  const PAGE_SIZE = usePageSize();
 
   const set = (patch: Record<string, string | undefined>) => {
     const q = new URLSearchParams(sp);
@@ -146,13 +146,15 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
         </ul>
       )}
 
-      {shown.length > PAGE_SIZE && (
+      {shown.length > Math.min(PAGE_SIZE, ...DEFAULT_PAGE_SIZES) && (
         <Pagination
           current={cur}
           pageSize={PAGE_SIZE}
           total={shown.length}
-          onChange={(p) => set({ page: p > 1 ? String(p) : undefined })}
-          showSizeChanger={false}
+          onChange={(p, s) => (s !== PAGE_SIZE ? set({ size: s === 20 ? undefined : String(s), page: undefined }) : set({ page: p > 1 ? String(p) : undefined }))}
+          showSizeChanger
+          pageSizeOptions={Array.from(new Set([...DEFAULT_PAGE_SIZES, PAGE_SIZE])).sort((a, b) => a - b)}
+          locale={{ items_per_page: "/ trang", page_size: "Số dòng mỗi trang" }}
           align="end"
         />
       )}

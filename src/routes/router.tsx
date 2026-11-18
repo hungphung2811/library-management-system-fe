@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, Outlet, useMatches } from "react-router"
 import { ProtectedRoute } from "@/auth/ProtectedRoute";
 import { AppShell } from "@/ui/AppShell";
 import { PageSkeleton } from "@/ui/PageSkeleton";
+import { DetailModalRoute } from "@/ui/DetailModal";
 import ChangePassword from "@/pages/ChangePassword";
 import ForgotPassword from "@/pages/ForgotPassword";
 import Home from "@/pages/Home";
@@ -15,7 +16,6 @@ import RouteError from "@/pages/RouteError";
 
 // Mỗi nhóm nghiệp vụ là một chunk riêng (vite.config.ts gom theo thư mục pages/<nhóm>), chỉ tải khi vào nhóm đó.
 const CatalogList = lazy(() => import("@/pages/catalog/CatalogList"));
-const BookNew = lazy(() => import("@/pages/catalog/BookNew"));
 const BookDetail = lazy(() => import("@/pages/catalog/BookDetail"));
 const Barcode = lazy(() => import("@/pages/catalog/Barcode"));
 const CatalogAuthors = lazy(() => import("@/pages/catalog/reference/Authors"));
@@ -145,8 +145,8 @@ export const router = createBrowserRouter([
                     handle: { title: "Sách" },
                     children: [
                       { index: true, element: <CatalogList /> },
-                      { path: "books/new", element: <BookNew /> },
-                      { path: "books/:id", element: <BookDetail /> },
+                      { path: "books/new", element: <Navigate to="/catalog?new=1" replace /> },
+                      { path: "books/:id", element: <DetailModalRoute list={<CatalogList />} backTo="/catalog"><BookDetail /></DetailModalRoute> },
                       { path: "barcode", element: <Barcode /> },
                       { path: "authors", element: <CatalogAuthors />, handle: { title: "Tác giả" } },
                       { path: "publishers", element: <CatalogPublishers />, handle: { title: "Nhà xuất bản" } },
@@ -168,7 +168,7 @@ export const router = createBrowserRouter([
                           { path: "borrow", element: <Borrow /> },
                           { path: "return", element: <Return /> },
                           { path: "borrowings", element: <Borrowings /> },
-                          { path: "borrowings/:id", element: <BorrowingDetail /> },
+                          { path: "borrowings/:id", element: <DetailModalRoute list={<Borrowings />} backTo="/circulation/borrowings"><BorrowingDetail /></DetailModalRoute> },
                           { path: "reservations", element: <Reservations /> },
                           { path: "fines", element: <Fines /> },
                           { path: "mine", element: <MyBorrowings /> },
@@ -185,9 +185,9 @@ export const router = createBrowserRouter([
                     children: [
                       { index: true, element: <AdminHome /> },
                       { path: "users", element: <Users /> },
-                      { path: "users/:id", element: <UserDetail /> },
+                      { path: "users/:id", element: <DetailModalRoute list={<Users />} backTo="/admin/users"><UserDetail /></DetailModalRoute> },
                       { path: "roles", element: <Roles /> },
-                      { path: "roles/:id", element: <RoleDetail /> },
+                      { path: "roles/:id", element: <DetailModalRoute list={<Roles />} backTo="/admin/roles"><RoleDetail /></DetailModalRoute> },
                       { path: "departments", element: <Departments /> },
                       { path: "audit-logs", element: <AuditLogs /> },
                       { path: "menus", element: <Menus />, handle: { title: "Menu" } },
@@ -204,7 +204,7 @@ export const router = createBrowserRouter([
                       { index: true, element: <SalesHome /> },
                       { path: "pos", element: <SalesPos />, handle: { title: "Bán tại quầy" } },
                       { path: "orders", element: <SalesOrders />, handle: { title: "Đơn hàng" } },
-                      { path: "orders/:id", element: <SalesOrderDetail />, handle: { title: "Chi tiết đơn hàng" } },
+                      { path: "orders/:id", element: <DetailModalRoute list={<SalesOrders />} backTo="/sales/orders"><SalesOrderDetail /></DetailModalRoute>, handle: { title: "Chi tiết đơn hàng" } },
                       { path: "stock", element: <SalesStock />, handle: { title: "Tồn kho" } },
                       { path: "suppliers", element: <SalesSuppliers />, handle: { title: "Nhà cung cấp" } },
                       { path: "receipts", element: <SalesReceipts />, handle: { title: "Phiếu nhập kho" } },
@@ -212,7 +212,7 @@ export const router = createBrowserRouter([
                       { path: "refunds", element: <SalesRefunds />, handle: { title: "Hoàn tiền" } },
                       { path: "audit", element: <SalesAudit />, handle: { title: "Nhật ký bán hàng" } },
                       { path: "contacts", element: <SalesContacts />, handle: { title: "Liên hệ khách" } },
-                      { path: "contacts/:id", element: <SalesContactDetail />, handle: { title: "Chi tiết liên hệ" } },
+                      { path: "contacts/:id", element: <DetailModalRoute list={<SalesContacts />} backTo="/sales/contacts"><SalesContactDetail /></DetailModalRoute>, handle: { title: "Chi tiết liên hệ" } },
                       { path: "*", element: <NotFound /> },
                     ],
                   },
@@ -224,14 +224,14 @@ export const router = createBrowserRouter([
                       { index: true, element: <Navigate to="/platform/cms-pages" replace /> },
                       { path: "onboarding", element: <Onboarding />, handle: { title: "Triển khai khách mới" } },
                       { path: "tenants", element: <Tenants />, handle: { title: "Đơn vị (tenant)" } },
-                      { path: "tenants/:id", element: <TenantDetailPage />, handle: { title: "Chi tiết đơn vị" } },
-                      { path: "tenants/:id/contracts/:contractId", element: <ContractDetailPage />, handle: { title: "Chi tiết hợp đồng" } },
+                      { path: "tenants/:id", element: <DetailModalRoute list={<Tenants />} backTo="/platform/tenants" width={1100}><TenantDetailPage /></DetailModalRoute>, handle: { title: "Chi tiết đơn vị" } },
+                      { path: "tenants/:id/contracts/:contractId", element: <DetailModalRoute list={<Tenants />} backTo="/platform/tenants" width={1100}><ContractDetailPage /></DetailModalRoute>, handle: { title: "Chi tiết hợp đồng" } },
                       { path: "contracts", element: <ExpiringContracts />, handle: { title: "Hợp đồng sắp hết hạn" } },
                       { path: "organizations", element: <Organizations />, handle: { title: "Tổ chức" } },
                       { path: "cms-pages", element: <CmsPages />, handle: { title: "Trang website" } },
-                      { path: "cms-pages/:id", element: <CmsPageDetail />, handle: { title: "Sửa trang website" } },
+                      { path: "cms-pages/:id", element: <DetailModalRoute list={<CmsPages />} backTo="/platform/cms-pages" width={1100}><CmsPageDetail /></DetailModalRoute>, handle: { title: "Sửa trang website" } },
                       { path: "contact-requests", element: <ContactRequests />, handle: { title: "Yêu cầu liên hệ" } },
-                      { path: "contact-requests/:id", element: <ContactRequestDetail />, handle: { title: "Chi tiết yêu cầu liên hệ" } },
+                      { path: "contact-requests/:id", element: <DetailModalRoute list={<ContactRequests />} backTo="/platform/contact-requests"><ContactRequestDetail /></DetailModalRoute>, handle: { title: "Chi tiết yêu cầu liên hệ" } },
                       { path: "*", element: <NotFound /> },
                     ],
                   },

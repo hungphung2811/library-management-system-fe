@@ -20,6 +20,17 @@ import * as salesContacts from "./mock/sales-contacts.mjs";
 import * as catalogReference from "./mock/catalog-reference.mjs";
 
 const PORT = Number(process.env.PORT ?? 4201);
+
+// Tài khoản và điều khiển riêng cho e2e "Làm mới quyền" (ADR-0022). permuser không có khóa nào ban đầu; test đổi quyền qua
+// POST /__test/user (mô phỏng admin gán role) và giả lập lỗi của /api/auth/refresh qua POST /__test/refresh.
+USERS.permuser = {
+  id: "permuser-id", roles: ["MEMBER"], permissions: [], password: "Permuser@12345",
+  tenantId: USERS.admin.tenantId, tenants: [USERS.admin.tenantId],
+};
+const PERM_BASE = { roles: ["MEMBER"], permissions: [], admin: false };
+/** username -> { mode: "superseded" | "revoked" | "disabled" | "locked" | "unavailable", count } (count lần đầu rồi trở lại bình thường). */
+const REFRESH_FAULT = {};
+const REFRESH_CALLS = {};
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 
 // Thứ tự dispatch: common -> shell -> catalog -> circulation -> admin (nên /api/users/me rơi vào shell trước admin).
@@ -78,6 +89,24 @@ http
 
       if (req.method === "GET" && url.pathname === "/__health") return send(200, { ok: true });
 
+      // Điều khiển cho e2e (chỉ mock). Đặt lại permuser: { reset: true }; đổi quyền: { patch: { permissions, roles, ... } }.
+      if (req.method === "POST" && url.pathname === "/__test/user") {
+        const u = USERS[body.username];
+        if (!u) return send(404, { code: "NOT_FOUND", message: "Không có user" });
+        if (body.reset) Object.assign(u, PERM_BASE, { permissions: [] });
+        if (body.patch) Object.assign(u, body.patch);
+        REFRESH_CALLS[body.username] = 0;
+        delete REFRESH_FAULT[body.username];
+        return send(204);
+      }
+      if (req.method === "POST" && url.pathname === "/__test/refresh") {
+        REFRESH_FAULT[body.username] = { mode: body.mode, count: body.count ?? 1 };
+        return send(204);
+      }
+      if (req.method === "GET" && url.pathname === "/__test/refresh-calls") {
+        return send(200, { calls: REFRESH_CALLS[url.searchParams.get("username")] ?? 0 });
+      }
+
       if (req.method === "POST" && url.pathname === "/api/auth/login") {
         const u = USERS[body.username];
         if (u && u.password === body.password) return send(200, tokens(body.username));
@@ -85,6 +114,21 @@ http
       }
       if (req.method === "POST" && url.pathname === "/api/auth/refresh") {
         const name = String(body.refreshToken ?? "").replace(/^rt-/, "");
+        REFRESH_CALLS[name] = (REFRESH_CALLS[name] ?? 0) + 1;
+        const f = REFRESH_FAULT[name];
+        if (f && f.count > 0) {
+          f.count--;
+          const errs = {
+            superseded: [401, "REFRESH_TOKEN_SUPERSEDED", "Refresh token vừa được thay thế"],
+            revoked: [401, "UNAUTHORIZED", "Refresh token không hợp lệ"],
+            disabled: [403, "ACCOUNT_DISABLED", "Tài khoản bị vô hiệu"],
+            locked: [423, "ACCOUNT_LOCKED", "Tài khoản bị khóa"],
+            unavailable: [503, "DEPENDENCY_UNAVAILABLE", "Dịch vụ tạm thời không khả dụng"],
+            throttled: [429, "TOO_MANY_REQUESTS", "Quá nhiều yêu cầu"],
+          };
+          const [st, code, message] = errs[f.mode];
+          return send(st, { code, message });
+        }
         return USERS[name]
           ? send(200, tokens(name))
           : send(401, { code: "BAD_REFRESH", message: "Refresh token không hợp lệ" });

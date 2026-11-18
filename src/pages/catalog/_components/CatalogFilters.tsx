@@ -103,34 +103,11 @@ export function CatalogControls({ available }: { available: boolean }) {
         options={SORTS.map((s) => ({ value: s.value, label: s.label }))}
         onChange={(v) => set({ sort: v === "name" ? null : v })}
       />
-      <Select
-        aria-label="Số dòng mỗi trang"
-        className="w-32"
-        value={parseSize(sp.get("size"))}
-        options={PAGE_SIZES.map((n) => ({ value: n, label: `${n} / trang` }))}
-        onChange={(v) => set({ size: v === DEFAULT_PAGE_SIZE ? null : String(v) })}
-      />
     </>
   );
 }
 
-function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-line bg-subtle py-0.5 pr-1 pl-2.5 text-sm">
-      {label}
-      <button
-        type="button"
-        aria-label={`Bỏ bộ lọc ${label}`}
-        className="inline-flex size-5 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-muted hover:bg-line"
-        onClick={onRemove}
-      >
-        ×
-      </button>
-    </span>
-  );
-}
-
-/** Hàng "Đang lọc": đếm kết quả, chip từng bộ lọc (bấm x để bỏ) và nút Xóa bộ lọc luôn hiện. */
+/** Hàng "Đang lọc": đếm kết quả và nút Xóa bộ lọc luôn hiện (giá trị lọc đã hiện trong ô lọc, không lặp lại bằng chip). */
 export function ActiveFilters({ total, q, isbn, available }: { total: number; q: string; isbn: string; available: boolean }) {
   const [sp, setSp] = useSearchParams();
   const set = useSetParams();
@@ -145,17 +122,6 @@ export function ActiveFilters({ total, q, isbn, available }: { total: number; q:
       <Text strong data-testid="result-count">
         {total} đầu sách
       </Text>
-      {q && (
-        <Chip label={`Từ khóa: ${q}`} onRemove={() => set({ q: null })} />
-      )}
-      {isbn && (
-        <Chip label={`ISBN: ${isbn}`} onRemove={() => set({ isbn: null })} />
-      )}
-      {sp.get("categoryId") && <Chip label="Có lọc thể loại" onRemove={() => set({ categoryId: null })} />}
-      {sp.get("publisherId") && <Chip label="Có lọc nhà xuất bản" onRemove={() => set({ publisherId: null })} />}
-      {available && (
-        <Chip label="Còn bản sẵn sàng" onRemove={() => set({ available: null })} />
-      )}
       <Button size="small" type="link" disabled={!active} onClick={clear}>
         Xóa bộ lọc
       </Button>

@@ -1,5 +1,5 @@
 import { apiFetch, toErrorInfo, useApi, useApiMutation } from "@/api";
-import { App, Button, ConfirmAction, DataTable, LinkButton, PageHeader, QueryBoundary, describeError } from "@/ui";
+import { App, DataTable, PageHeader, Pencil, QueryBoundary, Send, Trash2, Undo2, actionsColumn, describeError } from "@/ui";
 import { CreateCmsPageButton } from "./_components/CreateCmsPageButton";
 import { PlatformGate } from "./_components/PlatformGate";
 import { PLATFORM_ERRORS } from "./_lib/format";
@@ -49,7 +49,7 @@ function CmsPagesList() {
         description="Nội dung website giới thiệu dịch vụ. Khách chỉ thấy bản đã xuất bản."
         actions={<CreateCmsPageButton />}
       />
-      <div className="max-w-[1200px]">
+      <div className="">
         <QueryBoundary query={pages} errorMessages={PLATFORM_ERRORS}>
           {(items) => {
             const rows = [...items].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.slug.localeCompare(b.slug));
@@ -59,58 +59,46 @@ function CmsPagesList() {
                 rows={rows}
                 mobileTitleKey="title"
                 columns={[
+{ key: "id", title: "ID", dataIndex: "id", kind: "id", width: 120 },
                   { key: "title", title: "Tiêu đề", dataIndex: "title", kind: "link", href: "/platform/cms-pages/{id}" },
                   { key: "slug", title: "Slug", dataIndex: "slug", kind: "mono" },
                   { key: "status", title: "Trạng thái", dataIndex: "status", kind: "status", statusDomain: "cms" },
                   { key: "sortOrder", title: "Thứ tự", dataIndex: "sortOrder", align: "right" },
                   { key: "updatedAt", title: "Cập nhật", dataIndex: "updatedAt", kind: "datetime" },
-                  {
-                    key: "actions",
-                    title: "Thao tác",
-                    dataIndex: "id",
-                    render: (_v, row) => {
+                  actionsColumn(
+                    (row) => {
                       const p = row as unknown as CmsPageSummary;
-                      return (
-                        <div className="flex flex-wrap items-center gap-1">
-                          <ConfirmAction
-                            title="Xuất bản trang này?"
-                            description="Khách sẽ thấy bản làm việc hiện tại."
-                            okText="Xuất bản"
-                            onConfirm={() => run(() => publish.mutateAsync(p), "Đã xuất bản.")}
-                          >
-                            <Button size="small" disabled={p.status === "PUBLISHED"}>
-                              Xuất bản
-                            </Button>
-                          </ConfirmAction>
-                          {p.status !== "DRAFT" && (
-                            <ConfirmAction
-                              title="Gỡ xuất bản?"
-                              description="Khách không còn thấy trang; bản làm việc được giữ."
-                              okText="Gỡ"
-                              danger
-                              onConfirm={() => run(() => unpublish.mutateAsync(p), "Đã gỡ xuất bản.")}
-                            >
-                              <Button size="small">Gỡ</Button>
-                            </ConfirmAction>
-                          )}
-                          <ConfirmAction
-                            title="Xóa trang này?"
-                            description="Không hoàn tác được."
-                            okText="Xóa"
-                            danger
-                            onConfirm={() => run(() => remove.mutateAsync(p), "Đã xóa trang.")}
-                          >
-                            <Button size="small" danger>
-                              Xóa
-                            </Button>
-                          </ConfirmAction>
-                          <LinkButton size="small" to={`/platform/cms-pages/${encodeURIComponent(p.id)}`}>
-                            Sửa
-                          </LinkButton>
-                        </div>
-                      );
+                      return [
+                        {
+                          key: "publish",
+                          label: "Xuất bản",
+                          icon: <Send size={16} />,
+                          disabled: p.status === "PUBLISHED",
+                          confirm: { title: "Xuất bản trang này?", description: "Khách sẽ thấy bản làm việc hiện tại.", okText: "Xuất bản" },
+                          onClick: () => run(() => publish.mutateAsync(p), "Đã xuất bản."),
+                        },
+                        {
+                          key: "unpublish",
+                          label: "Gỡ",
+                          icon: <Undo2 size={16} />,
+                          hidden: p.status === "DRAFT",
+                          danger: true,
+                          confirm: { title: "Gỡ xuất bản?", description: "Khách không còn thấy trang; bản làm việc được giữ.", okText: "Gỡ" },
+                          onClick: () => run(() => unpublish.mutateAsync(p), "Đã gỡ xuất bản."),
+                        },
+                        {
+                          key: "delete",
+                          label: "Xóa",
+                          icon: <Trash2 size={16} />,
+                          danger: true,
+                          confirm: { title: "Xóa trang này?", description: "Không hoàn tác được.", okText: "Xóa" },
+                          onClick: () => run(() => remove.mutateAsync(p), "Đã xóa trang."),
+                        },
+                        { key: "edit", label: "Sửa", icon: <Pencil size={16} />, to: `/platform/cms-pages/${encodeURIComponent(p.id)}` },
+                      ];
                     },
-                  },
+                    4,
+                  ),
                 ]}
                 empty={{ title: "Chưa có trang nào.", hint: "Bấm «Thêm trang» để tạo bản nháp đầu tiên." }}
               />

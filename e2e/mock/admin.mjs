@@ -24,6 +24,7 @@ const K = {
   ROLE_DELETE: "AccessControlController/deleteRole",
   CREDENTIAL_CREATE: "AuthController/register",
   READER_ISSUE: "ReaderProfileController/issue",
+  READER_UPDATE: "ReaderProfileController/update",
   READER_RENEW: "ReaderProfileController/renew",
   READER_STATUS: "ReaderProfileController/changeStatus",
   DEPT_LIST: "DepartmentController/list",
@@ -83,6 +84,22 @@ const id = () => crypto.randomUUID();
 const today = () => new Date().toISOString().slice(0, 10);
 const cardValid = (r) => r.status === "ACTIVE" && r.cardExpiryDate >= today();
 
+const USER_PERSONAL = ["phone", "dateOfBirth", "gender", "address", "avatarUrl", "jobTitle", "employeeCode"];
+const READER_PERSONAL = ["phone", "dateOfBirth", "gender", "address", "faculty", "className", "memberCode", "cardIssuedDate"];
+/** Ngữ nghĩa gộp của BE: trường vắng/null/rỗng thì giữ giá trị cũ. */
+const mergePersonal = (target, body, keys) => {
+  for (const k of keys) if (body[k] !== undefined && body[k] !== null && String(body[k]).trim() !== "") target[k] = body[k];
+};
+/** Kiểm tra giống BE (rút gọn) cho trường cá nhân; trả danh sách lỗi. */
+function personalErrors(body) {
+  const d = [];
+  if (body.phone != null && (String(body.phone).length > 20 || !/^[0-9+\-\s]*$/.test(String(body.phone)))) d.push("phone: Số điện thoại không hợp lệ");
+  if (body.dateOfBirth != null && (!/^\d{4}-\d{2}-\d{2}$/.test(body.dateOfBirth) || body.dateOfBirth > today() || body.dateOfBirth < "1900-01-01")) d.push("dateOfBirth: Ngày sinh không hợp lệ");
+  if (body.gender != null && !["MALE", "FEMALE", "OTHER"].includes(body.gender)) d.push("gender: MALE, FEMALE hoặc OTHER");
+  if (body.avatarUrl != null && body.avatarUrl !== "" && !/^https?:\/\//i.test(body.avatarUrl)) d.push("avatarUrl: Phải bắt đầu bằng http:// hoặc https://");
+  return d;
+}
+
 const roleView = (r) => ({ ...r, permissions: [...r.permissions] });
 
 function tree(includeInactive) {
@@ -112,6 +129,7 @@ export function handle({ method, url, body, send, requireKey }) {
     if (username.length < 3 || username.length > 100) details.push("username: Từ 3 đến 100 ký tự");
     if (!String(body.fullName ?? "").trim()) details.push("fullName: Không được để trống");
     if (!/^\S+@\S+\.\S+$/.test(String(body.email ?? ""))) details.push("email: Email không hợp lệ");
+    details.push(...personalErrors(body));
     if (details.length) return bad(details);
     if (DIRECTORY.some((u) => u.username === username)) return conflict("USERNAME_TAKEN", "Tên đăng nhập đã tồn tại");
     const u = {
@@ -121,7 +139,9 @@ export function handle({ method, url, body, send, requireKey }) {
       email: body.email,
       departmentId: body.departmentId ?? null,
       status: "ACTIVE",
+      phone: null, dateOfBirth: null, gender: null, address: null, avatarUrl: null, jobTitle: null, employeeCode: null,
     };
+    mergePersonal(u, body, USER_PERSONAL);
     DIRECTORY.push(u);
     return send(201, u), true;
   }
@@ -149,7 +169,9 @@ export function handle({ method, url, body, send, requireKey }) {
     const details = [];
     if (!String(body.fullName ?? "").trim()) details.push("fullName: Không được để trống");
     if (!/^\S+@\S+\.\S+$/.test(String(body.email ?? ""))) details.push("email: Email không hợp lệ");
+    details.push(...personalErrors(body));
     if (details.length) return bad(details);
+    mergePersonal(u, body, USER_PERSONAL);
     u.fullName = String(body.fullName).trim();
     u.email = body.email;
     u.departmentId = body.departmentId ?? null;
@@ -179,8 +201,11 @@ export function handle({ method, url, body, send, requireKey }) {
     if (!["STUDENT", "LECTURER"].includes(body.readerType)) details.push("readerType: STUDENT hoặc LECTURER");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(body.cardExpiryDate ?? ""))) details.push("cardExpiryDate: yyyy-MM-dd");
     else if (body.cardExpiryDate <= today()) details.push("cardExpiryDate: Phải sau hôm nay");
+    details.push(...personalErrors(body));
+    if (body.cardIssuedDate && body.cardIssuedDate > body.cardExpiryDate) details.push("cardIssuedDate: Không được sau hạn thẻ");
     if (details.length) return bad(details);
     const r = {
+      phone: null, dateOfBirth: null, gender: null, address: null, faculty: null, className: null, memberCode: null, cardIssuedDate: null,
       userId: u.id,
       cardNo: String(body.cardNo).trim(),
       fullName: body.fullName ?? u.fullName,
@@ -190,8 +215,20 @@ export function handle({ method, url, body, send, requireKey }) {
       status: "ACTIVE",
       cardValid: true,
     };
+    mergePersonal(r, body, READER_PERSONAL);
     READER_PROFILES.push(r);
     return send(201, r), true;
+  }
+  if ((m = p.match(/^\/api\/users\/([^/]+)\/reader-profile$/)) && method === "PUT") {
+    if (!requireKey(K.READER_UPDATE)) return true;
+    const r = READER_PROFILES.find((x) => x.userId === m[1]);
+    if (!r) return notFound("Người dùng chưa có hồ sơ độc giả");
+    const details = personalErrors(body);
+    const issued = body.cardIssuedDate || r.cardIssuedDate;
+    if (issued && issued > r.cardExpiryDate) details.push("cardIssuedDate: Không được sau hạn thẻ");
+    if (details.length) return bad(details);
+    mergePersonal(r, body, READER_PERSONAL);
+    return send(200, r), true;
   }
   if ((m = p.match(/^\/api\/users\/([^/]+)\/reader-profile\/card-expiry$/)) && method === "PUT") {
     if (!requireKey(K.READER_RENEW)) return true;

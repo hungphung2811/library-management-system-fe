@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { apiFetch, useApiMutation } from "@/api";
-import { Alert, Button, ConfirmAction, Form, FormModal, Input, LockOutlined } from "@/ui";
+import { apiFetch } from "@/api";
+import { Alert, Button, ConfirmAction, Form, FormModal, Input, LockOutlined, useFormModal } from "@/ui";
 
 const CHARS = {
   lower: "abcdefghijkmnpqrstuvwxyz",
@@ -60,10 +60,13 @@ function PasswordField() {
  * dùng qua kênh an toàn). BE không trả mật khẩu và không lưu lại; FE không giữ mật khẩu sau khi đóng hộp thoại.
  */
 export function ResetPasswordButton({ userId, fullName }: { userId: string; fullName: string }) {
-  const [open, setOpen] = useState(false);
-  const reset = useApiMutation((temporaryPassword: string) =>
-    apiFetch(`/api/users/${encodeURIComponent(userId)}/password-reset`, { method: "POST", json: { temporaryPassword } }),
-  );
+  const reset = useFormModal<{ temporaryPassword: string }>({
+    title: "Đặt mật khẩu tạm",
+    okText: "Đặt lại mật khẩu",
+    successMessage: "Đã đặt lại mật khẩu. Người dùng phải đổi mật khẩu khi đăng nhập lại.",
+    request: (v) =>
+      apiFetch(`/api/users/${encodeURIComponent(userId)}/password-reset`, { method: "POST", json: { temporaryPassword: v.temporaryPassword } }),
+  });
 
   return (
     <>
@@ -72,20 +75,11 @@ export function ResetPasswordButton({ userId, fullName }: { userId: string; full
         title={`Đặt lại mật khẩu cho «${fullName}»?`}
         description="Mọi phiên đăng nhập hiện có bị thu hồi và người này phải đổi mật khẩu ở lần đăng nhập sau."
         okText="Tiếp tục"
-        onConfirm={() => setOpen(true)}
+        onConfirm={() => reset.openModal()}
       >
         <Button icon={<LockOutlined />}>Đặt lại mật khẩu</Button>
       </ConfirmAction>
-      <FormModal<{ temporaryPassword: string }>
-        open={open}
-        title="Đặt mật khẩu tạm"
-        okText="Đặt lại mật khẩu"
-        successMessage="Đã đặt lại mật khẩu. Người dùng phải đổi mật khẩu khi đăng nhập lại."
-        onCancel={() => setOpen(false)}
-        onSubmit={async (v) => {
-          await reset.mutateAsync(v.temporaryPassword);
-        }}
-      >
+      <FormModal<{ temporaryPassword: string }> {...reset.modalProps}>
         <Alert type="warning" showIcon className="mb-3" title="Hãy chuyển mật khẩu tạm cho người dùng qua kênh an toàn; hệ thống không hiển thị lại." />
         <PasswordField />
       </FormModal>
