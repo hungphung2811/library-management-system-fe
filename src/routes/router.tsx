@@ -45,6 +45,7 @@ const MyContract = lazy(() => import("@/pages/admin/MyContract"));
 const StorefrontOrigins = lazy(() => import("@/pages/admin/StorefrontOrigins"));
 const Applications = lazy(() => import("@/pages/admin/Applications"));
 const ApplicationDetail = lazy(() => import("@/pages/admin/ApplicationDetail"));
+const NotificationSettings = lazy(() => import("@/pages/admin/NotificationSettings"));
 
 // Bán hàng (module SALES): mỗi trang tự kiểm module và khóa quyền (SalesGate), BE là nơi quyết định cuối.
 const SalesHome = lazy(() => import("@/pages/sales/SalesHome"));
@@ -59,6 +60,10 @@ const SalesRefunds = lazy(() => import("@/pages/sales/Refunds"));
 const SalesAudit = lazy(() => import("@/pages/sales/Audit"));
 const SalesContacts = lazy(() => import("@/pages/sales/Contacts"));
 const SalesContactDetail = lazy(() => import("@/pages/sales/ContactDetail"));
+const SalesInvoices = lazy(() => import("@/pages/sales/Invoices"));
+const SalesInvoiceSettings = lazy(() => import("@/pages/sales/InvoiceSettings"));
+const SalesShifts = lazy(() => import("@/pages/sales/Shifts"));
+const SalesShiftDetail = lazy(() => import("@/pages/sales/ShiftDetail"));
 
 // Quản trị nền tảng SaaS: chỉ platform admin (trang tự chặn bằng PlatformGate, BE trả 403 là quyết định cuối).
 const CmsPages = lazy(() => import("@/pages/platform/CmsPages"));
@@ -201,6 +206,7 @@ export const router = createBrowserRouter([
                         element: <DetailModalRoute list={<Applications />} backTo="/admin/applications"><ApplicationDetail /></DetailModalRoute>,
                         handle: { title: "Chi tiết ứng dụng" },
                       },
+                      { path: "notifications", element: <NotificationSettings />, handle: { title: "Thông báo" } },
                       { path: "*", element: <NotFound /> },
                     ],
                   },
@@ -221,6 +227,10 @@ export const router = createBrowserRouter([
                       { path: "audit", element: <SalesAudit />, handle: { title: "Nhật ký bán hàng" } },
                       { path: "contacts", element: <SalesContacts />, handle: { title: "Liên hệ khách" } },
                       { path: "contacts/:id", element: <DetailModalRoute list={<SalesContacts />} backTo="/sales/contacts"><SalesContactDetail /></DetailModalRoute>, handle: { title: "Chi tiết liên hệ" } },
+                      { path: "invoices", element: <SalesInvoices />, handle: { title: "Hóa đơn" } },
+                      { path: "invoice-settings", element: <SalesInvoiceSettings />, handle: { title: "Cấu hình hóa đơn" } },
+                      { path: "shifts", element: <SalesShifts />, handle: { title: "Ca thu ngân" } },
+                      { path: "shifts/:id", element: <DetailModalRoute list={<SalesShifts />} backTo="/sales/shifts"><SalesShiftDetail /></DetailModalRoute>, handle: { title: "Chi tiết ca" } },
                       { path: "*", element: <NotFound /> },
                     ],
                   },

@@ -158,6 +158,32 @@ export const ERROR_MESSAGES: Record<string, string> = {
   APPLICATION_NOT_ACTIVE: "Ứng dụng không ở trạng thái hoạt động (có thể đang bị tạm ngưng) nên không thực hiện được thao tác này.",
   APPLICATION_NOT_SUSPENDED: "Ứng dụng không ở trạng thái tạm ngưng.",
   USAGE_UNAVAILABLE: "Chưa lấy được thống kê sử dụng lúc này. Vui lòng thử lại sau.",
+  // Hóa đơn VAT nội bộ (ADR-0030 gói A, docs/api/sales-invoices.md)
+  INVOICE_NOT_FOUND: "Không tìm thấy hóa đơn (hoặc đơn này chưa có yêu cầu xuất hóa đơn).",
+  ORDER_NOT_INVOICEABLE: "Đơn này chưa xuất hóa đơn được: đơn phải hoàn tất và đã thu tiền, chưa có phiếu trả hàng và chưa bị hủy.",
+  INVOICE_ALREADY_EXISTS: "Đơn này đã có hóa đơn còn hiệu lực. Muốn đổi thông tin hãy hủy hoặc thay thế hóa đơn.",
+  INVOICE_STATE_CONFLICT: "Hóa đơn không ở trạng thái cho phép thao tác này (có thể đã bị hủy, hoặc vừa được người khác sửa). Hãy tải lại.",
+  INVOICE_HAS_ADJUSTMENTS: "Hóa đơn đã có hóa đơn điều chỉnh (do trả hàng) nên không hủy hoặc thay thế được.",
+  INVOICE_SETTINGS_INCOMPLETE: "Chưa cấu hình đủ thông tin người bán (tên pháp lý, MST, địa chỉ, mẫu số, ký hiệu). Hãy hoàn tất ở Cấu hình hóa đơn.",
+  INVALID_TAX_CODE: "Mã số thuế chưa đúng định dạng (10 chữ số, 10 chữ số-3 chữ số hoặc 12 chữ số).",
+  CANCEL_REASON_REQUIRED: "Vui lòng nhập lý do hủy.",
+  CLIENT_REQUEST_CONFLICT: "Mã yêu cầu này đã được dùng cho một thao tác khác. Hãy thử lại.",
+  // Chốt ca thu ngân (ADR-0030 gói B, docs/api/sales-shifts.md)
+  SHIFT_NOT_FOUND: "Không tìm thấy ca (hoặc bạn chưa có ca nào đang mở).",
+  SHIFT_ALREADY_OPEN: "Thu ngân này đang có một ca mở. Hãy đóng ca đó trước.",
+  SHIFT_NOT_OPEN: "Bạn chưa mở ca. Cửa hàng đang yêu cầu mở ca trước khi bán hoặc thu, hoàn tiền mặt.",
+  SHIFT_STATE_CONFLICT: "Ca không ở trạng thái cho phép thao tác này (đã đóng, đang mở hoặc vừa được người khác thao tác). Hãy tải lại.",
+  SHIFT_HAS_PENDING_PAYMENTS: "Còn lệnh thu tay đang chờ trong ca này. Hãy xác nhận hoặc hủy các lệnh đó rồi đóng ca.",
+  SHIFT_VARIANCE_REASON_REQUIRED: "Chênh lệch vượt ngưỡng cho phép: bắt buộc nhập lý do chênh lệch.",
+  REOPEN_REASON_REQUIRED: "Vui lòng nhập lý do mở lại ca.",
+  // Thông báo theo sự kiện (ADR-0030 gói C, docs/api/notifications.md)
+  PREFERENCE_MANDATORY: "Nhóm thông báo bắt buộc (tài khoản, hoàn tiền) không tắt được.",
+  TEMPLATE_PARAM_NOT_ALLOWED: "Mẫu dùng tham số không được phép cho loại thông báo này. Chỉ dùng các tham số trong danh sách.",
+  TEMPLATE_INVALID: "Mẫu nội dung sai cú pháp (chỗ trống phải dạng {{ten_tham_so}}) hoặc vượt độ dài.",
+  TEMPLATE_ERROR: "Không dựng được nội dung từ mẫu.",
+  DELIVERY_NOT_FOUND: "Không tìm thấy lượt gửi này.",
+  DELIVERY_NOT_RETRYABLE: "Chỉ gửi lại được lượt gửi đã thất bại hẳn (DEAD). Hãy tải lại danh sách.",
+  NOTIFICATION_NOT_FOUND: "Không tìm thấy thông báo này.",
 };
 
 export const FORBIDDEN_TEXT =

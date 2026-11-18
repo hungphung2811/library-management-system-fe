@@ -189,6 +189,8 @@ const AUDIT = [];
 const audit = (caller, action, aggregateType, aggregateId, data = {}) =>
   AUDIT.unshift({ id: uuid(), action, aggregateType, aggregateId, actorId: caller ? (USERS[caller]?.id ?? null) : null, occurredAt: now(), data });
 
+/** Cho mock hóa đơn (invoices.mjs) tra đơn theo id: chỉ đọc. */
+export const findOrderForMock = (id) => ORDERS.find((o) => o.id === id);
 export function handle({ method, url, body, send, requireKey, caller }) {
   const p = url.pathname;
   if (!p.startsWith("/api/sales/")) return false;

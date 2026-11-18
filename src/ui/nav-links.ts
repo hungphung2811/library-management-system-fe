@@ -106,11 +106,14 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
       { href: "/sales/orders", label: "Đơn hàng", module: "SALES", permission: PERMISSIONS.SALES_ORDER_SEARCH },
       { href: "/sales/contacts", label: "Liên hệ khách", module: "SALES", permission: PERMISSIONS.SALES_CONTACT_SEARCH },
       { href: "/sales/refunds", label: "Hoàn tiền", module: "SALES", permission: PERMISSIONS.REFUND_SEARCH },
+      { href: "/sales/invoices", label: "Hóa đơn", module: "SALES", permission: PERMISSIONS.INVOICE_SEARCH },
+      { href: "/sales/shifts", label: "Ca thu ngân", module: "SALES", permission: [PERMISSIONS.SHIFT_ADMIN_SEARCH, PERMISSIONS.SHIFT_MINE] },
       { href: "/sales/audit", label: "Nhật ký", module: "SALES", permission: PERMISSIONS.SALES_AUDIT_SEARCH },
       { href: "/sales/stock", label: "Tồn kho", module: "SALES", permission: PERMISSIONS.STOCK_SEARCH },
       { href: "/sales/receipts", label: "Phiếu nhập kho", module: "SALES", permission: PERMISSIONS.RECEIPT_SEARCH },
       { href: "/sales/suppliers", label: "Nhà cung cấp", module: "SALES", permission: PERMISSIONS.SUPPLIER_SEARCH },
       { href: "/sales/settings", label: "Cấu hình bán hàng", module: "SALES", permission: PERMISSIONS.SALES_SETTINGS_VIEW },
+      { href: "/sales/invoice-settings", label: "Cấu hình hóa đơn", module: "SALES", permission: PERMISSIONS.INVOICE_SETTINGS_GET },
     ],
   },
   {
@@ -126,6 +129,12 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
       { href: "/admin/contract", label: "Hợp đồng", permission: [PERMISSIONS.CONTRACT_LIST, PERMISSIONS.CONTRACT_CURRENT], tenantOnly: true },
       { href: "/admin/storefront-origins", label: "Website", permission: PERMISSIONS.STOREFRONT_ORIGIN_LIST, tenantOnly: true, module: "SALES" },
       { href: "/admin/applications", label: "Developer Portal", permission: PERMISSIONS.APPLICATION_LIST, tenantOnly: true },
+      {
+        href: "/admin/notifications",
+        label: "Thông báo",
+        permission: [PERMISSIONS.NOTIFICATION_CHANNELS_GET, PERMISSIONS.NOTIFICATION_TEMPLATE_LIST, PERMISSIONS.NOTIFICATION_DELIVERY_SEARCH],
+        tenantOnly: true,
+      },
     ],
   },
   {

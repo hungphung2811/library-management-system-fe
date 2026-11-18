@@ -345,4 +345,67 @@ export const PERMISSIONS = {
   APPLICATION_HISTORY: "ApplicationController/history",
   /** GET /api/applications/{id}/usage?from&to (thống kê yêu cầu theo ngày; FE chưa có màn) */
   APPLICATION_USAGE: "ApplicationController/usage",
+  // ---- Hóa đơn VAT nội bộ (ADR-0030 gói A, docs/api/sales-invoices.md) ----
+  /** GET /api/sales/invoices */
+  INVOICE_SEARCH: "InvoiceController/search",
+  /** GET /api/sales/invoices/{id} */
+  INVOICE_GET: "InvoiceController/get",
+  /** GET /api/sales/invoices/{id}/print (HTML) */
+  INVOICE_PRINT: "InvoiceController/print",
+  /** POST /api/sales/orders/{orderId}/invoice */
+  INVOICE_ISSUE: "InvoiceController/issue",
+  /** POST /api/sales/invoices/{id}/cancellation */
+  INVOICE_CANCEL: "InvoiceController/cancel",
+  /** POST /api/sales/invoices/{id}/replacement */
+  INVOICE_REPLACE: "InvoiceController/replace",
+  /** GET /api/sales/orders/{orderId}/invoice-request */
+  INVOICE_REQUEST_GET: "InvoiceRequestController/get",
+  /** PUT /api/sales/orders/{orderId}/invoice-request */
+  INVOICE_REQUEST_SAVE: "InvoiceRequestController/save",
+  /** GET /api/sales/invoice-settings */
+  INVOICE_SETTINGS_GET: "InvoiceSettingsController/get",
+  /** PUT /api/sales/invoice-settings */
+  INVOICE_SETTINGS_UPDATE: "InvoiceSettingsController/update",
+  // ---- Chốt ca thu ngân (ADR-0030 gói B, docs/api/sales-shifts.md) ----
+  /** POST /api/sales/shifts (mở ca) */
+  SHIFT_OPEN: "CashierShiftController/open",
+  /** GET /api/sales/shifts/me/current */
+  SHIFT_CURRENT: "CashierShiftController/current",
+  /** GET /api/sales/shifts/me */
+  SHIFT_MINE: "CashierShiftController/mine",
+  /** GET /api/sales/shifts/me/{id} */
+  SHIFT_GET_MINE: "CashierShiftController/getMine",
+  /** POST /api/sales/shifts/me/current/closing */
+  SHIFT_CLOSE: "CashierShiftController/close",
+  /** GET /api/sales/shifts (quản lý) */
+  SHIFT_ADMIN_SEARCH: "CashierShiftAdminController/search",
+  /** GET /api/sales/shifts/{id} (quản lý) */
+  SHIFT_ADMIN_GET: "CashierShiftAdminController/get",
+  /** POST /api/sales/shifts/{id}/closing (đóng thay) */
+  SHIFT_ADMIN_CLOSE_ON_BEHALF: "CashierShiftAdminController/closeOnBehalf",
+  /** POST /api/sales/shifts/{id}/reopening */
+  SHIFT_ADMIN_REOPEN: "CashierShiftAdminController/reopen",
+  /** POST /api/sales/shifts/{id}/variance-approval */
+  SHIFT_ADMIN_APPROVE_VARIANCE: "CashierShiftAdminController/approveVariance",
+  /** GET /api/sales/shift-settings */
+  SHIFT_SETTINGS_GET: "CashierShiftSettingsController/get",
+  /** PUT /api/sales/shift-settings */
+  SHIFT_SETTINGS_UPDATE: "CashierShiftSettingsController/update",
+  // ---- Thông báo theo sự kiện (ADR-0030 gói C, docs/api/notifications.md; khóa do support-service kiểm) ----
+  /** GET /api/notification-deliveries */
+  NOTIFICATION_DELIVERY_SEARCH: "NotificationDeliveryController/search",
+  /** POST /api/notification-deliveries/{id}/retry */
+  NOTIFICATION_DELIVERY_RETRY: "NotificationDeliveryController/retry",
+  /** GET /api/notification-settings/channels */
+  NOTIFICATION_CHANNELS_GET: "NotificationSettingsController/getChannels",
+  /** PUT /api/notification-settings/channels */
+  NOTIFICATION_CHANNELS_UPDATE: "NotificationSettingsController/updateChannels",
+  /** GET /api/notification-templates */
+  NOTIFICATION_TEMPLATE_LIST: "NotificationTemplateController/list",
+  /** GET /api/notification-templates/{type}/{channel} */
+  NOTIFICATION_TEMPLATE_GET: "NotificationTemplateController/get",
+  /** PUT /api/notification-templates/{type}/{channel} */
+  NOTIFICATION_TEMPLATE_SAVE: "NotificationTemplateController/save",
+  /** POST /api/notification-templates/{type}/{channel}/preview */
+  NOTIFICATION_TEMPLATE_PREVIEW: "NotificationTemplateController/preview",
 } as const;

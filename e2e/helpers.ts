@@ -65,6 +65,58 @@ export const USERS = {
   appdev: { username: "appdev", password: "Appdev@12345" },
   /** Không có khóa nào; quyền đổi qua POST /__test/user của mock (e2e/permission-refresh.spec.ts). */
   permuser: { username: "permuser", password: "Permuser@12345" },
+  /** Hóa đơn: quản lý cửa hàng, đủ khóa hóa đơn (hủy, thay thế, cấu hình) nhưng không phải admin (e2e/mock/invoices.mjs). */
+  invmgr: { username: "invmgr", password: "Invmgr@12345" },
+  /** Hóa đơn: thu ngân, xuất/xem/in/yêu cầu nhưng KHÔNG hủy, thay thế, cấu hình. */
+  invcashier: { username: "invcashier", password: "Invcashier@12345" },
+  /** Hóa đơn: chỉ xem đơn, không có khóa hóa đơn nào. */
+  invnone: { username: "invnone", password: "Invnone@12345" },
+  /** Hóa đơn: chỉ có khóa xuất hóa đơn và lưu yêu cầu (không search/get/print). */
+  invissuer: { username: "invissuer", password: "Invissuer@12345" },
+  /** Hóa đơn: tenant không bao giờ được cấu hình người bán (xuất hóa đơn báo thiếu cấu hình). */
+  invnoset: { username: "invnoset", password: "Invnoset@12345" },
+  /** Hóa đơn: sửa cấu hình người bán của tenant riêng chưa cấu hình. */
+  invsetmgr: { username: "invsetmgr", password: "Invsetmgr@12345" },
+  /** Hóa đơn: chỉ xem cấu hình người bán (tenant riêng, cùng tenant invsetmgr). */
+  invsetview: { username: "invsetview", password: "Invsetview@12345" },
+  /** Ca thu ngân: quản lý (mọi khóa ca) ở tenant có ngưỡng chênh lệch 5.000đ, cờ chặn bán tắt (e2e/mock/shifts.mjs). */
+  shiftmgr: { username: "shiftmgr", password: "Shiftmgr@12345" },
+  /** Ca thu ngân: thu ngân (khóa ca của tôi + POS), mỗi test một người vì mỗi người chỉ một ca mở. */
+  shiftc1: { username: "shiftc1", password: "Shiftc1@12345" },
+  /** Ca thu ngân: thu ngân thứ 2. */
+  shiftc2: { username: "shiftc2", password: "Shiftc2@12345" },
+  /** Ca thu ngân: thu ngân thứ 3. */
+  shiftc3: { username: "shiftc3", password: "Shiftc3@12345" },
+  /** Ca thu ngân: thu ngân thứ 4. */
+  shiftc4: { username: "shiftc4", password: "Shiftc4@12345" },
+  /** Ca thu ngân: thu ngân thứ 5. */
+  shiftc5: { username: "shiftc5", password: "Shiftc5@12345" },
+  /** Ca thu ngân: thu ngân thứ 6. */
+  shiftc6: { username: "shiftc6", password: "Shiftc6@12345" },
+  /** Ca thu ngân: thu ngân thứ 7. */
+  shiftc7: { username: "shiftc7", password: "Shiftc7@12345" },
+  /** Ca thu ngân: thu ngân thứ 8. */
+  shiftc8: { username: "shiftc8", password: "Shiftc8@12345" },
+  /** Ca thu ngân: quản lý của tenant riêng (một test duy nhất bật cờ chặn bán). */
+  shiftflagm: { username: "shiftflagm", password: "Shiftflagm@12345" },
+  /** Ca thu ngân: thu ngân của tenant riêng bật cờ chặn bán. */
+  shiftflagc: { username: "shiftflagc", password: "Shiftflagc@12345" },
+  /** Ca thu ngân: chỉ khóa xem ca của tôi (không mở/đóng). */
+  shiftview: { username: "shiftview", password: "Shiftview@12345" },
+  /** Thông báo: đủ 8 khóa quản trị thông báo nhưng không phải admin (e2e/mock/notifications.mjs). */
+  notiadmin: { username: "notiadmin", password: "Notiadmin@12345" },
+  /** Thông báo: chỉ xem (lịch sử, kênh, mẫu), không sửa/gửi lại. */
+  notiview: { username: "notiview", password: "Notiview@12345" },
+  /** Thông báo: không có khóa nào. */
+  notinone: { username: "notinone", password: "Notinone@12345" },
+  /** Thông báo: đủ khóa, tenant không có lượt gửi nào. */
+  notiempty: { username: "notiempty", password: "Notiempty@12345" },
+  /** Thông báo: người dùng thường, test tùy chọn nhận thông báo. */
+  notipref1: { username: "notipref1", password: "Notipref1@12345" },
+  /** Thông báo: người dùng thường thứ 2. */
+  notipref2: { username: "notipref2", password: "Notipref2@12345" },
+  /** Thông báo: người dùng thường thứ 3. */
+  notipref3: { username: "notipref3", password: "Notipref3@12345" },
 } as const;
 
 export type UserKey = keyof typeof USERS;

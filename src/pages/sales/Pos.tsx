@@ -8,6 +8,7 @@ import {
   DeleteOutlined,
   Input,
   InputNumber,
+  LinkButton,
   ScanInput,
   Segmented,
   describeError,
@@ -18,6 +19,7 @@ import { PosCatalog, TitleSearchList } from "./_components/PosCatalog";
 import { ManualPaymentModal } from "./_components/ManualPaymentModal";
 import { QrPaymentModal } from "./_components/QrPaymentModal";
 import { ReceiptPanel } from "./_components/ReceiptPanel";
+import { ShiftBar } from "./_components/ShiftBar";
 import { SalesGate } from "./_components/SalesGate";
 import {
   POS_PAYMENT_METHODS,
@@ -127,6 +129,8 @@ export default function PosPage() {
   const busy = useRef(false);
   const [qrOrder, setQrOrder] = useState<SalesOrder | null>(loadQr);
   const [qrOpen, setQrOpen] = useState(true);
+  // Tăng mỗi lần cần mở hộp thoại Mở ca (khi BE trả SHIFT_NOT_OPEN).
+  const [shiftSignal, setShiftSignal] = useState(0);
   const canQr = can(s, PERMISSIONS.PAYMENT_INTENT_VIEW);
   useEffect(() => saveQr(qrOrder), [qrOrder]);
   // "Tạo mã QR mới" sau khi lệnh hết hạn/hủy: đợi qrOrder được bỏ rồi mới gọi checkout (closure mới nhất).
@@ -203,7 +207,7 @@ export default function PosPage() {
         method: "POST",
         json: { ...body, clientRequestId: req.current.id },
       });
-      void invalidate("/api/sales/stock-items", "/api/sales/orders");
+      void invalidate("/api/sales/stock-items", "/api/sales/orders", "/api/sales/shifts/me/current");
       if (o.paymentIntent && o.status === "AWAITING_PAYMENT") {
         // Đơn QR chưa thu: giữ giỏ và clientRequestId (bấm lại cùng nội dung trả đúng đơn này), mở khung QR.
         setQrOrder(o);
@@ -236,6 +240,23 @@ export default function PosPage() {
   const errorNode = (() => {
     if (!error) return null;
     const d = describeError(error);
+    if (error.code === "SHIFT_NOT_OPEN") {
+      return (
+        <Alert
+          type="warning"
+          showIcon
+          data-testid="shift-not-open"
+          title={d.text}
+          action={
+            can(s, PERMISSIONS.SHIFT_OPEN) ? (
+              <Button size="small" type="primary" onClick={() => setShiftSignal((n) => n + 1)}>
+                Mở ca
+              </Button>
+            ) : undefined
+          }
+        />
+      );
+    }
     if (error.code === "INSUFFICIENT_STOCK") {
       const groups = parseKv(error.details);
       return (
@@ -262,6 +283,7 @@ export default function PosPage() {
 
   return (
     <SalesGate title="Bán tại quầy" description="Quét hoặc tìm sách, lập đơn và thu tiền." permission={[PERMISSIONS.POS_ORDER_CREATE, PERMISSIONS.POS_ORDER_CREATE_DISCOUNTED]}>
+      <ShiftBar openSignal={shiftSignal} />
       {done ? (
         <div className="flex max-w-[1000px] flex-col gap-4">
           <div className="flex flex-col gap-3 print:hidden">
@@ -275,9 +297,16 @@ export default function PosPage() {
               }
             />
             <div>
-              <Button type="primary" onClick={() => setDone(null)}>
-                Bán đơn mới
-              </Button>
+              <span className="inline-flex flex-wrap gap-2">
+                <Button type="primary" onClick={() => setDone(null)}>
+                  Bán đơn mới
+                </Button>
+                {can(s, PERMISSIONS.INVOICE_ISSUE) && can(s, PERMISSIONS.SALES_ORDER_VIEW) && (
+                  <LinkButton to={`/sales/orders/${encodeURIComponent(done.id)}`} data-testid="pos-issue-invoice">
+                    Xuất hóa đơn
+                  </LinkButton>
+                )}
+              </span>
             </div>
           </div>
           {can(s, PERMISSIONS.SALES_ORDER_RECEIPT) && <ReceiptPanel orderId={done.id} />}

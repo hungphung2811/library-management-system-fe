@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { PERMISSIONS, apiFetch, can, toErrorInfo, useApi, useSession, type ErrorInfo } from "@/api";
 import { Alert, Button, Card, DataTable, LinkButton, QueryBoundary, Tag, describeError, formatDate, formatDateTime, formatMoney, useDetailModal, type DataColumn } from "@/ui";
+import { InvoicePanel } from "./_components/InvoicePanel";
 import { OrderNotesCard } from "./_components/OrderNotesCard";
 import { OrderActions } from "./_components/OrderActions";
 import { ReceiptPanel } from "./_components/ReceiptPanel";
@@ -164,6 +165,7 @@ export default function OrderDetailPage() {
               </Card>
               <OrderActions order={o} onReload={() => void q.refetch()} />
               <ContactBlock order={o} canFull={can(s, PERMISSIONS.SALES_ORDER_CONTACT)} />
+              <InvoicePanel order={o} />
               {can(s, PERMISSIONS.SALES_ORDER_NOTES_VIEW) && <OrderNotesCard key={`${o.id}:${o.version}`} order={o} />}
               <Card title="Các dòng hàng">
                 <DataTable columns={columns} rows={o.lines as unknown as Record<string, unknown>[]} rowKey="id" embedded empty={{ title: "Đơn không có dòng nào." }} />
