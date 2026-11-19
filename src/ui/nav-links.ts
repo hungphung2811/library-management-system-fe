@@ -24,11 +24,12 @@ export type NavLink = NavChild & {
 };
 
 /** Mục hiện khi: không cần khóa, hoặc là quản trị viên, hoặc có ít nhất một khóa. */
-type NavSession = { admin?: boolean; platformAdmin?: boolean; permissions: string[]; modules?: string[] };
+type NavSession = { admin?: boolean; platformAdmin?: boolean; tenantId?: string; permissions: string[]; modules?: string[] };
 
 export function canSeeLink(l: NavChild, s?: NavSession | null): boolean {
   if (l.platformOnly) return s?.platformAdmin === true;
-  if (l.tenantOnly && s?.platformAdmin === true) return false;
+  // Platform admin đã chọn đơn vị làm việc (session có tenantId, ADR-0016) thì thấy mục như admin của đơn vị đó.
+  if (l.tenantOnly && s?.platformAdmin === true && !s.tenantId) return false;
   if (l.module && s?.platformAdmin !== true && !(s?.modules ?? ["LENDING"]).includes(l.module)) return false;
   const keys = l.permission == null ? [] : Array.isArray(l.permission) ? l.permission : [l.permission];
   return keys.length === 0 || s?.admin === true || keys.some((k) => s?.permissions.includes(k));

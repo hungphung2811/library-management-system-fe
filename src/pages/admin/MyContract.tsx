@@ -8,7 +8,7 @@ import { moduleLabel } from "../platform/_lib/tenant-format";
 export default function MyContract() {
   const s = useSession();
   const allowed = can(s, PERMISSIONS.CONTRACT_CURRENT) || can(s, PERMISSIONS.CONTRACT_LIST);
-  if (s.platformAdmin) return <NoPermission feature="Hợp đồng của đơn vị (platform admin xem ở Nền tảng SaaS, mục Đơn vị)" />;
+  if (s.platformAdmin && !s.tenantId) return <NoPermission feature="Hợp đồng của đơn vị (hãy chọn đơn vị làm việc, hoặc xem ở Nền tảng SaaS, mục Đơn vị)" />;
   if (!allowed) return <NoPermission feature="Hợp đồng thuê dịch vụ" />;
   return <Body />;
 }

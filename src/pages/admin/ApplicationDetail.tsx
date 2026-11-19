@@ -32,7 +32,7 @@ type TabKey = "info" | "scopes" | "credentials" | "domains" | "history";
 
 export default function ApplicationDetailPage() {
   const s = useSession();
-  if (s.platformAdmin) return <NoPermission feature="Chi tiết ứng dụng (platform admin xem qua API nền tảng)" />;
+  if (s.platformAdmin && !s.tenantId) return <NoPermission feature="Chi tiết ứng dụng (hãy chọn đơn vị làm việc)" />;
   if (!can(s, PERMISSIONS.APPLICATION_VIEW)) return <NoPermission feature="Chi tiết ứng dụng" />;
   return <Body />;
 }

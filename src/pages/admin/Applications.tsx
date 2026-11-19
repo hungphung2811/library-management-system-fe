@@ -8,7 +8,7 @@ import { APP_STATUS_LABELS, KIND_LABELS, type ApplicationSummary } from "./_lib/
 /** Developer Portal của tenant admin: danh sách Application (website công khai, tích hợp backend). GET /api/applications. */
 export default function Applications() {
   const s = useSession();
-  if (s.platformAdmin) return <NoPermission feature="Developer Portal (platform admin xem Application của từng đơn vị qua API nền tảng, không thao tác ở màn này)" />;
+  if (s.platformAdmin && !s.tenantId) return <NoPermission feature="Developer Portal (hãy chọn đơn vị làm việc)" />;
   if (!can(s, PERMISSIONS.APPLICATION_LIST)) return <NoPermission feature="Developer Portal" />;
   return <Body />;
 }

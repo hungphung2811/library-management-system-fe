@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { PERMISSIONS, can, hasModule, toErrorInfo, useApi, useSession } from "@/api";
 import { Alert, DataTable, ErrorPanel, NoPermission, PageHeader, PageSkeleton, Tag } from "@/ui";
 import { ORIGIN_NOTE, type TenantStorefrontOriginList } from "../platform/_lib/storefront-origin";
@@ -5,7 +6,7 @@ import { ORIGIN_NOTE, type TenantStorefrontOriginList } from "../platform/_lib/s
 /** Website (origin) của đơn vị mình, chỉ đọc: GET /api/storefront-origins. Thêm/sửa do nhà cung cấp dịch vụ (platform admin) làm. */
 export default function StorefrontOrigins() {
   const s = useSession();
-  if (s.platformAdmin) return <NoPermission feature="Website của đơn vị (platform admin quản lý ở Nền tảng SaaS, mục Đơn vị, tab Origin website)" />;
+  if (s.platformAdmin && !s.tenantId) return <NoPermission feature="Website của đơn vị (hãy chọn đơn vị làm việc, hoặc quản lý ở Nền tảng SaaS, mục Đơn vị, tab Origin website)" />;
   if (!can(s, PERMISSIONS.STOREFRONT_ORIGIN_LIST)) return <NoPermission feature="Website của đơn vị" />;
   return <Body />;
 }
@@ -42,7 +43,13 @@ function Body() {
             empty={{ title: "Chưa có website nào được khai báo." }}
           />
         )}
-        <p className="m-0 text-sm text-muted">Muốn thêm, bật, tắt hoặc xóa domain, hãy liên hệ nhà cung cấp dịch vụ.</p>
+        {s.platformAdmin && s.tenantId ? (
+          <p className="m-0 text-sm">
+            <Link to={`/platform/tenants/${encodeURIComponent(s.tenantId)}?tab=origins`}>Thêm, bật, tắt hoặc xóa website của đơn vị này</Link>
+          </p>
+        ) : (
+          <p className="m-0 text-sm text-muted">Muốn thêm, bật, tắt hoặc xóa domain, hãy liên hệ nhà cung cấp dịch vụ.</p>
+        )}
       </div>
     </>
   );
