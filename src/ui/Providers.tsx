@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { StyleProvider } from "@ant-design/cssinjs";
+import { TopProgress } from "./TopProgress";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App, ConfigProvider } from "antd";
 import viVN from "antd/locale/vi_VN";
@@ -34,6 +35,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <ConfigProvider theme={antdTheme} locale={viVN}>
         <App component={false}>
           <QueryClientProvider client={client}>
+            <TopProgress />
             <AuthProvider>{children}</AuthProvider>
           </QueryClientProvider>
         </App>

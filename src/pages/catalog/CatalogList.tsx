@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
-import { Button, NoPermission, PageHeader, PlusOutlined, QueryBoundary, SearchBar } from "@/ui";
+import { Button, EXCEL_IMPORTS, ExcelImportButton, NoPermission, PageHeader, PlusOutlined, QueryBoundary, SearchBar } from "@/ui";
 import { BooksTable } from "./_components/BooksTable";
 import { NewBookModal } from "./_components/NewBookModal";
 import { ActiveFilters, CatalogControls } from "./_components/CatalogFilters";
@@ -43,11 +43,14 @@ export default function CatalogListPage() {
       title="Sách"
       description="Tìm đầu sách và xem số bản sẵn có."
       actions={
-        canCreate && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewOpen(true)}>
-            Thêm sách
-          </Button>
-        )
+        <>
+          <ExcelImportButton cfg={EXCEL_IMPORTS.titles} />
+          {canCreate && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewOpen(true)}>
+              Thêm sách
+            </Button>
+          )}
+        </>
       }
     />
   );

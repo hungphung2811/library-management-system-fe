@@ -63,7 +63,7 @@ export default function FinesPage() {
                   {canCollect && <CollectFinesButton readerId={data.readerId} total={vnd(data.totalUnpaid)} />}
                   {staff && !can(s, PERMISSIONS.FINE_COLLECT) && data.totalUnpaid > 0 && <NoPermission feature="Thu phạt" />}
                 </div>
-                <FinesTable fines={data.fines ?? []} />
+                <FinesTable fines={data.fines ?? []} canRequestAdjustment={staff && can(s, PERMISSIONS.FINE_ADJUSTMENT_REQUEST)} />
               </>
             );
           }}

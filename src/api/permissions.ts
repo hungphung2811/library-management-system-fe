@@ -79,8 +79,6 @@ export const PERMISSIONS = {
   USER_UNLOCK: "UserController/unlock",
   /** POST /api/users/{id}/sessions/revocation */
   USER_REVOKE_SESSIONS: "UserController/revokeSessions",
-  /** POST /api/users/imports */
-  USER_IMPORT: "UserController/importUsers",
   /** GET /api/users/export */
   USER_EXPORT: "UserController/exportUsers",
   /** POST /api/auth/credentials */
@@ -131,6 +129,10 @@ export const PERMISSIONS = {
   DEPT_STATUS: "DepartmentController/changeStatus",
   /** GET /api/audit-logs */
   AUDIT_SEARCH: "AuditLogController/search",
+  /** GET /api/sales/logs/integration (nhật ký tích hợp: gọi ra, gọi vào) */
+  LOG_INTEGRATION: "OperationalLogController/integration",
+  /** GET /api/sales/logs/system (nhật ký hệ thống chọn lọc) */
+  LOG_SYSTEM: "OperationalLogController/system",
   /** GET /api/menus (quản trị menu) */
   MENU_LIST: "MenuAdminController/listMenus",
   /** POST /api/menus */
@@ -145,6 +147,20 @@ export const PERMISSIONS = {
   SALES_SETTINGS_VIEW: "SalesSettingsController/get",
   /** PUT /api/sales/settings */
   SALES_SETTINGS_UPDATE: "SalesSettingsController/update",
+  /** GET /api/sales/settings/order-abuse-policy */
+  ORDER_ABUSE_POLICY_GET: "OrderAbusePolicyController/get",
+  /** PUT /api/sales/settings/order-abuse-policy */
+  ORDER_ABUSE_POLICY_UPDATE: "OrderAbusePolicyController/update",
+  /** GET /api/sales/banners */
+  BANNER_LIST: "SalesBannerController/list",
+  /** GET /api/sales/banners/{id} */
+  BANNER_GET: "SalesBannerController/get",
+  /** POST /api/sales/banners */
+  BANNER_CREATE: "SalesBannerController/create",
+  /** PUT /api/sales/banners/{id} */
+  BANNER_UPDATE: "SalesBannerController/update",
+  /** DELETE /api/sales/banners/{id} */
+  BANNER_DELETE: "SalesBannerController/delete",
   /** POST /api/sales/stock-items */
   STOCK_REGISTER: "StockItemController/register",
   /** GET /api/sales/stock-items */
@@ -267,6 +283,32 @@ export const PERMISSIONS = {
   CIRCULATION_POLICY_GET: "CirculationPolicyController/get",
   /** PUT /api/circulation/policy */
   CIRCULATION_POLICY_UPDATE: "CirculationPolicyController/update",
+  /** GET /api/circulation/damage-levels */
+  DAMAGE_LEVEL_LIST: "DamageLevelController/list",
+  /** POST /api/circulation/damage-levels */
+  DAMAGE_LEVEL_CREATE: "DamageLevelController/create",
+  /** PUT /api/circulation/damage-levels/{code} */
+  DAMAGE_LEVEL_UPDATE: "DamageLevelController/update",
+  /** DELETE /api/circulation/damage-levels/{code} */
+  DAMAGE_LEVEL_DELETE: "DamageLevelController/delete",
+  /** GET /api/circulation/compensation-policy */
+  COMPENSATION_POLICY_GET: "CompensationPolicyController/get",
+  /** PUT /api/circulation/compensation-policy */
+  COMPENSATION_POLICY_UPDATE: "CompensationPolicyController/update",
+  /** POST /api/fines/{id}/adjustment-requests (đề nghị miễn/giảm) */
+  FINE_ADJUSTMENT_REQUEST: "FineAdjustmentController/request",
+  /** GET /api/fines/adjustment-requests */
+  FINE_ADJUSTMENT_LIST: "FineAdjustmentController/list",
+  /** POST /api/fines/adjustment-requests/{requestId}/approve */
+  FINE_ADJUSTMENT_APPROVE: "FineAdjustmentController/approve",
+  /** POST /api/fines/adjustment-requests/{requestId}/reject */
+  FINE_ADJUSTMENT_REJECT: "FineAdjustmentController/reject",
+  /** GET /api/fines/refund-requests */
+  FINE_REFUND_LIST: "FineRefundController/list",
+  /** POST /api/fines/refund-requests/{id}/approve */
+  FINE_REFUND_APPROVE: "FineRefundController/approve",
+  /** POST /api/fines/refund-requests/{id}/reject */
+  FINE_REFUND_REJECT: "FineRefundController/reject",
   /** GET /api/authors */
   AUTHOR_SEARCH: "AuthorController/search",
   /** GET /api/authors/options */
@@ -317,6 +359,44 @@ export const PERMISSIONS = {
   SHELF_LOCATION_SET_STATUS: "ShelfLocationController/setStatus",
   /** PUT /api/book-copies/{id}/shelf-location (đổi/gỡ vị trí kệ của bản sao) */
   COPY_MOVE_SHELF_LOCATION: "BookCopyController/moveShelfLocation",
+  /** POST /api/identity/imports/users (tải lên tệp Excel người dùng) */
+  USER_IMPORT_UPLOAD: "UserImportController/upload",
+  /** POST /api/identity/imports/users/{importId}/confirm */
+  USER_IMPORT_CONFIRM: "UserImportController/confirm",
+  /** GET /api/identity/imports/users/{importId}/credentials (file mật khẩu tạm, tải một lần) */
+  USER_IMPORT_CREDENTIALS: "UserImportController/credentials",
+  /** POST /api/catalog/imports/titles */
+  TITLE_IMPORT_UPLOAD: "TitleImportController/upload",
+  /** POST /api/catalog/imports/titles/{importId}/confirm */
+  TITLE_IMPORT_CONFIRM: "TitleImportController/confirm",
+  /** POST /api/catalog/imports/authors */
+  AUTHOR_IMPORT_UPLOAD: "AuthorImportController/upload",
+  /** POST /api/catalog/imports/authors/{importId}/confirm */
+  AUTHOR_IMPORT_CONFIRM: "AuthorImportController/confirm",
+  /** POST /api/catalog/imports/publishers */
+  PUBLISHER_IMPORT_UPLOAD: "PublisherImportController/upload",
+  /** POST /api/catalog/imports/publishers/{importId}/confirm */
+  PUBLISHER_IMPORT_CONFIRM: "PublisherImportController/confirm",
+  /** POST /api/catalog/imports/categories */
+  CATEGORY_IMPORT_UPLOAD: "CategoryImportController/upload",
+  /** POST /api/catalog/imports/categories/{importId}/confirm */
+  CATEGORY_IMPORT_CONFIRM: "CategoryImportController/confirm",
+  /** POST /api/catalog/imports/shelf-locations */
+  SHELF_LOCATION_IMPORT_UPLOAD: "ShelfLocationImportController/upload",
+  /** POST /api/catalog/imports/shelf-locations/{importId}/confirm */
+  SHELF_LOCATION_IMPORT_CONFIRM: "ShelfLocationImportController/confirm",
+  /** POST /api/catalog/imports/series */
+  SERIES_IMPORT_UPLOAD: "SeriesImportController/upload",
+  /** POST /api/catalog/imports/series/{importId}/confirm */
+  SERIES_IMPORT_CONFIRM: "SeriesImportController/confirm",
+  /** POST /api/sales/imports/stock-items */
+  STOCK_IMPORT_UPLOAD: "StockItemImportController/upload",
+  /** POST /api/sales/imports/stock-items/{importId}/confirm */
+  STOCK_IMPORT_CONFIRM: "StockItemImportController/confirm",
+  /** POST /api/sales/imports/suppliers */
+  SUPPLIER_IMPORT_UPLOAD: "SupplierImportController/upload",
+  /** POST /api/sales/imports/suppliers/{importId}/confirm */
+  SUPPLIER_IMPORT_CONFIRM: "SupplierImportController/confirm",
   /** GET /api/applications */
   APPLICATION_LIST: "ApplicationController/list",
   /** GET /api/applications/{id} */
@@ -345,6 +425,28 @@ export const PERMISSIONS = {
   APPLICATION_HISTORY: "ApplicationController/history",
   /** GET /api/applications/{id}/usage?from&to (thống kê yêu cầu theo ngày; FE chưa có màn) */
   APPLICATION_USAGE: "ApplicationController/usage",
+  /** GET /api/series/options (ô chọn bộ sách) */
+  SERIES_OPTIONS: "SeriesController/options",
+  /** GET /api/works */
+  WORK_SEARCH: "WorkController/search",
+  /** GET /api/works/{id} */
+  WORK_VIEW: "WorkController/get",
+  /** POST /api/works */
+  WORK_CREATE: "WorkController/create",
+  /** PUT /api/works/{id} */
+  WORK_UPDATE: "WorkController/update",
+  /** POST /api/works/{id}/merge */
+  WORK_MERGE: "WorkController/merge",
+  /** PUT /api/books/{id}/work (gắn ấn bản vào tác phẩm khác hoặc tách ra tác phẩm mới) */
+  BOOK_CHANGE_WORK: "TitleController/changeWork",
+  /** POST /api/borrowings/found (ghi nhận tìm lại sách đã báo mất, đề nghị hoàn khoản) */
+  BORROWING_REPORT_FOUND: "BorrowingController/reportFound",
+  /** GET /api/reports/overdue-borrowings (CSV, module LENDING) */
+  REPORT_OVERDUE_CSV: "LendingReportController/overdueBorrowingsCsv",
+  /** GET /api/reports/stock (CSV, module SALES) */
+  REPORT_STOCK_CSV: "SalesReportController/stockCsv",
+  /** GET /api/reports/orders (CSV, module SALES) */
+  REPORT_ORDERS_CSV: "SalesReportController/ordersCsv",
   // ---- Hóa đơn VAT nội bộ (ADR-0030 gói A, docs/api/sales-invoices.md) ----
   /** GET /api/sales/invoices */
   INVOICE_SEARCH: "InvoiceController/search",

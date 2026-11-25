@@ -64,6 +64,7 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
     children: [
       { href: "/catalog", label: "Danh sách sách", permission: PERMISSIONS.BOOK_SEARCH },
       { href: "/catalog/barcode", label: "Tra mã vạch", permission: PERMISSIONS.COPY_BY_BARCODE },
+      { href: "/catalog/works", label: "Tác phẩm", permission: PERMISSIONS.WORK_SEARCH },
       { href: "/catalog/authors", label: "Tác giả", permission: PERMISSIONS.AUTHOR_SEARCH },
       { href: "/catalog/publishers", label: "Nhà xuất bản", permission: PERMISSIONS.PUBLISHER_SEARCH },
       { href: "/catalog/categories", label: "Thể loại", permission: PERMISSIONS.CATEGORY_SEARCH },
@@ -95,6 +96,8 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
         permission: [PERMISSIONS.FINE_BY_READER, PERMISSIONS.FINE_COLLECT, PERMISSIONS.RESERVATION_MINE],
       },
       { href: "/circulation/policy", label: "Chính sách mượn trả", permission: PERMISSIONS.CIRCULATION_POLICY_GET },
+      { href: "/circulation/compensation", label: "Đền bù và mức hư hại", permission: [PERMISSIONS.COMPENSATION_POLICY_GET, PERMISSIONS.DAMAGE_LEVEL_LIST] },
+      { href: "/circulation/fine-requests", label: "Yêu cầu miễn giảm, hoàn phạt", permission: [PERMISSIONS.FINE_ADJUSTMENT_LIST, PERMISSIONS.FINE_REFUND_LIST] },
     ],
   },
   {
@@ -113,9 +116,16 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
       { href: "/sales/stock", label: "Tồn kho", module: "SALES", permission: PERMISSIONS.STOCK_SEARCH },
       { href: "/sales/receipts", label: "Phiếu nhập kho", module: "SALES", permission: PERMISSIONS.RECEIPT_SEARCH },
       { href: "/sales/suppliers", label: "Nhà cung cấp", module: "SALES", permission: PERMISSIONS.SUPPLIER_SEARCH },
+      { href: "/sales/banners", label: "Banner cửa hàng", module: "SALES", permission: PERMISSIONS.BANNER_LIST },
       { href: "/sales/settings", label: "Cấu hình bán hàng", module: "SALES", permission: PERMISSIONS.SALES_SETTINGS_VIEW },
       { href: "/sales/invoice-settings", label: "Cấu hình hóa đơn", module: "SALES", permission: PERMISSIONS.INVOICE_SETTINGS_GET },
     ],
+  },
+  {
+    href: "/reports",
+    label: "Báo cáo",
+    group: "Nghiệp vụ",
+    permission: [PERMISSIONS.REPORT_OVERDUE_CSV, PERMISSIONS.REPORT_STOCK_CSV, PERMISSIONS.REPORT_ORDERS_CSV],
   },
   {
     href: "/admin",
@@ -126,6 +136,7 @@ export const DEFAULT_NAV_LINKS: NavLink[] = [
       { href: "/admin/roles", label: "Vai trò và quyền", permission: PERMISSIONS.LIST_ROLES },
       { href: "/admin/departments", label: "Phòng ban", permission: PERMISSIONS.DEPT_TREE },
       { href: "/admin/audit-logs", label: "Nhật ký hoạt động", permission: PERMISSIONS.AUDIT_SEARCH },
+      { href: "/admin/logs", label: "Nhật ký tích hợp", permission: [PERMISSIONS.LOG_INTEGRATION, PERMISSIONS.LOG_SYSTEM], module: "SALES" },
       { href: "/admin/menus", label: "Menu", permission: PERMISSIONS.MENU_LIST },
       { href: "/admin/contract", label: "Hợp đồng", permission: [PERMISSIONS.CONTRACT_LIST, PERMISSIONS.CONTRACT_CURRENT], tenantOnly: true },
       { href: "/admin/storefront-origins", label: "Website", permission: PERMISSIONS.STOREFRONT_ORIGIN_LIST, tenantOnly: true, module: "SALES" },

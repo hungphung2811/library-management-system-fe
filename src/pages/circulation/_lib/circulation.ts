@@ -57,6 +57,8 @@ export type FineView = {
   status: string;
   createdAt: string;
   paidAt: string | null;
+  /** Số phải thu sau miễn/giảm (WAIVED là 0). Có thể vắng ở BE cũ: dùng `amount`. */
+  payableAmount?: number;
 };
 
 /** `ReaderFinesView` của GET /api/fines và /api/fines/mine. */

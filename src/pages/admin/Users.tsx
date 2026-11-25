@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { Link, useSearchParams } from "react-router";
 import { PERMISSIONS, can, useApi, useSession } from "@/api";
-import { DataTable, NoPermission, PageHeader, PageSkeleton, Tag, UserAvatar, Eye, actionsColumn } from "@/ui";
+import { DataTable, EXCEL_IMPORTS, ExcelImportButton, NoPermission, PageHeader, PageSkeleton, Tag, UserAvatar, Eye, actionsColumn } from "@/ui";
 import { CreateUserButton } from "./_components/CreateUserButton";
 import { ExportUsersButton } from "./_components/ExportUsersButton";
-import { ImportUsersButton } from "./_components/ImportUsersButton";
 import { ErrorBlock } from "./_components/ErrorBlock";
 import { ServerPager } from "./_components/ServerPager";
 import { UserFilters } from "./_components/UserFilters";
@@ -57,7 +56,7 @@ export default function UsersPage() {
             {can(s, PERMISSIONS.USER_EXPORT) && (
               <ExportUsersButton filters={{ keyword: q || undefined, departmentId: dept || undefined, status: status || undefined }} />
             )}
-            {can(s, PERMISSIONS.USER_IMPORT) && <ImportUsersButton />}
+            <ExcelImportButton cfg={EXCEL_IMPORTS.users} />
             {can(s, PERMISSIONS.USER_CREATE) && (
               <CreateUserButton departments={deptOptions} canCredential={can(s, PERMISSIONS.CREDENTIAL_CREATE)} />
             )}

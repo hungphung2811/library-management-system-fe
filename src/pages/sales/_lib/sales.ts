@@ -242,7 +242,7 @@ export type Discount = { type: "AMOUNT" | "PERCENT"; value: number };
 /** Hình thức thu tay ở quầy và khi đánh dấu đã thu/hoàn: không có COD, không có QR (QR đi qua cổng thanh toán). */
 export const PAYMENT_METHODS: Record<string, string> = { CASH: "Tiền mặt", BANK_TRANSFER: "Chuyển khoản", CARD: "Thẻ" };
 /** Hình thức chọn ở POS: thêm QR (cổng giả lập, cần khóa PaymentIntentController/*). */
-export const POS_PAYMENT_METHODS: Record<string, string> = { ...PAYMENT_METHODS, QR: "QR", MOMO: "MoMo (sandbox)" };
+export const POS_PAYMENT_METHODS: Record<string, string> = { ...PAYMENT_METHODS, QR: "QR", MOMO: "MoMo (sandbox)", SEPAY: "SePay (test)" };
 /** Mọi hình thức để hiển thị (đơn online có thêm COD, đơn POS có thêm QR). */
 export const ALL_PAYMENT_METHODS: Record<string, string> = { ...POS_PAYMENT_METHODS, COD: "Thu khi giao (COD)" };
 export const FULFILMENTS: Record<string, string> = { COUNTER: "Tại quầy", PICKUP: "Nhận tại cửa hàng", DELIVERY: "Giao tận nơi" };

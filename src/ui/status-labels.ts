@@ -52,5 +52,7 @@ export const STATUS_LABELS: Record<StatusDomain, Record<string, StatusMeta>> = {
   fine: {
     UNPAID: { label: "Chưa thanh toán", color: "warning" },
     PAID: { label: "Đã thanh toán", color: "success" },
+    WAIVED: { label: "Đã miễn", color: "default" },
+    REDUCED: { label: "Đã giảm", color: "processing" },
   },
 };

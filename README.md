@@ -11,7 +11,7 @@ src/
   index.css           Tailwind + CSS layer + token thương hiệu + CSS in phiếu
   api/                apiFetch, useApi, useApiMutation, session (decode JWT), can, PERMISSIONS, token-store
   auth/               AuthProvider, ProtectedRoute
-  ui/                 điểm vào "@/ui": antd, icon, AppShell, DataTable, SearchBar, FormModal, QueryBoundary...
+  ui/                 điểm vào "@/ui": antd, icon, AppShell, DataTable, SearchBar, FormModal, QueryBoundary, excel-import (nhập Excel hàng loạt)...
   routes/router.tsx   khai báo mọi đường dẫn
   pages/              Home, Login, Profile, Notifications...; catalog/, circulation/, admin/ (lazy theo nhóm)
 ```

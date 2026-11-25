@@ -26,6 +26,7 @@ export {
   Pagination,
   Popconfirm,
   Popover,
+  Progress,
   Radio,
   Result,
   Row,

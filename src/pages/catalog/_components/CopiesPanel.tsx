@@ -24,6 +24,7 @@ import { useAcquisitionAction } from "./AcquisitionButton";
 import { CopyAcquisitionFields, acquisitionPayload, conditionLabel, sourceLabel, type AcquisitionValues } from "./CopyAcquisitionFields";
 import type { CopyView } from "./types";
 import { useCopyStatusRowActions } from "./CopyStatusActions";
+import { useFoundAction } from "./FoundCopyAction";
 
 type AddValues = AcquisitionValues & { barcode: string; shelfLocationId?: string };
 /** POST chỉ gửi field có giá trị (field vắng = chưa nhập). */
@@ -138,13 +139,15 @@ function CopyRowActions({
   const status = useCopyStatusRowActions(copy);
   const shelf = useMoveShelfAction(copy);
   const acq = useAcquisitionAction(copy);
+  const found = useFoundAction(copy);
   return (
     <>
       <RowActions
-        actions={[...(canChange ? status : []), ...(canMove ? [shelf.action] : []), ...(canAcquisition ? [acq.action] : [])]}
+        actions={[...(canChange ? status : []), found.action, ...(canMove ? [shelf.action] : []), ...(canAcquisition ? [acq.action] : [])]}
       />
       {canMove && shelf.modal}
       {canAcquisition && acq.modal}
+      {found.modal}
     </>
   );
 }
@@ -166,6 +169,8 @@ function CopiesTable({
   onFilter: (f: Filter) => void;
   canChange: boolean;
 }) {
+  const sess = useSession();
+  const canFound = showShelf && can(sess, PERMISSIONS.BORROWING_REPORT_FOUND) && copies.some((c) => c.status === "LOST");
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const x of copies) c[x.status] = (c[x.status] ?? 0) + 1;
@@ -238,14 +243,14 @@ function CopiesTable({
             dataIndex: "lastInventoryDate",
             render: (v) => (v ? formatDate(String(v)) : "—"),
           },
-          ...(canChange || canMove || canAcquisition
+          ...(canChange || canMove || canAcquisition || canFound
             ? [
                 {
                   key: "actions",
                   title: "Thao tác",
                   dataIndex: "id",
                   align: "right" as const,
-                  width: 16 + 4 * 32,
+                  width: 16 + 5 * 32,
                   render: (_: unknown, row: Record<string, unknown>) => (
                     <CopyRowActions copy={row as unknown as CopyView} canChange={canChange} canMove={canMove} canAcquisition={canAcquisition} />
                   ),

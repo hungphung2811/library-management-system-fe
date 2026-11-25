@@ -7,6 +7,8 @@ import {
   Checkbox,
   DataTable,
   Drawer,
+  EXCEL_IMPORTS,
+  ExcelImportButton,
   Form,
   FormModal,
   Input,
@@ -237,7 +239,12 @@ export default function StockPage() {
       title="Tồn kho"
       description="Mặt hàng đang bán, số tồn và biến động."
       permission={PERMISSIONS.STOCK_SEARCH}
-      actions={can(s, PERMISSIONS.STOCK_REGISTER) ? <RegisterButton /> : undefined}
+      actions={
+        <>
+          <ExcelImportButton cfg={EXCEL_IMPORTS["stock-items"]} />
+          {can(s, PERMISSIONS.STOCK_REGISTER) && <RegisterButton />}
+        </>
+      }
     >
       <div className="flex flex-col gap-4">
         <Checkbox

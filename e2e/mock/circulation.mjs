@@ -15,6 +15,19 @@ const K = {
   BORROWING_BY_READER: "BorrowingController/byReader",
   BORROWING_RETURN_COPY: "BorrowingController/returnCopy",
   BORROWING_REPORT_LOST: "BorrowingController/reportLost",
+  DAMAGE_LEVEL_LIST: "DamageLevelController/list",
+  DAMAGE_LEVEL_CREATE: "DamageLevelController/create",
+  DAMAGE_LEVEL_UPDATE: "DamageLevelController/update",
+  DAMAGE_LEVEL_DELETE: "DamageLevelController/delete",
+  COMP_GET: "CompensationPolicyController/get",
+  COMP_UPDATE: "CompensationPolicyController/update",
+  ADJ_REQUEST: "FineAdjustmentController/request",
+  ADJ_LIST: "FineAdjustmentController/list",
+  ADJ_APPROVE: "FineAdjustmentController/approve",
+  ADJ_REJECT: "FineAdjustmentController/reject",
+  REFUND_LIST: "FineRefundController/list",
+  REFUND_APPROVE: "FineRefundController/approve",
+  REFUND_REJECT: "FineRefundController/reject",
 };
 
 // Tài khoản riêng của nhóm mượn trả, gắn thêm vào USERS dùng chung lúc nạp module (không sửa data.mjs).
@@ -32,6 +45,15 @@ USERS.clerk = {
 };
 // Thủ thư dùng chung (data.mjs) cũng cần getAny để xem phiếu bất kỳ qua /detail.
 if (!USERS.librarian.permissions.includes(K.BORROWING_GET_ANY)) USERS.librarian.permissions.push(K.BORROWING_GET_ANY);
+// Thủ thư đề nghị miễn/giảm (clerk) và quản lý duyệt + cấu hình đền bù (finemgr).
+USERS.clerk.permissions.push(K.ADJ_REQUEST, K.ADJ_LIST, K.DAMAGE_LEVEL_LIST, K.COMP_GET);
+USERS.finemgr = {
+  id: "finemgr-id", roles: ["LIBRARY_ADMIN"], password: "Finemgr@12345", tenantId: USERS.admin.tenantId, tenants: [USERS.admin.tenantId],
+  permissions: [
+    K.ADJ_LIST, K.ADJ_APPROVE, K.ADJ_REJECT, K.REFUND_LIST, K.REFUND_APPROVE, K.REFUND_REJECT,
+    K.DAMAGE_LEVEL_LIST, K.DAMAGE_LEVEL_CREATE, K.DAMAGE_LEVEL_UPDATE, K.DAMAGE_LEVEL_DELETE, K.COMP_GET, K.COMP_UPDATE, K.FINE_BY_READER,
+  ],
+};
 USERS.finelook = {
   id: "finelook-id", roles: ["LIBRARIAN"], password: "Finelook@12345", tenantId: USERS.admin.tenantId, tenants: [USERS.admin.tenantId],
   permissions: [K.FINE_BY_READER, KEYS.USER_SEARCH, KEYS.USER_VIEW],
@@ -186,6 +208,27 @@ const listFor = (caller) => {
 
 const err = (send, status, code, message) => send(status, { code, message });
 
+// ---- Đền bù: chính sách, mức hư hại, yêu cầu miễn/giảm, hoàn khoản (trạng thái trong bộ nhớ) ----
+let comp = { lostRate: 1.5, priceSource: "COVER_PRICE", minAmount: null, maxAmount: null, foundWindowDays: 30, refundProcessingFee: 0, custom: false, version: 0, updatedAt: null };
+let levels = null; // null = hạt giống chưa ghi DB
+const SEED_LEVELS = () => [
+  { code: "MINOR", label: "Hỏng nhẹ", rate: 0.2, sortOrder: 1, active: true, version: 0, updatedAt: null },
+  { code: "MAJOR", label: "Hỏng nặng", rate: 0.5, sortOrder: 2, active: true, version: 0, updatedAt: null },
+];
+const adjustments = [
+  { id: "ad100000-0000-4000-8000-000000000001", fineId: "f0000000-0000-4000-8000-000000000001", readerId: "a0000000-0000-4000-8000-000000000001", fineReason: "LATE_RETURN", fineAmount: 15000, type: "WAIVE", payableAmount: null, reason: "Độc giả trả trễ do ốm", status: "PENDING", requestedBy: "clerk-id", requestedAt: "2020-03-01T08:00:00", decidedBy: null, decidedAt: null, decisionNote: null },
+  { id: "ad100000-0000-4000-8000-000000000002", fineId: "f0000000-0000-4000-8000-000000000011", readerId: "a0000000-0000-4000-8000-000000000001", fineReason: "LATE_RETURN", fineAmount: 20000, type: "REDUCE", payableAmount: 10000, reason: "Hoàn cảnh khó khăn", status: "PENDING", requestedBy: "clerk-id", requestedAt: "2020-03-02T08:00:00", decidedBy: null, decidedAt: null, decisionNote: null },
+];
+const refunds = [
+  { id: "ae100000-0000-4000-8000-000000000001", fineId: "f0000000-0000-4000-8000-000000000012", borrowingId: BORROWING_OVERDUE_ID, bookCopyId: COPIES[0].id, readerId: "a0000000-0000-4000-8000-000000000001", lostOn: "2020-02-11", foundOn: "2020-02-20", restoreStatus: "AVAILABLE", checkNote: null, refundMethod: "CASH", referenceCode: null, mode: "REFUND", fineStatusAtRequest: "PAID", collectedAmount: 30000, processingFee: 5000, refundAmount: 25000, status: "PENDING", requestedBy: "clerk-id", requestedAt: "2020-02-20T08:00:00", decidedBy: null, decidedAt: null, decisionNote: null },
+];
+const pageOf = (list, url) => {
+  const st = url.searchParams.get("status");
+  const rows = list.filter((x) => !st || x.status === st);
+  const page = Number(url.searchParams.get("page") ?? 0), size = Number(url.searchParams.get("size") ?? 20);
+  return { items: rows.slice(page * size, page * size + size), total: rows.length, page, size };
+};
+
 export function handle({ method, url, body, caller, send, requireKey }) {
   const p = url.pathname;
   let m;
@@ -195,6 +238,77 @@ export function handle({ method, url, body, caller, send, requireKey }) {
     if (!requireKey(KEYS.BOOK_SEARCH)) return true;
     const kw = (url.searchParams.get("keyword") ?? "").toLowerCase();
     return send(200, BOOKS.filter((b) => !kw || `${b.name} ${b.author} ${b.isbn}`.toLowerCase().includes(kw))), true;
+  }
+
+  // ---- Đền bù ----
+  if (p === "/api/circulation/compensation-policy") {
+    if (method === "GET") return requireKey(K.COMP_GET) && send(200, comp), true;
+    if (method === "PUT") {
+      if (!requireKey(K.COMP_UPDATE)) return true;
+      if (body.version !== comp.version) return err(send, 409, "POLICY_VERSION_CONFLICT", "Phiên bản cũ"), true;
+      if (body.maxAmount != null && body.minAmount > body.maxAmount) return err(send, 422, "COMPENSATION_BOUNDS_INVALID", "Sàn lớn hơn trần"), true;
+      const { version: _v, ...rest } = body;
+      comp = { ...comp, ...rest, custom: true, version: comp.version + 1, updatedAt: new Date().toISOString().slice(0, 19) };
+      return send(200, comp), true;
+    }
+  }
+  if (p === "/api/circulation/damage-levels" && method === "GET") {
+    if (!requireKey(K.DAMAGE_LEVEL_LIST)) return true;
+    return send(200, { custom: levels !== null, maxLevels: 10, items: levels ?? SEED_LEVELS() }), true;
+  }
+  if (p === "/api/circulation/damage-levels" && method === "POST") {
+    if (!requireKey(K.DAMAGE_LEVEL_CREATE)) return true;
+    levels ??= SEED_LEVELS();
+    if (levels.some((l) => l.code === body.code)) return err(send, 409, "DAMAGE_LEVEL_CODE_EXISTS", "Trùng mã"), true;
+    const row = { code: body.code, label: body.label, rate: body.rate, sortOrder: body.sortOrder ?? 0, active: body.active !== false, version: 1, updatedAt: new Date().toISOString().slice(0, 19) };
+    levels.push(row);
+    return send(201, row), true;
+  }
+  if ((m = p.match(/^\/api\/circulation\/damage-levels\/([A-Z0-9_]+)$/))) {
+    levels ??= SEED_LEVELS();
+    const row = levels.find((l) => l.code === m[1]);
+    if (method === "PUT") {
+      if (!requireKey(K.DAMAGE_LEVEL_UPDATE)) return true;
+      if (!row) return err(send, 404, "DAMAGE_LEVEL_NOT_FOUND", "Không có"), true;
+      Object.assign(row, { label: body.label, rate: body.rate, sortOrder: body.sortOrder, active: body.active, version: row.version + 1 });
+      return send(200, row), true;
+    }
+    if (method === "DELETE") {
+      if (!requireKey(K.DAMAGE_LEVEL_DELETE)) return true;
+      if (!row) return err(send, 404, "DAMAGE_LEVEL_NOT_FOUND", "Không có"), true;
+      if (row.code === "MAJOR") return err(send, 409, "DAMAGE_LEVEL_IN_USE", "Đã dùng"), true;
+      levels = levels.filter((l) => l !== row);
+      return send(204), true;
+    }
+  }
+  if (method === "GET" && p === "/api/fines/adjustment-requests") {
+    if (!requireKey(K.ADJ_LIST)) return true;
+    return send(200, pageOf(adjustments, url)), true;
+  }
+  if (method === "GET" && p === "/api/fines/refund-requests") {
+    if (!requireKey(K.REFUND_LIST)) return true;
+    return send(200, pageOf(refunds, url)), true;
+  }
+  if ((m = p.match(/^\/api\/fines\/(adjustment|refund)-requests\/([^/]+)\/(approve|reject)$/)) && method === "POST") {
+    const adj = m[1] === "adjustment";
+    if (!requireKey(adj ? (m[3] === "approve" ? K.ADJ_APPROVE : K.ADJ_REJECT) : (m[3] === "approve" ? K.REFUND_APPROVE : K.REFUND_REJECT))) return true;
+    const row = (adj ? adjustments : refunds).find((x) => x.id === m[2]);
+    if (!row) return err(send, 404, adj ? "ADJUSTMENT_NOT_FOUND" : "REFUND_NOT_FOUND", "Không có"), true;
+    if (row.status !== "PENDING") return err(send, 409, adj ? "ADJUSTMENT_NOT_PENDING" : "REFUND_NOT_PENDING", "Đã xử lý"), true;
+    if (row.requestedBy === USERS[caller]?.id) return err(send, 409, "APPROVER_MUST_DIFFER", "Trùng người"), true;
+    Object.assign(row, { status: m[3] === "approve" ? "APPROVED" : "REJECTED", decidedBy: USERS[caller]?.id, decidedAt: new Date().toISOString().slice(0, 19), decisionNote: body?.note ?? null });
+    return send(200, row), true;
+  }
+  if ((m = p.match(/^\/api\/fines\/([^/]+)\/adjustment-requests$/)) && method === "POST") {
+    if (!requireKey(K.ADJ_REQUEST)) return true;
+    let fine = null;
+    for (const list of fines.values()) fine ??= list.find((f) => f.id === m[1]);
+    if (!fine) return err(send, 404, "FINE_NOT_FOUND", "Không có"), true;
+    if (fine.status !== "UNPAID") return err(send, 409, "FINE_NOT_ADJUSTABLE", "Không còn chưa thu"), true;
+    if (adjustments.some((a) => a.fineId === fine.id && a.status === "PENDING")) return err(send, 409, "ADJUSTMENT_ALREADY_PENDING", "Đã có"), true;
+    const row = { id: randomUUID(), fineId: fine.id, readerId: fine.readerId, fineReason: fine.reason, fineAmount: fine.amount, type: body.type, payableAmount: body.type === "REDUCE" ? body.payableAmount : null, reason: body.reason, status: "PENDING", requestedBy: USERS[caller]?.id, requestedAt: new Date().toISOString().slice(0, 19), decidedBy: null, decidedAt: null, decisionNote: null };
+    adjustments.unshift(row);
+    return send(201, row), true;
   }
 
   // ---- Phạt ----

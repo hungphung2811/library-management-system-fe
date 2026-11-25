@@ -15,6 +15,7 @@ import {
   formatMoney,
   useDetailModal,
 } from "@/ui";
+import { ChangeWorkButton } from "./_components/ChangeWorkButton";
 import { BookEditButton } from "./_components/BookEditButton";
 import { BookPreviewCard } from "./_components/BookPreviewCard";
 import { CopiesPanel } from "./_components/CopiesPanel";
@@ -72,6 +73,7 @@ export default function BookDetailPage() {
   const canAdd = can(s, PERMISSIONS.COPY_ADD);
   const canChange = can(s, PERMISSIONS.COPY_CHANGE_STATUS);
   const canEdit = can(s, PERMISSIONS.BOOK_UPDATE);
+  const canChangeWork = can(s, PERMISSIONS.BOOK_CHANGE_WORK);
   const canReserve = can(s, PERMISSIONS.RESERVE) && book.availableCopies === 0;
   const openAdd = sp.get("addCopy") === "1";
 
@@ -82,9 +84,10 @@ export default function BookDetailPage() {
         title={book.name}
         description={book.subtitle ? `${book.subtitle} · ${book.author}` : book.author}
         actions={
-          canEdit || canReserve ? (
+          canEdit || canReserve || canChangeWork ? (
             <>
               {canEdit && <BookEditButton book={book} />}
+              {canChangeWork && <ChangeWorkButton book={book} />}
               {canReserve && <ReserveButton titleId={book.id} />}
             </>
           ) : undefined
@@ -102,6 +105,9 @@ export default function BookDetailPage() {
             ...(book.authors?.length ? [{ label: "Tác giả (danh mục)", value: book.authors.map((a) => a.name).join(", ") }] : []),
             { label: "Nhà xuất bản", value: book.publisherName },
             { label: "Thể loại", value: book.categoryName },
+            ...(book.workId && book.workTitle
+              ? [{ label: "Tác phẩm", value: can(s, PERMISSIONS.WORK_VIEW) ? <Link to={`/catalog/works/${encodeURIComponent(book.workId)}`}>{book.workTitle}</Link> : book.workTitle }]
+              : []),
             { label: "ISBN", value: book.isbn, mono: true },
             { label: "Giá bìa", value: formatMoney(book.coverPrice) },
             {

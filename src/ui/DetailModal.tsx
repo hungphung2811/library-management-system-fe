@@ -1,6 +1,7 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, Suspense, useContext, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Modal } from "./antd";
+import { PageSkeleton } from "./PageSkeleton";
 
 const DetailModalContext = createContext<{ close: () => void } | null>(null);
 
@@ -37,7 +38,7 @@ export function DetailModalRoute({
   };
   return (
     <>
-      {list}
+      <Suspense fallback={<PageSkeleton />}>{list}</Suspense>
       <Modal
         open
         centered
@@ -48,7 +49,10 @@ export function DetailModalRoute({
         // Không đặt overflow/max-height ở body: thanh cuộn sẽ nằm sát nút đóng (X). Để lớp ngoài của antd cuộn khi nội dung dài.
         styles={{ body: { paddingTop: 8 } }}
       >
-        <DetailModalContext.Provider value={{ close }}>{children}</DetailModalContext.Provider>
+        {/* Chunk của trang chi tiết (lazy) chỉ làm khung chờ trong modal; không để Suspense ngoài thay cả trang bằng skeleton. */}
+        <DetailModalContext.Provider value={{ close }}>
+          <Suspense fallback={<PageSkeleton variant="detail" />}>{children}</Suspense>
+        </DetailModalContext.Provider>
       </Modal>
     </>
   );

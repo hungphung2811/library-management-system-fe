@@ -31,6 +31,8 @@ export const USERS = {
   multi: { username: "multi", password: "Multi@12345" },
   /** Thủ thư mượn trả đầy đủ + phạt (xem/thu) + tìm người dùng (gắn trong e2e/mock/circulation.mjs). */
   clerk: { username: "clerk", password: "Clerk@12345" },
+  /** Quản lý duyệt miễn/giảm, hoàn khoản và cấu hình đền bù (gắn trong e2e/mock/circulation.mjs). */
+  finemgr: { username: "finemgr", password: "Finemgr@12345" },
   /** Chỉ xem phạt của độc giả, không có quyền thu phạt (gắn trong e2e/mock/circulation.mjs). */
   finelook: { username: "finelook", password: "Finelook@12345" },
   /** Như multi, riêng cho test chuyển đơn vị qua giao diện (tránh đua trạng thái với test API dùng multi). */
@@ -45,8 +47,12 @@ export const USERS = {
   seller: { username: "seller", password: "Seller@12345" },
   /** Quản lý bán hàng: mọi khóa SALES trừ xem liên hệ đầy đủ (e2e/mock/sales.mjs). */
   salesmgr: { username: "salesmgr", password: "Salesmgr@12345" },
+  /** Chỉ xem tác phẩm (WorkController/search, get), không tạo/sửa/gộp (gắn trong e2e/mock/works-reports.mjs). */
+  workview: { username: "workview", password: "Workview@12345" },
   /** Admin có module SALES (e2e/mock/sales.mjs). */
   salesadmin: { username: "salesadmin", password: "Salesadmin@12345" },
+  /** Chỉ xem banner và chính sách chống lạm dụng (e2e/mock/sales-banners.mjs). */
+  salesview: { username: "salesview", password: "Salesview@12345" },
   /** Thu ngân thao tác đơn online + trả trong hạn; KHÔNG có hủy đơn, áp giảm giá, trả quá hạn, hoàn tiền, nhật ký (e2e/mock/sales.mjs). */
   cashier: { username: "cashier", password: "Cashier@12345" },
   /** Chỉ xem tồn kho, không có khóa getDetails (e2e/mock/sales.mjs). */
@@ -57,12 +63,17 @@ export const USERS = {
   copyviewer: { username: "copyviewer", password: "Copyviewer@12345" },
   /** Quản trị của đơn vị chưa có hợp đồng nào (e2e/mock/platform-contracts.mjs). */
   nocontract: { username: "nocontract", password: "Nocontract@12345" },
+  /** Nhập Excel: có khóa tìm tác giả + tải lên/xác nhận nhập tác giả, KHÔNG phải admin (e2e/mock/imports.mjs). */
+  impyes: { username: "impyes", password: "Impyes@12345" },
+  /** Nhập Excel: chỉ có khóa tìm tác giả, không có khóa nhập (e2e/mock/imports.mjs). */
+  impnone: { username: "impnone", password: "Impnone@12345" },
   /** Developer Portal: chỉ có khóa xem (list, get, history, listDomains), không tạo/sửa/thu hồi (e2e/mock/applications.mjs). */
   appviewer: { username: "appviewer", password: "Appviewer@12345" },
   /** Developer Portal: không có khóa ApplicationController nào. */
   appnone: { username: "appnone", password: "Appnone@12345" },
   /** Developer Portal: đủ 13 khóa ApplicationController nhưng không phải admin. */
   appdev: { username: "appdev", password: "Appdev@12345" },
+  /** Quản trị của đơn vị chưa có hợp đồng nào (tạo Application INTEGRATION bị CONTRACT_REQUIRED) đã khai báo ở trên là nocontract. */
   /** Không có khóa nào; quyền đổi qua POST /__test/user của mock (e2e/permission-refresh.spec.ts). */
   permuser: { username: "permuser", password: "Permuser@12345" },
   /** Hóa đơn: quản lý cửa hàng, đủ khóa hóa đơn (hủy, thay thế, cấu hình) nhưng không phải admin (e2e/mock/invoices.mjs). */

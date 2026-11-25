@@ -29,3 +29,4 @@ export {
 export { TriangleAlert } from "lucide-react";
 export { BookOpenText, ClipboardCheck, SlidersHorizontal } from "lucide-react";
 export { Copy } from "lucide-react";
+export { GitMerge, Split } from "lucide-react";

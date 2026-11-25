@@ -2,7 +2,7 @@ import { usePageSize } from "@/ui";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { PERMISSIONS, apiFetch, can, toErrorInfo, useApi, useInvalidateApi, useSession } from "@/api";
-import { App, Button, DataTable, Form, FormModal, Input, Pencil, PlusOutlined, QueryBoundary, SearchBar, Switch, Tag, actionsColumn, describeError, type DataColumn, useFormModal } from "@/ui";
+import { App, Button, DataTable, EXCEL_IMPORTS, ExcelImportButton, Form, FormModal, Input, Pencil, PlusOutlined, QueryBoundary, SearchBar, Switch, Tag, actionsColumn, describeError, type DataColumn, useFormModal } from "@/ui";
 import { SalesGate } from "./_components/SalesGate";
 import { pageParams, type Page, type Supplier } from "./_lib/sales";
 
@@ -89,11 +89,14 @@ export default function SuppliersPage() {
       description="Nơi nhập sách về kho bán."
       permission={PERMISSIONS.SUPPLIER_SEARCH}
       actions={
-        can(s, PERMISSIONS.SUPPLIER_CREATE) ? (
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => form.openModal()}>
-            Thêm nhà cung cấp
-          </Button>
-        ) : undefined
+        <>
+          <ExcelImportButton cfg={EXCEL_IMPORTS.suppliers} />
+          {can(s, PERMISSIONS.SUPPLIER_CREATE) && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => form.openModal()}>
+              Thêm nhà cung cấp
+            </Button>
+          )}
+        </>
       }
     >
       <div className="flex flex-col gap-4">

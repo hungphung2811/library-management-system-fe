@@ -111,6 +111,96 @@ function SettingsForm({ data, canUpdate, onReload }: { data: SalesSettings; canU
   );
 }
 
+type AbusePolicy = {
+  reservationMinutes: number;
+  maxPendingOrders: number;
+  maxOrdersPerDay: number;
+  maxQuantityPerLine: number;
+  maxTotalQuantity: number;
+  ordersPerMinutePerUser: number;
+  ordersPerMinuteTenant: number;
+  version: number;
+  updatedAt: string | null;
+};
+type AbuseValues = Omit<AbusePolicy, "version" | "updatedAt">;
+
+const ABUSE_FIELDS: { name: keyof AbuseValues; label: string; min: number; max: number; extra?: string }[] = [
+  { name: "reservationMinutes", label: "Thời gian giữ hàng đơn chờ xác nhận (phút)", min: 0, max: 10080, extra: "0 đến 10080; 0 = đơn chờ xác nhận không tự hết hạn." },
+  { name: "maxPendingOrders", label: "Số đơn chờ tối đa mỗi khách", min: 1, max: 1000 },
+  { name: "maxOrdersPerDay", label: "Số đơn tối đa mỗi khách trong 24 giờ", min: 1, max: 10000 },
+  { name: "maxQuantityPerLine", label: "Số lượng tối đa mỗi dòng đơn", min: 1, max: 10000 },
+  { name: "maxTotalQuantity", label: "Tổng số lượng tối đa mỗi đơn", min: 1, max: 100000 },
+  { name: "ordersPerMinutePerUser", label: "Số đơn mỗi phút của một khách", min: 1, max: 600 },
+  { name: "ordersPerMinuteTenant", label: "Số đơn mỗi phút của cả cửa hàng", min: 1, max: 100000 },
+];
+
+function AbusePolicyForm({ data, canUpdate, onReload }: { data: AbusePolicy; canUpdate: boolean; onReload: () => void }) {
+  const [error, setError] = useState<ReturnType<typeof toErrorInfo> | null>(null);
+  const { message } = App.useApp();
+  const save = useApiMutation(
+    (v: AbuseValues) => apiFetch<AbusePolicy>("/api/sales/settings/order-abuse-policy", { method: "PUT", json: { ...v, version: data.version } }),
+    { invalidate: ["/api/sales/settings/order-abuse-policy"] },
+  );
+  const conflict = error?.code === "SETTINGS_VERSION_CONFLICT";
+  const d = error ? describeError(error) : null;
+  const { version: _v, updatedAt: _u, ...initial } = data;
+  void _v;
+  void _u;
+  return (
+    <Card title="Chống lạm dụng đặt hàng online" className="mt-5 max-w-[720px]" data-testid="abuse-policy">
+      <Form<AbuseValues>
+        layout="vertical"
+        disabled={!canUpdate}
+        initialValues={initial}
+        onFinish={(v) => {
+          setError(null);
+          save.mutate(v, { onSuccess: () => message.success("Đã lưu chính sách chống lạm dụng."), onError: (e) => setError(toErrorInfo(e)) });
+        }}
+      >
+        {d && (
+          <Alert
+            className="mb-4"
+            type="error"
+            showIcon
+            title={d.text}
+            description={d.details?.length ? d.details.join("; ") : undefined}
+            action={conflict ? <Button size="small" onClick={onReload}>Tải lại chính sách</Button> : undefined}
+          />
+        )}
+        <div className="grid gap-x-4 sm:grid-cols-2">
+          {ABUSE_FIELDS.map((f) => (
+            <Form.Item key={f.name} name={f.name} label={f.label} extra={f.extra ?? `${f.min} đến ${f.max}.`} rules={[{ required: true, message: "Nhập giá trị" }]}>
+              <InputNumber className="w-full" min={f.min} max={f.max} precision={0} />
+            </Form.Item>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {canUpdate && (
+            <Button type="primary" htmlType="submit" loading={save.isPending}>
+              Lưu chính sách
+            </Button>
+          )}
+          <span className="text-sm text-muted">
+            Phiên bản {data.version}
+            {data.updatedAt ? ` · cập nhật ${formatDateTime(data.updatedAt)}` : " · đang dùng giá trị mặc định, chưa từng lưu"}
+          </span>
+        </div>
+      </Form>
+    </Card>
+  );
+}
+
+function AbusePolicySection() {
+  const s = useSession();
+  const q = useApi<AbusePolicy>(can(s, PERMISSIONS.ORDER_ABUSE_POLICY_GET) ? "/api/sales/settings/order-abuse-policy" : null);
+  if (!can(s, PERMISSIONS.ORDER_ABUSE_POLICY_GET)) return null;
+  return (
+    <QueryBoundary query={q}>
+      {(data) => <AbusePolicyForm key={data.version} data={data} canUpdate={can(s, PERMISSIONS.ORDER_ABUSE_POLICY_UPDATE)} onReload={() => void q.refetch()} />}
+    </QueryBoundary>
+  );
+}
+
 export default function SalesSettingsPage() {
   const s = useSession();
   const allowed = can(s, PERMISSIONS.SALES_SETTINGS_VIEW);
@@ -120,6 +210,7 @@ export default function SalesSettingsPage() {
       <QueryBoundary query={q}>
         {(data) => <SettingsForm key={data.version} data={data} canUpdate={can(s, PERMISSIONS.SALES_SETTINGS_UPDATE)} onReload={() => void q.refetch()} />}
       </QueryBoundary>
+      <AbusePolicySection />
     </SalesGate>
   );
 }

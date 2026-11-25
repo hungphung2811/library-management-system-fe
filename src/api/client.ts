@@ -123,7 +123,8 @@ export type ApiInit = Omit<RequestInit, "body"> & {
   download?: boolean;
 };
 
-export type Downloaded = { blob: Blob; filename: string | null };
+/** `truncated`: header `X-Report-Truncated: true` (báo cáo CSV bị cắt ở trần dòng của BE). */
+export type Downloaded = { blob: Blob; filename: string | null; truncated?: boolean };
 
 /**
  * Gọi lms-api cùng origin (`/api/...`, proxy ở dev, nginx ở production). Gắn Bearer từ bộ nhớ.
@@ -143,7 +144,8 @@ export async function apiFetch<T = unknown>(path: `/api/${string}`, init: ApiIni
       } catch {
         filename = raw ?? null;
       }
-      return { blob: await r.blob(), filename } as T;
+      const truncated = r.headers.get("X-Report-Truncated") === "true";
+      return { blob: await r.blob(), filename, ...(truncated ? { truncated } : {}) } as T;
     }
     if (r.status === 204) return undefined as T;
     const t = await r.text();

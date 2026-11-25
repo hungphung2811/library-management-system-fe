@@ -35,8 +35,9 @@ export function QrPaymentModal({ order, open, onClose, onPaid, onAbandon }: Prop
   const first = order.paymentIntent as PaymentIntent;
   const canCancel = can(s, PERMISSIONS.PAYMENT_INTENT_CANCEL);
   const isMomo = first.provider === "MOMO";
-  // Nút giả lập chỉ có với cổng giả lập nội bộ; MoMo sandbox thì thanh toán thật bằng app MoMo test
-  const canSimulate = can(s, PERMISSIONS.PAYMENT_INTENT_SIMULATE_PAID) && !isMomo;
+  const isSepay = first.provider === "SEPAY";
+  // Nút giả lập chỉ có với cổng giả lập nội bộ; MoMo sandbox thanh toán bằng app MoMo test, SePay Test mode bằng "Mô phỏng giao dịch"
+  const canSimulate = can(s, PERMISSIONS.PAYMENT_INTENT_SIMULATE_PAID) && !isMomo && !isSepay;
 
   const q = useApi<PaymentIntent>(`/api/sales/payments/intents/${encodeURIComponent(first.id)}`, {
     initialData: first,
@@ -106,7 +107,7 @@ export function QrPaymentModal({ order, open, onClose, onPaid, onAbandon }: Prop
   return (
     <Modal
       open={open && status !== "PAID"}
-      title={`${isMomo ? "Thanh toán MoMo" : "Thanh toán QR"} · đơn ${order.orderNo}`}
+      title={`${isMomo ? "Thanh toán MoMo" : isSepay ? "Thanh toán SePay" : "Thanh toán QR"} · đơn ${order.orderNo}`}
       onCancel={onClose}
       footer={null}
       destroyOnHidden={false}
@@ -114,7 +115,13 @@ export function QrPaymentModal({ order, open, onClose, onPaid, onAbandon }: Prop
       width={440}
     >
       <div className="flex flex-col items-center gap-3" data-testid="qr-panel">
-        <Tag color="orange">{isMomo ? "MoMo sandbox, không phải tiền thật" : "Cổng giả lập (sandbox), không phải tiền thật"}</Tag>
+        <Tag color="orange">{isMomo ? "MoMo sandbox, không phải tiền thật" : isSepay ? "SePay Test mode, không phải tiền thật" : "Cổng giả lập (sandbox), không phải tiền thật"}</Tag>
+        {isSepay && status === "PENDING" && (
+          <p className="m-0 text-center text-sm text-muted" data-testid="sepay-hint">
+            Mở my.sepay.vn (Test mode) → Mô phỏng giao dịch, chọn tiền vào, nhập đúng số tiền và nội dung{" "}
+            <span className="font-mono text-ink">{intent.reference}</span>. Màn hình này tự cập nhật sau vài giây.
+          </p>
+        )}
         {isMomo && status === "PENDING" && (
           <p className="m-0 text-center text-sm text-muted" data-testid="momo-hint">
             Mở app MoMo bản test, chọn quét mã rồi xác nhận thanh toán. Màn hình này tự cập nhật khi MoMo báo thành công.

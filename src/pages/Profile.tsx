@@ -2,6 +2,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { useApi, toErrorInfo } from "@/api";
 import { useSession } from "@/auth/AuthProvider";
 import { Card, ErrorPanel, KeyValueList, LinkButton, PageHeader, StatusTag, Tag, UserAvatar, dobText, formatDate, genderLabel, presentItems } from "@/ui";
+import { DeviceSessions } from "./profile/DeviceSessions";
 import { NotificationPreferences } from "./profile/NotificationPreferences";
 import { ExternalLinks, type ExternalLogin, type ExternalProvider } from "./profile/ExternalLinks";
 
@@ -171,6 +172,10 @@ export default function ProfilePage() {
 
         <Card title="Tùy chọn nhận thông báo">
           <NotificationPreferences />
+        </Card>
+
+        <Card title="Thiết bị đăng nhập">
+          <DeviceSessions />
         </Card>
 
         {showExternal && (

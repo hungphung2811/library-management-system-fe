@@ -20,6 +20,8 @@ export type TitleView = {
   pageCount?: number | null;
   format?: BookFormat | null;
   translator?: string | null;
+  workId?: string | null;
+  workTitle?: string | null;
   series?: string | null;
   seriesNumber?: number | null;
   coverImageUrl?: string | null;

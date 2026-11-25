@@ -5,6 +5,8 @@ import { PERMISSIONS, apiFetch, can, hasModule, useApi, useApiMutation, useSessi
 import {
   Button,
   DataTable,
+  EXCEL_IMPORTS,
+  ExcelImportButton,
   Form,
   FormModal,
   Input,
@@ -493,11 +495,14 @@ export function ReferenceCatalog({ kind }: { kind: ReferenceKind }) {
         title={cfg.title}
         description={description}
         actions={
-          canCreate ? (
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing("new")}>
-              Thêm {cfg.noun}
-            </Button>
-          ) : undefined
+          <>
+            <ExcelImportButton cfg={EXCEL_IMPORTS[kind]} />
+            {canCreate && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing("new")}>
+                Thêm {cfg.noun}
+              </Button>
+            )}
+          </>
         }
       />
       <div className="flex flex-col gap-4">

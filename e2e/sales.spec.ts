@@ -186,6 +186,21 @@ test.describe("bán hàng: POS thanh toán QR (cổng giả lập)", () => {
     await expect(page.getByTestId("qr-terminal")).toContainText("Đã hủy thanh toán");
   });
 
+  test("SePay test: có mã QR và hướng dẫn Mô phỏng giao dịch với mã tham chiếu, không có nút giả lập", async ({ page }) => {
+    await gotoAs(page, "seller", "/sales/pos");
+    const scan = main(page).getByLabel("Quét mã ISBN hoặc nhập mã rồi Enter");
+    await scan.fill(ISBN1);
+    await scan.press("Enter");
+    await expect(main(page).getByTestId("cart-line")).toHaveCount(1);
+    await main(page).getByText("SePay (test)", { exact: true }).click();
+    await main(page).getByRole("button", { name: "Tạo mã QR" }).click();
+    await expect(page.getByTestId("qr-code")).toBeVisible();
+    await expect(page.getByTestId("sepay-hint")).toContainText("Mô phỏng giao dịch");
+    await expect(page.getByTestId("sepay-hint")).toContainText("LMS");
+    await expect(page.getByRole("dialog").getByText("Thanh toán SePay · đơn ")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Giả lập đã thanh toán/ })).toHaveCount(0);
+  });
+
   test("tạo đơn QR: thấy mã QR, số tiền, tham chiếu và đếm ngược; giả lập thanh toán thì thấy Đã bán đơn", async ({ page }) => {
     await startQr(page);
     await expect(page.getByTestId("qr-amount")).toContainText("132.000");

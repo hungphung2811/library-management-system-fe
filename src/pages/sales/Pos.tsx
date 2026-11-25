@@ -420,7 +420,7 @@ export default function PosPage() {
                     value={payment}
                     onChange={(v) => setPayment(v as keyof typeof POS_PAYMENT_METHODS)}
                     options={Object.entries(POS_PAYMENT_METHODS)
-                      .filter(([value]) => (value !== "QR" && value !== "MOMO") || (canQr && !exchangeOfReturnId))
+                      .filter(([value]) => (value !== "QR" && value !== "MOMO" && value !== "SEPAY") || (canQr && !exchangeOfReturnId))
                       .map(([value, label]) => ({ value, label }))}
                   />
                 </div>
@@ -470,7 +470,7 @@ export default function PosPage() {
                     data-testid="qr-pending"
                     title={
                       <span>
-                        Đơn <span className="font-mono">{qrOrder.orderNo}</span> {qrOrder.paymentIntent?.provider === "MANUAL" ? "đang chờ xác nhận đã thu." : qrOrder.paymentIntent?.provider === "MOMO" ? "đang chờ thanh toán MoMo." : "đang chờ thanh toán QR."}
+                        Đơn <span className="font-mono">{qrOrder.orderNo}</span> {qrOrder.paymentIntent?.provider === "MANUAL" ? "đang chờ xác nhận đã thu." : qrOrder.paymentIntent?.provider === "MOMO" ? "đang chờ thanh toán MoMo." : qrOrder.paymentIntent?.provider === "SEPAY" ? "đang chờ thanh toán SePay." : "đang chờ thanh toán QR."}
                       </span>
                     }
                     action={
@@ -481,7 +481,7 @@ export default function PosPage() {
                   />
                 )}
                 <Button type="primary" size="large" loading={submitting} disabled={cart.length === 0 || !!qrOrder} onClick={() => void checkout()}>
-                  {payment === "QR" || payment === "MOMO" ? "Tạo mã QR" : "Thanh toán"}
+                  {payment === "QR" || payment === "MOMO" || payment === "SEPAY" ? "Tạo mã QR" : "Thanh toán"}
                 </Button>
               </div>
             </Card>

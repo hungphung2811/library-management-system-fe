@@ -32,6 +32,8 @@ const Reservations = lazy(() => import("@/pages/circulation/Reservations"));
 const Fines = lazy(() => import("@/pages/circulation/Fines"));
 const MyBorrowings = lazy(() => import("@/pages/circulation/Mine"));
 const CirculationPolicy = lazy(() => import("@/pages/circulation/Policy"));
+const CirculationCompensation = lazy(() => import("@/pages/circulation/Compensation"));
+const FineRequests = lazy(() => import("@/pages/circulation/FineRequests"));
 
 const AdminHome = lazy(() => import("@/pages/admin/AdminHome"));
 const Users = lazy(() => import("@/pages/admin/Users"));
@@ -40,6 +42,7 @@ const Roles = lazy(() => import("@/pages/admin/Roles"));
 const RoleDetail = lazy(() => import("@/pages/admin/RoleDetail"));
 const Departments = lazy(() => import("@/pages/admin/Departments"));
 const AuditLogs = lazy(() => import("@/pages/admin/AuditLogs"));
+const OperationalLogs = lazy(() => import("@/pages/admin/OperationalLogs"));
 const Menus = lazy(() => import("@/pages/admin/Menus"));
 const MyContract = lazy(() => import("@/pages/admin/MyContract"));
 const StorefrontOrigins = lazy(() => import("@/pages/admin/StorefrontOrigins"));
@@ -54,8 +57,12 @@ const SalesOrders = lazy(() => import("@/pages/sales/Orders"));
 const SalesOrderDetail = lazy(() => import("@/pages/sales/OrderDetail"));
 const SalesStock = lazy(() => import("@/pages/sales/Stock"));
 const SalesSuppliers = lazy(() => import("@/pages/sales/Suppliers"));
+const SalesBanners = lazy(() => import("@/pages/sales/Banners"));
 const SalesReceipts = lazy(() => import("@/pages/sales/Receipts"));
 const SalesSettings = lazy(() => import("@/pages/sales/Settings"));
+const CatalogWorks = lazy(() => import("@/pages/catalog/Works"));
+const CatalogWorkDetail = lazy(() => import("@/pages/catalog/WorkDetail"));
+const Reports = lazy(() => import("@/pages/reports/Reports"));
 const SalesRefunds = lazy(() => import("@/pages/sales/Refunds"));
 const SalesAudit = lazy(() => import("@/pages/sales/Audit"));
 const SalesContacts = lazy(() => import("@/pages/sales/Contacts"));
@@ -146,6 +153,7 @@ export const router = createBrowserRouter([
                   { index: true, element: <Home />, handle: { title: "Tổng quan" } },
                   { path: "profile", element: <Profile />, handle: { title: "Hồ sơ" } },
                   { path: "notifications", element: <Notifications />, handle: { title: "Thông báo" } },
+                  { path: "reports", element: <LazyOutlet />, handle: { title: "Báo cáo" }, children: [{ index: true, element: <Reports /> }] },
                   {
                     path: "catalog",
                     element: <LazyOutlet />,
@@ -155,6 +163,8 @@ export const router = createBrowserRouter([
                       { path: "books/new", element: <Navigate to="/catalog?new=1" replace /> },
                       { path: "books/:id", element: <DetailModalRoute list={<CatalogList />} backTo="/catalog"><BookDetail /></DetailModalRoute> },
                       { path: "barcode", element: <Barcode /> },
+                      { path: "works", element: <CatalogWorks />, handle: { title: "Tác phẩm" } },
+                      { path: "works/:id", element: <DetailModalRoute list={<CatalogWorks />} backTo="/catalog/works"><CatalogWorkDetail /></DetailModalRoute>, handle: { title: "Chi tiết tác phẩm" } },
                       { path: "authors", element: <CatalogAuthors />, handle: { title: "Tác giả" } },
                       { path: "publishers", element: <CatalogPublishers />, handle: { title: "Nhà xuất bản" } },
                       { path: "categories", element: <CatalogCategories />, handle: { title: "Thể loại" } },
@@ -180,6 +190,8 @@ export const router = createBrowserRouter([
                           { path: "fines", element: <Fines /> },
                           { path: "mine", element: <MyBorrowings /> },
                           { path: "policy", element: <CirculationPolicy />, handle: { title: "Chính sách mượn trả" } },
+                          { path: "compensation", element: <CirculationCompensation />, handle: { title: "Đền bù và mức hư hại" } },
+                          { path: "fine-requests", element: <FineRequests />, handle: { title: "Yêu cầu miễn giảm, hoàn phạt" } },
                           { path: "*", element: <NotFound /> },
                         ],
                       },
@@ -197,6 +209,7 @@ export const router = createBrowserRouter([
                       { path: "roles/:id", element: <DetailModalRoute list={<Roles />} backTo="/admin/roles"><RoleDetail /></DetailModalRoute> },
                       { path: "departments", element: <Departments /> },
                       { path: "audit-logs", element: <AuditLogs /> },
+                      { path: "logs", element: <OperationalLogs />, handle: { title: "Nhật ký hệ thống và tích hợp" } },
                       { path: "menus", element: <Menus />, handle: { title: "Menu" } },
                       { path: "contract", element: <MyContract />, handle: { title: "Hợp đồng dịch vụ" } },
                       { path: "storefront-origins", element: <StorefrontOrigins />, handle: { title: "Website" } },
@@ -221,6 +234,7 @@ export const router = createBrowserRouter([
                       { path: "orders/:id", element: <DetailModalRoute list={<SalesOrders />} backTo="/sales/orders"><SalesOrderDetail /></DetailModalRoute>, handle: { title: "Chi tiết đơn hàng" } },
                       { path: "stock", element: <SalesStock />, handle: { title: "Tồn kho" } },
                       { path: "suppliers", element: <SalesSuppliers />, handle: { title: "Nhà cung cấp" } },
+                      { path: "banners", element: <SalesBanners />, handle: { title: "Banner cửa hàng" } },
                       { path: "receipts", element: <SalesReceipts />, handle: { title: "Phiếu nhập kho" } },
                       { path: "settings", element: <SalesSettings />, handle: { title: "Cấu hình bán hàng" } },
                       { path: "refunds", element: <SalesRefunds />, handle: { title: "Hoàn tiền" } },

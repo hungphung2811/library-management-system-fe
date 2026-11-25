@@ -62,6 +62,10 @@ Import trong trang: `@/ui` (UI), `@/api` (`apiFetch`, `useApi`, `useApiMutation`
 3. Lấy dữ liệu bằng `useApi`, bọc `QueryBoundary`; ghi bằng `useApiMutation`. Ẩn/hiện nút theo `can(session, PERMISSIONS.x)`.
 4. Cần mục sidebar thì thêm vào `nav-links.ts`.
 
+### Nhập Excel hàng loạt (`src/ui/excel-import/`, ADR-0024 ở BE)
+
+Một bộ dùng chung cho mọi loại nhập master data: `<ExcelImportButton cfg={EXCEL_IMPORTS.authors} />` đặt vào `actions` của `PageHeader`; nút tự ẩn khi thiếu khóa `upload` hoặc `confirm` (kiểm module do trang đảm nhiệm, như các nút khác). Cấu hình từng loại (đường dẫn `/api/{identity|catalog|sales}/imports/{type}`, khóa quyền `XImportController/upload|confirm`, tiền tố cần tải lại) ở `configs.ts`; khóa thêm vào `api/permissions.ts`. Luồng trong `ExcelImportModal` (hook `useExcelImport`): tải mẫu và chọn/kéo thả `.xlsx` (kiểm đuôi, 5 MB phía client) -> xem trước từng dòng (tab theo sheet, lọc VALID/INVALID/DUPLICATE, phân trang server, `issues[]` theo ô) -> xác nhận (chỉ ghi dòng VALID) -> thăm dò 1,5 giây/lần -> kết quả; INTERRUPTED bấm "Tiếp tục nhập". Đóng trước khi xác nhận thì `DELETE` phiên. Upload là `FormData` qua `apiFetch({ body })` (không ép Content-Type). Riêng `users` (`credentialsKey`): sau COMMITTED có `result.created > 0` phải tải file mật khẩu tạm ngay (một lần, 410 lần hai), đóng hộp thoại khi chưa tải thì hiện cảnh báo. Thông điệp mã lỗi `IMPORT_*` ở `messages.ts`. Loại `series` (bộ sách) có cấu hình khóa quyền nhưng FE chưa có màn danh sách bộ sách nên chưa gắn nút. Nút nhập CSV cũ (`POST /api/users/imports`, deprecated) đã bỏ. E2E: `e2e/excel-import.spec.ts`, mock `e2e/mock/imports.mjs` (hành vi điều khiển bằng tên tệp upload).
+
 ### Xác thực (không còn BFF, không còn cookie httpOnly)
 
 - Access token **chỉ trong bộ nhớ** (`api/token-store.ts`, đẩy vào `AuthProvider` qua `useSyncExternalStore`); refresh token ở **localStorage khóa `lms_rt`**. Boot: có `lms_rt` mà chưa có access token thì `POST /api/auth/refresh {refreshToken}` (F5 không mất phiên); BE từ chối (4xx) thì xóa phiên, lỗi mạng/5xx giữ `lms_rt`.

@@ -191,6 +191,7 @@ const audit = (caller, action, aggregateType, aggregateId, data = {}) =>
 
 /** Cho mock hóa đơn (invoices.mjs) tra đơn theo id: chỉ đọc. */
 export const findOrderForMock = (id) => ORDERS.find((o) => o.id === id);
+
 export function handle({ method, url, body, send, requireKey, caller }) {
   const p = url.pathname;
   if (!p.startsWith("/api/sales/")) return false;
@@ -366,7 +367,7 @@ export function handle({ method, url, body, send, requireKey, caller }) {
     if (!requireKey(discounted ? K.POS_DISCOUNT : K.POS)) return true;
     if (ORDER_BY_REQ.has(body.clientRequestId)) return send(201, orderView(ORDER_BY_REQ.get(body.clientRequestId))), true;
     if (!Array.isArray(body.lines) || body.lines.length === 0) return invalid("lines: không được rỗng");
-    if (!["CASH", "BANK_TRANSFER", "CARD", "QR", "MOMO"].includes(body.paymentMethod)) return err(400, "INVALID_REQUEST", "Hình thức thanh toán không hợp lệ");
+    if (!["CASH", "BANK_TRANSFER", "CARD", "QR", "MOMO", "SEPAY"].includes(body.paymentMethod)) return err(400, "INVALID_REQUEST", "Hình thức thanh toán không hợp lệ");
     if (!discounted && (body.orderDiscount || body.lines.some((l) => l.discount))) return err(400, "DISCOUNT_NOT_ALLOWED", "Không được giảm giá");
     const disc = (d, base) => (!d ? 0 : d.type === "PERCENT" ? Math.floor((base * d.value) / 10000) : d.value);
     const need = new Map();
@@ -378,7 +379,7 @@ export function handle({ method, url, body, send, requireKey, caller }) {
       if (s.onHand - s.reserved < q) short.push(`available=${s.onHand - s.reserved}`, `titleId=${id}`);
     }
     if (short.length) return err(409, "INSUFFICIENT_STOCK", "Không đủ tồn", short);
-    const isQr = body.paymentMethod === "QR" || body.paymentMethod === "MOMO";
+    const isQr = body.paymentMethod === "QR" || body.paymentMethod === "MOMO" || body.paymentMethod === "SEPAY";
     const isMomo = body.paymentMethod === "MOMO";
     if (isQr && body.exchangeOfReturnId) return err(400, "INVALID_REQUEST", "Đơn QR không đi cùng đổi hàng");
     if (body.exchangeOfReturnId) {
@@ -420,7 +421,7 @@ export function handle({ method, url, body, send, requireKey, caller }) {
       const ttl = body.customerNote === "QR_SHORT_TTL" ? 4000 : 10 * 60 * 1000;
       Object.assign(o, { status: "AWAITING_PAYMENT", paymentStatus: "UNPAID", completedAt: null, paidAt: null });
       const intent = {
-        id: uuid(), orderId: id, reference: ref, amount: o.grandTotal, status: "PENDING", provider: isMomo ? "MOMO" : isQr ? "SIMULATED" : "MANUAL", qrPayload: isQr ? qrPayloadOf(ref, o.grandTotal) : null,
+        id: uuid(), orderId: id, reference: ref, amount: o.grandTotal, status: "PENDING", provider: isMomo ? "MOMO" : body.paymentMethod === "SEPAY" ? "SEPAY" : isQr ? "SIMULATED" : "MANUAL", qrPayload: isQr ? qrPayloadOf(ref, o.grandTotal) : null,
         expiresAt: new Date(Date.now() + ttl).toISOString(), paidAt: null, createdAt: now(),
       };
       for (const [tid, q] of need) {

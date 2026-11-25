@@ -18,6 +18,10 @@ import * as platformOrigins from "./mock/platform-origins.mjs";
 import * as sales from "./mock/sales.mjs";
 import * as salesContacts from "./mock/sales-contacts.mjs";
 import * as catalogReference from "./mock/catalog-reference.mjs";
+import * as imports from "./mock/imports.mjs";
+import * as worksReports from "./mock/works-reports.mjs";
+import * as salesBanners from "./mock/sales-banners.mjs";
+import * as sessions from "./mock/sessions.mjs";
 import * as applications from "./mock/applications.mjs";
 import * as invoices from "./mock/invoices.mjs";
 import * as shifts from "./mock/shifts.mjs";
@@ -40,7 +44,7 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 // Thứ tự dispatch: common -> shell -> catalog -> circulation -> admin (nên /api/users/me rơi vào shell trước admin).
 // platformTenants đứng đầu: chặn GET /api/users?tenantId= của platform admin trước khi common/admin kiểm khóa USER_SEARCH.
 // platformContracts đứng trước platformTenants (nó trả 404 cho mọi /api/platform/** lạ) và nhận cả /api/contracts của tenant admin.
-const MODULES = [invoices, shifts, notifications, platformOrigins, platformContracts, platformTenants, common, shell, catalogReference, catalog, circulation, admin, platform, salesContacts, sales];
+const MODULES = [invoices, shifts, notifications, applications, platformOrigins, platformContracts, platformTenants, common, shell, catalogReference, catalog, circulation, admin, platform, salesContacts, salesBanners, sessions, sales, imports, worksReports];
 
 function claimsOf(username) {
   const u = USERS[username];
@@ -85,11 +89,23 @@ http
         res.end(body === undefined ? "" : JSON.stringify(body));
       };
       let body = {};
-      try {
-        body = raw ? JSON.parse(raw) : {};
-      } catch {
-        return send(400, { code: "BAD_JSON", message: "Body không phải JSON" });
+      // multipart (tải tệp Excel): không parse JSON; module import đọc `raw` để lấy tên tệp.
+      if (!String(req.headers["content-type"] ?? "").startsWith("multipart/")) {
+        try {
+          body = raw ? JSON.parse(raw) : {};
+        } catch {
+          return send(400, { code: "BAD_JSON", message: "Body không phải JSON" });
+        }
       }
+      // Trả tệp nhị phân (tải .xlsx): Content-Disposition như BE.
+      const sendFile = (status, buf, filename, extra = {}) => {
+        res.statusCode = status;
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader("Cache-Control", "no-store");
+        for (const [k, v] of Object.entries(extra)) res.setHeader(k, v);
+        res.end(buf);
+      };
       // Trả văn bản (bản in hóa đơn HTML): BE đặt thêm CSP, nosniff và no-store.
       const sendText = (status, text, type = "text/html;charset=UTF-8") => {
         res.statusCode = status;
@@ -169,7 +185,7 @@ http
         if (!mayCall(caller, key)) return send(403, { code: "FORBIDDEN", message: `Thiếu quyền: ${key}` }), false;
         return true;
       };
-      const ctx = { method: req.method, url, body, caller, send, requireKey, tokens, sendText };
+      const ctx = { method: req.method, url, body, caller, send, requireKey, tokens, raw, headers: req.headers, sendFile, sendText };
       for (const m of MODULES) if (m.handle(ctx)) return;
       send(404, { code: "NOT_FOUND", message: "Không có endpoint này trong mock" });
     });
